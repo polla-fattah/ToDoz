@@ -57,6 +57,9 @@ void showUndo(BuildContext context, String message, VoidCallback onUndo) {
   m.showSnackBar(SnackBar(
     content: Text(message),
     duration: const Duration(seconds: 8), // FR-T8: at least 8 seconds
+    // A snackbar with an action stays until dismissed unless told otherwise; an
+    // old "Undo" left on screen is easy to hit by mistake (found on a device).
+    persist: false,
     action: SnackBarAction(label: 'Undo', onPressed: onUndo),
   ));
 }

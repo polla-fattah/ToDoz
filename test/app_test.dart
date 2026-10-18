@@ -213,6 +213,20 @@ void main() {
       await finish(tester);
     });
 
+    testWidgets('an Undo bar goes away by itself after a few seconds', (tester) async {
+      await start(tester);
+      await tester.runAsync(() => repo.addTask(title: 'Buy milk', dueDate: today()));
+      await settle(tester);
+      await tester.tap(find.bySemanticsLabel(RegExp('Complete task')).first);
+      await settle(tester);
+      expect(find.text('Undo'), findsOneWidget);
+      // Found on a device: a snackbar with an action used to stay on screen for ever.
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('Undo'), findsNothing);
+      await finish(tester);
+    });
+
     testWidgets('a task whose time has passed today is listed as overdue', (tester) async {
       await start(tester);
       await tester.runAsync(() => repo.addTask(title: 'Early call', dueDate: today(), dueTime: '00:00'));

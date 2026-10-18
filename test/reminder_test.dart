@@ -30,6 +30,7 @@ void main() {
       expect(const ReminderSpec.at(14 * 60).describe(), 'At 14:00');
       expect(const ReminderSpec.at(14 * 60).describe(use24h: false), 'At 2:00 PM');
       expect(const ReminderSpec.before(0).describe(), 'When due');
+      expect(const ReminderSpec.before(1).describe(), '1 minute before');
       expect(const ReminderSpec.before(30).describe(), '30 minutes before');
       expect(const ReminderSpec.before(60).describe(), '1 hour before');
       expect(const ReminderSpec.before(180).describe(), '3 hours before');

@@ -168,8 +168,10 @@ class ProjectScreen extends StatelessWidget {
       body: Live<List<Task>>(
         id: '$projectId|${options.showCompleted}',
         create: () => repo.watchProjectTasks(projectId, includeCompleted: options.showCompleted),
-        builder: (context, data) => TaskCollection(
-          tasks: data ?? const <Task>[],
+        builder: (context, data) => data == null
+            ? const SizedBox.shrink()
+            : TaskCollection(
+          tasks: data,
           options: options,
           defaultGroup: defaultGroup,
           projectId: projectId,
@@ -356,7 +358,8 @@ class TodayScreen extends StatelessWidget {
         id: today,
         create: () => repo.watchToday(today),
         builder: (context, data) {
-          final tasks = data ?? const <Task>[];
+          if (data == null) return const SizedBox.shrink(); // still loading; do not flash the empty state
+          final tasks = data;
           // FR-D6: a task due today with a time is overdue once that time has passed.
           bool late(Task t) => isOverdue(dueDate: t.dueDate, dueTime: t.dueTime, now: repo.now);
           final overdue = tasks.where(late).toList();
@@ -450,7 +453,8 @@ class _UpcomingScreenState extends State<UpcomingScreen> {
       body: Live<List<Task>>(
         create: repo.watchScheduled,
         builder: (context, data) {
-          final tasks = data ?? const <Task>[];
+          if (data == null) return const SizedBox.shrink();
+          final tasks = data;
           bool late(Task t) => isOverdue(dueDate: t.dueDate, dueTime: t.dueTime, now: repo.now);
           final iso = formatDate(from);
           final todayIso = formatDate(today);

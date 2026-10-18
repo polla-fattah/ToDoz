@@ -506,6 +506,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
           messenger.showSnackBar(SnackBar(
             content: const Text('Task deleted'),
             duration: const Duration(seconds: 8),
+            persist: false,
             action: SnackBarAction(label: 'Undo', onPressed: () => repo.restoreTasks(ids)),
           ));
         }

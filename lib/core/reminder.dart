@@ -33,7 +33,7 @@ class ReminderSpec {
     if (m == 0) return 'When due';
     if (m % 1440 == 0) return '${m ~/ 1440} day${m == 1440 ? '' : 's'} before';
     if (m % 60 == 0) return '${m ~/ 60} hour${m == 60 ? '' : 's'} before';
-    return '$m minutes before';
+    return m == 1 ? '1 minute before' : '$m minutes before';
   }
 
   @override

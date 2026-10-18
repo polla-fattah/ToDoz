@@ -149,10 +149,10 @@ class SettingsScreen extends StatelessWidget {
         ),
         const _Heading('About'),
         const ListTile(
-          title: Text('TaskFlow 2.0 (R1 foundation)'),
+          title: Text('TaskFlow 2.0'),
           subtitle: Text(
             'Your tasks are stored on this device. Export a backup before uninstalling or changing phones. '
-            'No account, analytics or ads. Reminders, recurring tasks, filters and sync arrive in later releases.',
+            'No account, analytics or ads. Sync between devices and family sharing arrive in later releases.',
           ),
         ),
       ]),
