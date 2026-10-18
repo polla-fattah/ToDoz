@@ -8,9 +8,11 @@ import 'package:path_provider/path_provider.dart';
 
 import '../core/backup.dart';
 import '../core/date_parser.dart';
+import '../core/reminder.dart' show ReminderSpec;
 import '../data/repository.dart';
 import 'catalog.dart';
 import 'common.dart';
+import 'when_dialogs.dart' show pickTimeMinutes;
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -56,6 +58,74 @@ class SettingsScreen extends StatelessWidget {
             ),
           ]),
         ),
+        const _Heading('Time and dates'),
+        SwitchListTile(
+          title: const Text('24-hour clock'),
+          value: catalog.use24h,
+          onChanged: (v) => repo.setSetting('use24h', '$v'),
+        ),
+        ListTile(
+          title: const Text('Week starts on'),
+          subtitle: Text(const ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][catalog.weekStart]),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () async {
+            final picked = await pickFromList<int>(
+              context,
+              'Week starts on',
+              const [(1, 'Monday'), (6, 'Saturday'), (7, 'Sunday')],
+              selected: catalog.weekStart,
+            );
+            if (picked != null) await repo.setSetting('weekStart', '$picked');
+          },
+        ),
+        const _Heading('Reminders'),
+        ListTile(
+          title: const Text('Automatic reminder'),
+          subtitle: Text(catalog.autoReminderMinutes == null
+              ? 'Off'
+              : '${ReminderSpec.before(catalog.autoReminderMinutes!).describe()} a task with a due time'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () async {
+            final picked = await pickFromList<String>(
+              context,
+              'Automatic reminder',
+              const [('off', 'Off'), ('0', 'When due'), ('10', '10 minutes before'), ('30', '30 minutes before'), ('60', '1 hour before')],
+              selected: catalog.autoReminderMinutes?.toString() ?? 'off',
+            );
+            if (picked != null) await repo.setSetting('autoReminder', picked);
+          },
+        ),
+        SwitchListTile(
+          title: const Text('Daily digest'),
+          subtitle: Text(catalog.digestMinutes == null
+              ? 'A morning summary of what is due'
+              : 'Every day at ${formatTime(catalog.digestMinutes!, use24h: catalog.use24h)}'),
+          value: catalog.digestMinutes != null,
+          onChanged: (v) async {
+            if (!v) {
+              await repo.setSetting('digestTime', 'off');
+              return;
+            }
+            final m = await pickTimeMinutes(context, initial: 8 * 60);
+            if (m != null) await repo.setSetting('digestTime', formatTime(m));
+          },
+        ),
+        if (catalog.digestMinutes != null)
+          ListTile(
+            title: const Text('Digest time'),
+            trailing: Text(formatTime(catalog.digestMinutes!, use24h: catalog.use24h)),
+            onTap: () async {
+              final m = await pickTimeMinutes(context, initial: catalog.digestMinutes);
+              if (m != null) await repo.setSetting('digestTime', formatTime(m));
+            },
+          ),
+        if (catalog.notifications?.supported ?? false) const _PermissionTile(),
+        if (!(catalog.notifications?.supported ?? false))
+          const ListTile(
+            leading: Icon(Icons.info_outline),
+            title: Text('Reminders are available on Android'),
+            subtitle: Text('Windows notifications come in a later release.'),
+          ),
         const _Heading('Backup'),
         ListTile(
           leading: const Icon(Icons.upload_file_outlined),
@@ -149,6 +219,56 @@ class SettingsScreen extends StatelessWidget {
     await dir.create(recursive: true);
     final stamp = DateTime.now().toIso8601String().replaceAll(':', '-');
     await File(p.join(dir.path, 'pre-restore-$stamp.json')).writeAsString(bundle.toJsonString());
+  }
+}
+
+/// Shows whether reminders can fire on time and lets the owner grant the
+/// permissions (FR-N4).
+class _PermissionTile extends StatefulWidget {
+  const _PermissionTile();
+
+  @override
+  State<_PermissionTile> createState() => _PermissionTileState();
+}
+
+class _PermissionTileState extends State<_PermissionTile> {
+  ({bool notifications, bool exact})? _status;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    final c = AppScope.of(context).notifications;
+    final s = await c?.permissionStatus();
+    if (mounted) setState(() => _status = s);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = _status;
+    final ok = s != null && s.notifications && s.exact;
+    return ListTile(
+      leading: Icon(ok ? Icons.check_circle_outline : Icons.warning_amber_rounded, color: ok ? Colors.green : Colors.orange),
+      title: Text(ok ? 'Reminders can fire on time' : 'Reminders need permission'),
+      subtitle: Text(s == null
+          ? 'Checking...'
+          : ok
+              ? 'Notifications and exact alarms are allowed.'
+              : [
+                  if (!s.notifications) 'Notifications are off.',
+                  if (!s.exact) 'Exact alarms are not allowed, so reminders may be a few minutes late.',
+                ].join(' ')),
+      trailing: ok ? null : const Icon(Icons.chevron_right),
+      onTap: ok
+          ? null
+          : () async {
+              await AppScope.of(context).notifications?.requestPermissions();
+              await _refresh();
+            },
+    );
   }
 }
 

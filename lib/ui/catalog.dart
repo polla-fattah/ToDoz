@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../core/backup.dart' show inboxId;
+import '../core/date_parser.dart' show parseClock;
 import '../data/database.dart';
 import '../data/repository.dart';
+import 'notification_controls.dart';
 
 /// Live copies of the small tables (projects, sections, labels, label links)
 /// that every screen needs to show names and colors. One subscription each,
@@ -23,10 +25,17 @@ class Catalog extends ChangeNotifier {
             _ => ThemeMode.system,
           })),
       repo.watchSetting('dailyGoal').listen((v) => _set(() => dailyGoal = (int.tryParse(v ?? '') ?? 5).clamp(1, 100))),
+      repo.watchSetting('use24h').listen((v) => _set(() => use24h = v != 'false')),
+      repo.watchSetting('weekStart').listen((v) => _set(() => weekStart = (int.tryParse(v ?? '') ?? 1).clamp(1, 7))),
+      repo.watchSetting('autoReminder').listen((v) => _set(() => autoReminderMinutes = v == 'off' ? null : (int.tryParse(v ?? '') ?? 30))),
+      repo.watchSetting('digestTime').listen((v) => _set(() => digestMinutes = v == null || v == 'off' ? null : parseClock(v))),
     ];
   }
 
   final Repo repo;
+
+  /// Set by the app on platforms that support reminders; null otherwise.
+  NotificationControls? notifications;
   late final List<StreamSubscription<Object?>> _subs;
   bool _disposed = false;
 
@@ -37,6 +46,16 @@ class Catalog extends ChangeNotifier {
   Map<String, (int, int)> subtaskCounts = const {};
   ThemeMode themeMode = ThemeMode.system;
   int dailyGoal = 5;
+
+  /// 24-hour clock (FR-D5). The first day of the week, 1 = Monday ... 7 = Sunday.
+  bool use24h = true;
+  int weekStart = 1;
+
+  /// Minutes before a due time for the automatic reminder; null = off (FR-N1).
+  int? autoReminderMinutes = 30;
+
+  /// Time of the daily digest notification in minutes after midnight; null = off (FR-N6).
+  int? digestMinutes;
 
   void _set(void Function() f) {
     if (_disposed) return;

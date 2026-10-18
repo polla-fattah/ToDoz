@@ -1814,6 +1814,50 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _dueTimeMeta = const VerificationMeta(
+    'dueTime',
+  );
+  @override
+  late final GeneratedColumn<String> dueTime = GeneratedColumn<String>(
+    'due_time',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _recurrenceMeta = const VerificationMeta(
+    'recurrence',
+  );
+  @override
+  late final GeneratedColumn<String> recurrence = GeneratedColumn<String>(
+    'recurrence',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _deadlineMeta = const VerificationMeta(
+    'deadline',
+  );
+  @override
+  late final GeneratedColumn<String> deadline = GeneratedColumn<String>(
+    'deadline',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _snoozedUntilMeta = const VerificationMeta(
+    'snoozedUntil',
+  );
+  @override
+  late final GeneratedColumn<DateTime> snoozedUntil = GeneratedColumn<DateTime>(
+    'snoozed_until',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _completedAtMeta = const VerificationMeta(
     'completedAt',
   );
@@ -1865,6 +1909,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     parentId,
     priority,
     dueDate,
+    dueTime,
+    recurrence,
+    deadline,
+    snoozedUntil,
     completedAt,
     sortOrder,
     isCollapsed,
@@ -1957,6 +2005,33 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         dueDate.isAcceptableOrUnknown(data['due_date']!, _dueDateMeta),
       );
     }
+    if (data.containsKey('due_time')) {
+      context.handle(
+        _dueTimeMeta,
+        dueTime.isAcceptableOrUnknown(data['due_time']!, _dueTimeMeta),
+      );
+    }
+    if (data.containsKey('recurrence')) {
+      context.handle(
+        _recurrenceMeta,
+        recurrence.isAcceptableOrUnknown(data['recurrence']!, _recurrenceMeta),
+      );
+    }
+    if (data.containsKey('deadline')) {
+      context.handle(
+        _deadlineMeta,
+        deadline.isAcceptableOrUnknown(data['deadline']!, _deadlineMeta),
+      );
+    }
+    if (data.containsKey('snoozed_until')) {
+      context.handle(
+        _snoozedUntilMeta,
+        snoozedUntil.isAcceptableOrUnknown(
+          data['snoozed_until']!,
+          _snoozedUntilMeta,
+        ),
+      );
+    }
     if (data.containsKey('completed_at')) {
       context.handle(
         _completedAtMeta,
@@ -2034,6 +2109,22 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         DriftSqlType.string,
         data['${effectivePrefix}due_date'],
       ),
+      dueTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}due_time'],
+      ),
+      recurrence: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recurrence'],
+      ),
+      deadline: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}deadline'],
+      ),
+      snoozedUntil: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}snoozed_until'],
+      ),
       completedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}completed_at'],
@@ -2069,8 +2160,20 @@ class Task extends DataClass implements Insertable<Task> {
   /// 1 (urgent) to 4 (none), as Todoist.
   final int priority;
 
-  /// `YYYY-MM-DD`; times of day arrive with R2.
+  /// `YYYY-MM-DD`.
   final String? dueDate;
+
+  /// `HH:MM` local time, or null for "any time that day" (FR-D1).
+  final String? dueTime;
+
+  /// The repeat phrase as typed, e.g. `every other fri at 8pm` (FR-R1..R10).
+  final String? recurrence;
+
+  /// A separate hard date, `YYYY-MM-DD` (FR-D2).
+  final String? deadline;
+
+  /// Set by "snooze": the reminder fires again at this moment (FR-N3).
+  final DateTime? snoozedUntil;
   final DateTime? completedAt;
   final int sortOrder;
   final bool isCollapsed;
@@ -2086,6 +2189,10 @@ class Task extends DataClass implements Insertable<Task> {
     this.parentId,
     required this.priority,
     this.dueDate,
+    this.dueTime,
+    this.recurrence,
+    this.deadline,
+    this.snoozedUntil,
     this.completedAt,
     required this.sortOrder,
     required this.isCollapsed,
@@ -2111,6 +2218,18 @@ class Task extends DataClass implements Insertable<Task> {
     map['priority'] = Variable<int>(priority);
     if (!nullToAbsent || dueDate != null) {
       map['due_date'] = Variable<String>(dueDate);
+    }
+    if (!nullToAbsent || dueTime != null) {
+      map['due_time'] = Variable<String>(dueTime);
+    }
+    if (!nullToAbsent || recurrence != null) {
+      map['recurrence'] = Variable<String>(recurrence);
+    }
+    if (!nullToAbsent || deadline != null) {
+      map['deadline'] = Variable<String>(deadline);
+    }
+    if (!nullToAbsent || snoozedUntil != null) {
+      map['snoozed_until'] = Variable<DateTime>(snoozedUntil);
     }
     if (!nullToAbsent || completedAt != null) {
       map['completed_at'] = Variable<DateTime>(completedAt);
@@ -2141,6 +2260,18 @@ class Task extends DataClass implements Insertable<Task> {
       dueDate: dueDate == null && nullToAbsent
           ? const Value.absent()
           : Value(dueDate),
+      dueTime: dueTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dueTime),
+      recurrence: recurrence == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recurrence),
+      deadline: deadline == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deadline),
+      snoozedUntil: snoozedUntil == null && nullToAbsent
+          ? const Value.absent()
+          : Value(snoozedUntil),
       completedAt: completedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(completedAt),
@@ -2166,6 +2297,10 @@ class Task extends DataClass implements Insertable<Task> {
       parentId: serializer.fromJson<String?>(json['parentId']),
       priority: serializer.fromJson<int>(json['priority']),
       dueDate: serializer.fromJson<String?>(json['dueDate']),
+      dueTime: serializer.fromJson<String?>(json['dueTime']),
+      recurrence: serializer.fromJson<String?>(json['recurrence']),
+      deadline: serializer.fromJson<String?>(json['deadline']),
+      snoozedUntil: serializer.fromJson<DateTime?>(json['snoozedUntil']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       isCollapsed: serializer.fromJson<bool>(json['isCollapsed']),
@@ -2186,6 +2321,10 @@ class Task extends DataClass implements Insertable<Task> {
       'parentId': serializer.toJson<String?>(parentId),
       'priority': serializer.toJson<int>(priority),
       'dueDate': serializer.toJson<String?>(dueDate),
+      'dueTime': serializer.toJson<String?>(dueTime),
+      'recurrence': serializer.toJson<String?>(recurrence),
+      'deadline': serializer.toJson<String?>(deadline),
+      'snoozedUntil': serializer.toJson<DateTime?>(snoozedUntil),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
       'sortOrder': serializer.toJson<int>(sortOrder),
       'isCollapsed': serializer.toJson<bool>(isCollapsed),
@@ -2204,6 +2343,10 @@ class Task extends DataClass implements Insertable<Task> {
     Value<String?> parentId = const Value.absent(),
     int? priority,
     Value<String?> dueDate = const Value.absent(),
+    Value<String?> dueTime = const Value.absent(),
+    Value<String?> recurrence = const Value.absent(),
+    Value<String?> deadline = const Value.absent(),
+    Value<DateTime?> snoozedUntil = const Value.absent(),
     Value<DateTime?> completedAt = const Value.absent(),
     int? sortOrder,
     bool? isCollapsed,
@@ -2219,6 +2362,10 @@ class Task extends DataClass implements Insertable<Task> {
     parentId: parentId.present ? parentId.value : this.parentId,
     priority: priority ?? this.priority,
     dueDate: dueDate.present ? dueDate.value : this.dueDate,
+    dueTime: dueTime.present ? dueTime.value : this.dueTime,
+    recurrence: recurrence.present ? recurrence.value : this.recurrence,
+    deadline: deadline.present ? deadline.value : this.deadline,
+    snoozedUntil: snoozedUntil.present ? snoozedUntil.value : this.snoozedUntil,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
     sortOrder: sortOrder ?? this.sortOrder,
     isCollapsed: isCollapsed ?? this.isCollapsed,
@@ -2238,6 +2385,14 @@ class Task extends DataClass implements Insertable<Task> {
       parentId: data.parentId.present ? data.parentId.value : this.parentId,
       priority: data.priority.present ? data.priority.value : this.priority,
       dueDate: data.dueDate.present ? data.dueDate.value : this.dueDate,
+      dueTime: data.dueTime.present ? data.dueTime.value : this.dueTime,
+      recurrence: data.recurrence.present
+          ? data.recurrence.value
+          : this.recurrence,
+      deadline: data.deadline.present ? data.deadline.value : this.deadline,
+      snoozedUntil: data.snoozedUntil.present
+          ? data.snoozedUntil.value
+          : this.snoozedUntil,
       completedAt: data.completedAt.present
           ? data.completedAt.value
           : this.completedAt,
@@ -2262,6 +2417,10 @@ class Task extends DataClass implements Insertable<Task> {
           ..write('parentId: $parentId, ')
           ..write('priority: $priority, ')
           ..write('dueDate: $dueDate, ')
+          ..write('dueTime: $dueTime, ')
+          ..write('recurrence: $recurrence, ')
+          ..write('deadline: $deadline, ')
+          ..write('snoozedUntil: $snoozedUntil, ')
           ..write('completedAt: $completedAt, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('isCollapsed: $isCollapsed')
@@ -2282,6 +2441,10 @@ class Task extends DataClass implements Insertable<Task> {
     parentId,
     priority,
     dueDate,
+    dueTime,
+    recurrence,
+    deadline,
+    snoozedUntil,
     completedAt,
     sortOrder,
     isCollapsed,
@@ -2301,6 +2464,10 @@ class Task extends DataClass implements Insertable<Task> {
           other.parentId == this.parentId &&
           other.priority == this.priority &&
           other.dueDate == this.dueDate &&
+          other.dueTime == this.dueTime &&
+          other.recurrence == this.recurrence &&
+          other.deadline == this.deadline &&
+          other.snoozedUntil == this.snoozedUntil &&
           other.completedAt == this.completedAt &&
           other.sortOrder == this.sortOrder &&
           other.isCollapsed == this.isCollapsed);
@@ -2318,6 +2485,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<String?> parentId;
   final Value<int> priority;
   final Value<String?> dueDate;
+  final Value<String?> dueTime;
+  final Value<String?> recurrence;
+  final Value<String?> deadline;
+  final Value<DateTime?> snoozedUntil;
   final Value<DateTime?> completedAt;
   final Value<int> sortOrder;
   final Value<bool> isCollapsed;
@@ -2334,6 +2505,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.parentId = const Value.absent(),
     this.priority = const Value.absent(),
     this.dueDate = const Value.absent(),
+    this.dueTime = const Value.absent(),
+    this.recurrence = const Value.absent(),
+    this.deadline = const Value.absent(),
+    this.snoozedUntil = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.isCollapsed = const Value.absent(),
@@ -2351,6 +2526,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.parentId = const Value.absent(),
     this.priority = const Value.absent(),
     this.dueDate = const Value.absent(),
+    this.dueTime = const Value.absent(),
+    this.recurrence = const Value.absent(),
+    this.deadline = const Value.absent(),
+    this.snoozedUntil = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.isCollapsed = const Value.absent(),
@@ -2372,6 +2551,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Expression<String>? parentId,
     Expression<int>? priority,
     Expression<String>? dueDate,
+    Expression<String>? dueTime,
+    Expression<String>? recurrence,
+    Expression<String>? deadline,
+    Expression<DateTime>? snoozedUntil,
     Expression<DateTime>? completedAt,
     Expression<int>? sortOrder,
     Expression<bool>? isCollapsed,
@@ -2389,6 +2572,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
       if (parentId != null) 'parent_id': parentId,
       if (priority != null) 'priority': priority,
       if (dueDate != null) 'due_date': dueDate,
+      if (dueTime != null) 'due_time': dueTime,
+      if (recurrence != null) 'recurrence': recurrence,
+      if (deadline != null) 'deadline': deadline,
+      if (snoozedUntil != null) 'snoozed_until': snoozedUntil,
       if (completedAt != null) 'completed_at': completedAt,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (isCollapsed != null) 'is_collapsed': isCollapsed,
@@ -2408,6 +2595,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Value<String?>? parentId,
     Value<int>? priority,
     Value<String?>? dueDate,
+    Value<String?>? dueTime,
+    Value<String?>? recurrence,
+    Value<String?>? deadline,
+    Value<DateTime?>? snoozedUntil,
     Value<DateTime?>? completedAt,
     Value<int>? sortOrder,
     Value<bool>? isCollapsed,
@@ -2425,6 +2616,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
       parentId: parentId ?? this.parentId,
       priority: priority ?? this.priority,
       dueDate: dueDate ?? this.dueDate,
+      dueTime: dueTime ?? this.dueTime,
+      recurrence: recurrence ?? this.recurrence,
+      deadline: deadline ?? this.deadline,
+      snoozedUntil: snoozedUntil ?? this.snoozedUntil,
       completedAt: completedAt ?? this.completedAt,
       sortOrder: sortOrder ?? this.sortOrder,
       isCollapsed: isCollapsed ?? this.isCollapsed,
@@ -2468,6 +2663,18 @@ class TasksCompanion extends UpdateCompanion<Task> {
     if (dueDate.present) {
       map['due_date'] = Variable<String>(dueDate.value);
     }
+    if (dueTime.present) {
+      map['due_time'] = Variable<String>(dueTime.value);
+    }
+    if (recurrence.present) {
+      map['recurrence'] = Variable<String>(recurrence.value);
+    }
+    if (deadline.present) {
+      map['deadline'] = Variable<String>(deadline.value);
+    }
+    if (snoozedUntil.present) {
+      map['snoozed_until'] = Variable<DateTime>(snoozedUntil.value);
+    }
     if (completedAt.present) {
       map['completed_at'] = Variable<DateTime>(completedAt.value);
     }
@@ -2497,6 +2704,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
           ..write('parentId: $parentId, ')
           ..write('priority: $priority, ')
           ..write('dueDate: $dueDate, ')
+          ..write('dueTime: $dueTime, ')
+          ..write('recurrence: $recurrence, ')
+          ..write('deadline: $deadline, ')
+          ..write('snoozedUntil: $snoozedUntil, ')
           ..write('completedAt: $completedAt, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('isCollapsed: $isCollapsed, ')
@@ -3124,6 +3335,1189 @@ class CommentsCompanion extends UpdateCompanion<Comment> {
   }
 }
 
+class $RemindersTable extends Reminders
+    with TableInfo<$RemindersTable, Reminder> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RemindersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<String> taskId = GeneratedColumn<String>(
+    'task_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _specMeta = const VerificationMeta('spec');
+  @override
+  late final GeneratedColumn<String> spec = GeneratedColumn<String>(
+    'spec',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    createdAt,
+    updatedAt,
+    deletedAt,
+    id,
+    taskId,
+    spec,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'reminders';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Reminder> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('spec')) {
+      context.handle(
+        _specMeta,
+        spec.isAcceptableOrUnknown(data['spec']!, _specMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_specMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Reminder map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Reminder(
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}task_id'],
+      )!,
+      spec: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}spec'],
+      )!,
+    );
+  }
+
+  @override
+  $RemindersTable createAlias(String alias) {
+    return $RemindersTable(attachedDatabase, alias);
+  }
+}
+
+class Reminder extends DataClass implements Insertable<Reminder> {
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  final String id;
+  final String taskId;
+  final String spec;
+  const Reminder({
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+    required this.id,
+    required this.taskId,
+    required this.spec,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['id'] = Variable<String>(id);
+    map['task_id'] = Variable<String>(taskId);
+    map['spec'] = Variable<String>(spec);
+    return map;
+  }
+
+  RemindersCompanion toCompanion(bool nullToAbsent) {
+    return RemindersCompanion(
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      id: Value(id),
+      taskId: Value(taskId),
+      spec: Value(spec),
+    );
+  }
+
+  factory Reminder.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Reminder(
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      id: serializer.fromJson<String>(json['id']),
+      taskId: serializer.fromJson<String>(json['taskId']),
+      spec: serializer.fromJson<String>(json['spec']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'id': serializer.toJson<String>(id),
+      'taskId': serializer.toJson<String>(taskId),
+      'spec': serializer.toJson<String>(spec),
+    };
+  }
+
+  Reminder copyWith({
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+    String? id,
+    String? taskId,
+    String? spec,
+  }) => Reminder(
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    id: id ?? this.id,
+    taskId: taskId ?? this.taskId,
+    spec: spec ?? this.spec,
+  );
+  Reminder copyWithCompanion(RemindersCompanion data) {
+    return Reminder(
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      id: data.id.present ? data.id.value : this.id,
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      spec: data.spec.present ? data.spec.value : this.spec,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Reminder(')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('id: $id, ')
+          ..write('taskId: $taskId, ')
+          ..write('spec: $spec')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(createdAt, updatedAt, deletedAt, id, taskId, spec);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Reminder &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.id == this.id &&
+          other.taskId == this.taskId &&
+          other.spec == this.spec);
+}
+
+class RemindersCompanion extends UpdateCompanion<Reminder> {
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<String> id;
+  final Value<String> taskId;
+  final Value<String> spec;
+  final Value<int> rowid;
+  const RemindersCompanion({
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.id = const Value.absent(),
+    this.taskId = const Value.absent(),
+    this.spec = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RemindersCompanion.insert({
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
+    required String id,
+    required String taskId,
+    required String spec,
+    this.rowid = const Value.absent(),
+  }) : createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt),
+       id = Value(id),
+       taskId = Value(taskId),
+       spec = Value(spec);
+  static Insertable<Reminder> custom({
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<String>? id,
+    Expression<String>? taskId,
+    Expression<String>? spec,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (id != null) 'id': id,
+      if (taskId != null) 'task_id': taskId,
+      if (spec != null) 'spec': spec,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RemindersCompanion copyWith({
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<String>? id,
+    Value<String>? taskId,
+    Value<String>? spec,
+    Value<int>? rowid,
+  }) {
+    return RemindersCompanion(
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      id: id ?? this.id,
+      taskId: taskId ?? this.taskId,
+      spec: spec ?? this.spec,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (taskId.present) {
+      map['task_id'] = Variable<String>(taskId.value);
+    }
+    if (spec.present) {
+      map['spec'] = Variable<String>(spec.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RemindersCompanion(')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('id: $id, ')
+          ..write('taskId: $taskId, ')
+          ..write('spec: $spec, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CompletionsTable extends Completions
+    with TableInfo<$CompletionsTable, Completion> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CompletionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<String> taskId = GeneratedColumn<String>(
+    'task_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _completedAtMeta = const VerificationMeta(
+    'completedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> completedAt = GeneratedColumn<DateTime>(
+    'completed_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dueDateMeta = const VerificationMeta(
+    'dueDate',
+  );
+  @override
+  late final GeneratedColumn<String> dueDate = GeneratedColumn<String>(
+    'due_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _dueTimeMeta = const VerificationMeta(
+    'dueTime',
+  );
+  @override
+  late final GeneratedColumn<String> dueTime = GeneratedColumn<String>(
+    'due_time',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    taskId,
+    completedAt,
+    dueDate,
+    dueTime,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'completions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Completion> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('completed_at')) {
+      context.handle(
+        _completedAtMeta,
+        completedAt.isAcceptableOrUnknown(
+          data['completed_at']!,
+          _completedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_completedAtMeta);
+    }
+    if (data.containsKey('due_date')) {
+      context.handle(
+        _dueDateMeta,
+        dueDate.isAcceptableOrUnknown(data['due_date']!, _dueDateMeta),
+      );
+    }
+    if (data.containsKey('due_time')) {
+      context.handle(
+        _dueTimeMeta,
+        dueTime.isAcceptableOrUnknown(data['due_time']!, _dueTimeMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Completion map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Completion(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}task_id'],
+      )!,
+      completedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}completed_at'],
+      )!,
+      dueDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}due_date'],
+      ),
+      dueTime: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}due_time'],
+      ),
+    );
+  }
+
+  @override
+  $CompletionsTable createAlias(String alias) {
+    return $CompletionsTable(attachedDatabase, alias);
+  }
+}
+
+class Completion extends DataClass implements Insertable<Completion> {
+  final String id;
+  final String taskId;
+  final DateTime completedAt;
+  final String? dueDate;
+  final String? dueTime;
+  const Completion({
+    required this.id,
+    required this.taskId,
+    required this.completedAt,
+    this.dueDate,
+    this.dueTime,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['task_id'] = Variable<String>(taskId);
+    map['completed_at'] = Variable<DateTime>(completedAt);
+    if (!nullToAbsent || dueDate != null) {
+      map['due_date'] = Variable<String>(dueDate);
+    }
+    if (!nullToAbsent || dueTime != null) {
+      map['due_time'] = Variable<String>(dueTime);
+    }
+    return map;
+  }
+
+  CompletionsCompanion toCompanion(bool nullToAbsent) {
+    return CompletionsCompanion(
+      id: Value(id),
+      taskId: Value(taskId),
+      completedAt: Value(completedAt),
+      dueDate: dueDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dueDate),
+      dueTime: dueTime == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dueTime),
+    );
+  }
+
+  factory Completion.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Completion(
+      id: serializer.fromJson<String>(json['id']),
+      taskId: serializer.fromJson<String>(json['taskId']),
+      completedAt: serializer.fromJson<DateTime>(json['completedAt']),
+      dueDate: serializer.fromJson<String?>(json['dueDate']),
+      dueTime: serializer.fromJson<String?>(json['dueTime']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'taskId': serializer.toJson<String>(taskId),
+      'completedAt': serializer.toJson<DateTime>(completedAt),
+      'dueDate': serializer.toJson<String?>(dueDate),
+      'dueTime': serializer.toJson<String?>(dueTime),
+    };
+  }
+
+  Completion copyWith({
+    String? id,
+    String? taskId,
+    DateTime? completedAt,
+    Value<String?> dueDate = const Value.absent(),
+    Value<String?> dueTime = const Value.absent(),
+  }) => Completion(
+    id: id ?? this.id,
+    taskId: taskId ?? this.taskId,
+    completedAt: completedAt ?? this.completedAt,
+    dueDate: dueDate.present ? dueDate.value : this.dueDate,
+    dueTime: dueTime.present ? dueTime.value : this.dueTime,
+  );
+  Completion copyWithCompanion(CompletionsCompanion data) {
+    return Completion(
+      id: data.id.present ? data.id.value : this.id,
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      completedAt: data.completedAt.present
+          ? data.completedAt.value
+          : this.completedAt,
+      dueDate: data.dueDate.present ? data.dueDate.value : this.dueDate,
+      dueTime: data.dueTime.present ? data.dueTime.value : this.dueTime,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Completion(')
+          ..write('id: $id, ')
+          ..write('taskId: $taskId, ')
+          ..write('completedAt: $completedAt, ')
+          ..write('dueDate: $dueDate, ')
+          ..write('dueTime: $dueTime')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, taskId, completedAt, dueDate, dueTime);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Completion &&
+          other.id == this.id &&
+          other.taskId == this.taskId &&
+          other.completedAt == this.completedAt &&
+          other.dueDate == this.dueDate &&
+          other.dueTime == this.dueTime);
+}
+
+class CompletionsCompanion extends UpdateCompanion<Completion> {
+  final Value<String> id;
+  final Value<String> taskId;
+  final Value<DateTime> completedAt;
+  final Value<String?> dueDate;
+  final Value<String?> dueTime;
+  final Value<int> rowid;
+  const CompletionsCompanion({
+    this.id = const Value.absent(),
+    this.taskId = const Value.absent(),
+    this.completedAt = const Value.absent(),
+    this.dueDate = const Value.absent(),
+    this.dueTime = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CompletionsCompanion.insert({
+    required String id,
+    required String taskId,
+    required DateTime completedAt,
+    this.dueDate = const Value.absent(),
+    this.dueTime = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       taskId = Value(taskId),
+       completedAt = Value(completedAt);
+  static Insertable<Completion> custom({
+    Expression<String>? id,
+    Expression<String>? taskId,
+    Expression<DateTime>? completedAt,
+    Expression<String>? dueDate,
+    Expression<String>? dueTime,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (taskId != null) 'task_id': taskId,
+      if (completedAt != null) 'completed_at': completedAt,
+      if (dueDate != null) 'due_date': dueDate,
+      if (dueTime != null) 'due_time': dueTime,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CompletionsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? taskId,
+    Value<DateTime>? completedAt,
+    Value<String?>? dueDate,
+    Value<String?>? dueTime,
+    Value<int>? rowid,
+  }) {
+    return CompletionsCompanion(
+      id: id ?? this.id,
+      taskId: taskId ?? this.taskId,
+      completedAt: completedAt ?? this.completedAt,
+      dueDate: dueDate ?? this.dueDate,
+      dueTime: dueTime ?? this.dueTime,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (taskId.present) {
+      map['task_id'] = Variable<String>(taskId.value);
+    }
+    if (completedAt.present) {
+      map['completed_at'] = Variable<DateTime>(completedAt.value);
+    }
+    if (dueDate.present) {
+      map['due_date'] = Variable<String>(dueDate.value);
+    }
+    if (dueTime.present) {
+      map['due_time'] = Variable<String>(dueTime.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CompletionsCompanion(')
+          ..write('id: $id, ')
+          ..write('taskId: $taskId, ')
+          ..write('completedAt: $completedAt, ')
+          ..write('dueDate: $dueDate, ')
+          ..write('dueTime: $dueTime, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ProjectCommentsTable extends ProjectComments
+    with TableInfo<$ProjectCommentsTable, ProjectComment> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ProjectCommentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _projectIdMeta = const VerificationMeta(
+    'projectId',
+  );
+  @override
+  late final GeneratedColumn<String> projectId = GeneratedColumn<String>(
+    'project_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+    'body',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    createdAt,
+    updatedAt,
+    deletedAt,
+    id,
+    projectId,
+    body,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'project_comments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ProjectComment> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('project_id')) {
+      context.handle(
+        _projectIdMeta,
+        projectId.isAcceptableOrUnknown(data['project_id']!, _projectIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_projectIdMeta);
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+        _bodyMeta,
+        body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bodyMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ProjectComment map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ProjectComment(
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      projectId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}project_id'],
+      )!,
+      body: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body'],
+      )!,
+    );
+  }
+
+  @override
+  $ProjectCommentsTable createAlias(String alias) {
+    return $ProjectCommentsTable(attachedDatabase, alias);
+  }
+}
+
+class ProjectComment extends DataClass implements Insertable<ProjectComment> {
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  final String id;
+  final String projectId;
+  final String body;
+  const ProjectComment({
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+    required this.id,
+    required this.projectId,
+    required this.body,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['id'] = Variable<String>(id);
+    map['project_id'] = Variable<String>(projectId);
+    map['body'] = Variable<String>(body);
+    return map;
+  }
+
+  ProjectCommentsCompanion toCompanion(bool nullToAbsent) {
+    return ProjectCommentsCompanion(
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      id: Value(id),
+      projectId: Value(projectId),
+      body: Value(body),
+    );
+  }
+
+  factory ProjectComment.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ProjectComment(
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      id: serializer.fromJson<String>(json['id']),
+      projectId: serializer.fromJson<String>(json['projectId']),
+      body: serializer.fromJson<String>(json['body']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'id': serializer.toJson<String>(id),
+      'projectId': serializer.toJson<String>(projectId),
+      'body': serializer.toJson<String>(body),
+    };
+  }
+
+  ProjectComment copyWith({
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+    String? id,
+    String? projectId,
+    String? body,
+  }) => ProjectComment(
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    id: id ?? this.id,
+    projectId: projectId ?? this.projectId,
+    body: body ?? this.body,
+  );
+  ProjectComment copyWithCompanion(ProjectCommentsCompanion data) {
+    return ProjectComment(
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      id: data.id.present ? data.id.value : this.id,
+      projectId: data.projectId.present ? data.projectId.value : this.projectId,
+      body: data.body.present ? data.body.value : this.body,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProjectComment(')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('id: $id, ')
+          ..write('projectId: $projectId, ')
+          ..write('body: $body')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(createdAt, updatedAt, deletedAt, id, projectId, body);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ProjectComment &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.id == this.id &&
+          other.projectId == this.projectId &&
+          other.body == this.body);
+}
+
+class ProjectCommentsCompanion extends UpdateCompanion<ProjectComment> {
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<String> id;
+  final Value<String> projectId;
+  final Value<String> body;
+  final Value<int> rowid;
+  const ProjectCommentsCompanion({
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.id = const Value.absent(),
+    this.projectId = const Value.absent(),
+    this.body = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ProjectCommentsCompanion.insert({
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
+    required String id,
+    required String projectId,
+    required String body,
+    this.rowid = const Value.absent(),
+  }) : createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt),
+       id = Value(id),
+       projectId = Value(projectId),
+       body = Value(body);
+  static Insertable<ProjectComment> custom({
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<String>? id,
+    Expression<String>? projectId,
+    Expression<String>? body,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (id != null) 'id': id,
+      if (projectId != null) 'project_id': projectId,
+      if (body != null) 'body': body,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ProjectCommentsCompanion copyWith({
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<String>? id,
+    Value<String>? projectId,
+    Value<String>? body,
+    Value<int>? rowid,
+  }) {
+    return ProjectCommentsCompanion(
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      id: id ?? this.id,
+      projectId: projectId ?? this.projectId,
+      body: body ?? this.body,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (projectId.present) {
+      map['project_id'] = Variable<String>(projectId.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProjectCommentsCompanion(')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('id: $id, ')
+          ..write('projectId: $projectId, ')
+          ..write('body: $body, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -3338,6 +4732,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $TasksTable tasks = $TasksTable(this);
   late final $TaskLabelsTable taskLabels = $TaskLabelsTable(this);
   late final $CommentsTable comments = $CommentsTable(this);
+  late final $RemindersTable reminders = $RemindersTable(this);
+  late final $CompletionsTable completions = $CompletionsTable(this);
+  late final $ProjectCommentsTable projectComments = $ProjectCommentsTable(
+    this,
+  );
   late final $SettingsTable settings = $SettingsTable(this);
   late final Index tasksProject = Index(
     'tasks_project',
@@ -3355,6 +4754,18 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'comments_task',
     'CREATE INDEX comments_task ON comments (task_id)',
   );
+  late final Index remindersTask = Index(
+    'reminders_task',
+    'CREATE INDEX reminders_task ON reminders (task_id)',
+  );
+  late final Index completionsAt = Index(
+    'completions_at',
+    'CREATE INDEX completions_at ON completions (completed_at)',
+  );
+  late final Index projectCommentsProject = Index(
+    'project_comments_project',
+    'CREATE INDEX project_comments_project ON project_comments (project_id)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3366,11 +4777,17 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     tasks,
     taskLabels,
     comments,
+    reminders,
+    completions,
+    projectComments,
     settings,
     tasksProject,
     tasksParent,
     tasksDue,
     commentsTask,
+    remindersTask,
+    completionsAt,
+    projectCommentsProject,
   ];
 }
 
@@ -4234,6 +5651,10 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<String?> parentId,
       Value<int> priority,
       Value<String?> dueDate,
+      Value<String?> dueTime,
+      Value<String?> recurrence,
+      Value<String?> deadline,
+      Value<DateTime?> snoozedUntil,
       Value<DateTime?> completedAt,
       Value<int> sortOrder,
       Value<bool> isCollapsed,
@@ -4252,6 +5673,10 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<String?> parentId,
       Value<int> priority,
       Value<String?> dueDate,
+      Value<String?> dueTime,
+      Value<String?> recurrence,
+      Value<String?> deadline,
+      Value<DateTime?> snoozedUntil,
       Value<DateTime?> completedAt,
       Value<int> sortOrder,
       Value<bool> isCollapsed,
@@ -4318,6 +5743,26 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<String> get dueDate => $composableBuilder(
     column: $table.dueDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dueTime => $composableBuilder(
+    column: $table.dueTime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recurrence => $composableBuilder(
+    column: $table.recurrence,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deadline => $composableBuilder(
+    column: $table.deadline,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get snoozedUntil => $composableBuilder(
+    column: $table.snoozedUntil,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4401,6 +5846,26 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get dueTime => $composableBuilder(
+    column: $table.dueTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recurrence => $composableBuilder(
+    column: $table.recurrence,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deadline => $composableBuilder(
+    column: $table.deadline,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get snoozedUntil => $composableBuilder(
+    column: $table.snoozedUntil,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get completedAt => $composableBuilder(
     column: $table.completedAt,
     builder: (column) => ColumnOrderings(column),
@@ -4461,6 +5926,22 @@ class $$TasksTableAnnotationComposer
   GeneratedColumn<String> get dueDate =>
       $composableBuilder(column: $table.dueDate, builder: (column) => column);
 
+  GeneratedColumn<String> get dueTime =>
+      $composableBuilder(column: $table.dueTime, builder: (column) => column);
+
+  GeneratedColumn<String> get recurrence => $composableBuilder(
+    column: $table.recurrence,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get deadline =>
+      $composableBuilder(column: $table.deadline, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get snoozedUntil => $composableBuilder(
+    column: $table.snoozedUntil,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get completedAt => $composableBuilder(
     column: $table.completedAt,
     builder: (column) => column,
@@ -4514,6 +5995,10 @@ class $$TasksTableTableManager
                 Value<String?> parentId = const Value.absent(),
                 Value<int> priority = const Value.absent(),
                 Value<String?> dueDate = const Value.absent(),
+                Value<String?> dueTime = const Value.absent(),
+                Value<String?> recurrence = const Value.absent(),
+                Value<String?> deadline = const Value.absent(),
+                Value<DateTime?> snoozedUntil = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> isCollapsed = const Value.absent(),
@@ -4530,6 +6015,10 @@ class $$TasksTableTableManager
                 parentId: parentId,
                 priority: priority,
                 dueDate: dueDate,
+                dueTime: dueTime,
+                recurrence: recurrence,
+                deadline: deadline,
+                snoozedUntil: snoozedUntil,
                 completedAt: completedAt,
                 sortOrder: sortOrder,
                 isCollapsed: isCollapsed,
@@ -4548,6 +6037,10 @@ class $$TasksTableTableManager
                 Value<String?> parentId = const Value.absent(),
                 Value<int> priority = const Value.absent(),
                 Value<String?> dueDate = const Value.absent(),
+                Value<String?> dueTime = const Value.absent(),
+                Value<String?> recurrence = const Value.absent(),
+                Value<String?> deadline = const Value.absent(),
+                Value<DateTime?> snoozedUntil = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> isCollapsed = const Value.absent(),
@@ -4564,6 +6057,10 @@ class $$TasksTableTableManager
                 parentId: parentId,
                 priority: priority,
                 dueDate: dueDate,
+                dueTime: dueTime,
+                recurrence: recurrence,
+                deadline: deadline,
+                snoozedUntil: snoozedUntil,
                 completedAt: completedAt,
                 sortOrder: sortOrder,
                 isCollapsed: isCollapsed,
@@ -4971,6 +6468,673 @@ typedef $$CommentsTableProcessedTableManager =
       Comment,
       PrefetchHooks Function()
     >;
+typedef $$RemindersTableCreateCompanionBuilder =
+    RemindersCompanion Function({
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<DateTime?> deletedAt,
+      required String id,
+      required String taskId,
+      required String spec,
+      Value<int> rowid,
+    });
+typedef $$RemindersTableUpdateCompanionBuilder =
+    RemindersCompanion Function({
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<String> id,
+      Value<String> taskId,
+      Value<String> spec,
+      Value<int> rowid,
+    });
+
+class $$RemindersTableFilterComposer
+    extends Composer<_$AppDatabase, $RemindersTable> {
+  $$RemindersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get spec => $composableBuilder(
+    column: $table.spec,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RemindersTableOrderingComposer
+    extends Composer<_$AppDatabase, $RemindersTable> {
+  $$RemindersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get spec => $composableBuilder(
+    column: $table.spec,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RemindersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $RemindersTable> {
+  $$RemindersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get taskId =>
+      $composableBuilder(column: $table.taskId, builder: (column) => column);
+
+  GeneratedColumn<String> get spec =>
+      $composableBuilder(column: $table.spec, builder: (column) => column);
+}
+
+class $$RemindersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $RemindersTable,
+          Reminder,
+          $$RemindersTableFilterComposer,
+          $$RemindersTableOrderingComposer,
+          $$RemindersTableAnnotationComposer,
+          $$RemindersTableCreateCompanionBuilder,
+          $$RemindersTableUpdateCompanionBuilder,
+          (Reminder, BaseReferences<_$AppDatabase, $RemindersTable, Reminder>),
+          Reminder,
+          PrefetchHooks Function()
+        > {
+  $$RemindersTableTableManager(_$AppDatabase db, $RemindersTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RemindersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$RemindersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$RemindersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<String> id = const Value.absent(),
+                Value<String> taskId = const Value.absent(),
+                Value<String> spec = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RemindersCompanion(
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                id: id,
+                taskId: taskId,
+                spec: spec,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
+                required String id,
+                required String taskId,
+                required String spec,
+                Value<int> rowid = const Value.absent(),
+              }) => RemindersCompanion.insert(
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                id: id,
+                taskId: taskId,
+                spec: spec,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$RemindersTable, Reminder>(table),
+                  BaseReferences<_$AppDatabase, $RemindersTable, Reminder>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RemindersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $RemindersTable,
+      Reminder,
+      $$RemindersTableFilterComposer,
+      $$RemindersTableOrderingComposer,
+      $$RemindersTableAnnotationComposer,
+      $$RemindersTableCreateCompanionBuilder,
+      $$RemindersTableUpdateCompanionBuilder,
+      (Reminder, BaseReferences<_$AppDatabase, $RemindersTable, Reminder>),
+      Reminder,
+      PrefetchHooks Function()
+    >;
+typedef $$CompletionsTableCreateCompanionBuilder =
+    CompletionsCompanion Function({
+      required String id,
+      required String taskId,
+      required DateTime completedAt,
+      Value<String?> dueDate,
+      Value<String?> dueTime,
+      Value<int> rowid,
+    });
+typedef $$CompletionsTableUpdateCompanionBuilder =
+    CompletionsCompanion Function({
+      Value<String> id,
+      Value<String> taskId,
+      Value<DateTime> completedAt,
+      Value<String?> dueDate,
+      Value<String?> dueTime,
+      Value<int> rowid,
+    });
+
+class $$CompletionsTableFilterComposer
+    extends Composer<_$AppDatabase, $CompletionsTable> {
+  $$CompletionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dueDate => $composableBuilder(
+    column: $table.dueDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dueTime => $composableBuilder(
+    column: $table.dueTime,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CompletionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CompletionsTable> {
+  $$CompletionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dueDate => $composableBuilder(
+    column: $table.dueDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dueTime => $composableBuilder(
+    column: $table.dueTime,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CompletionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CompletionsTable> {
+  $$CompletionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get taskId =>
+      $composableBuilder(column: $table.taskId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get completedAt => $composableBuilder(
+    column: $table.completedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get dueDate =>
+      $composableBuilder(column: $table.dueDate, builder: (column) => column);
+
+  GeneratedColumn<String> get dueTime =>
+      $composableBuilder(column: $table.dueTime, builder: (column) => column);
+}
+
+class $$CompletionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CompletionsTable,
+          Completion,
+          $$CompletionsTableFilterComposer,
+          $$CompletionsTableOrderingComposer,
+          $$CompletionsTableAnnotationComposer,
+          $$CompletionsTableCreateCompanionBuilder,
+          $$CompletionsTableUpdateCompanionBuilder,
+          (
+            Completion,
+            BaseReferences<_$AppDatabase, $CompletionsTable, Completion>,
+          ),
+          Completion,
+          PrefetchHooks Function()
+        > {
+  $$CompletionsTableTableManager(_$AppDatabase db, $CompletionsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CompletionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CompletionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CompletionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> taskId = const Value.absent(),
+                Value<DateTime> completedAt = const Value.absent(),
+                Value<String?> dueDate = const Value.absent(),
+                Value<String?> dueTime = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CompletionsCompanion(
+                id: id,
+                taskId: taskId,
+                completedAt: completedAt,
+                dueDate: dueDate,
+                dueTime: dueTime,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String taskId,
+                required DateTime completedAt,
+                Value<String?> dueDate = const Value.absent(),
+                Value<String?> dueTime = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CompletionsCompanion.insert(
+                id: id,
+                taskId: taskId,
+                completedAt: completedAt,
+                dueDate: dueDate,
+                dueTime: dueTime,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$CompletionsTable, Completion>(table),
+                  BaseReferences<_$AppDatabase, $CompletionsTable, Completion>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CompletionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CompletionsTable,
+      Completion,
+      $$CompletionsTableFilterComposer,
+      $$CompletionsTableOrderingComposer,
+      $$CompletionsTableAnnotationComposer,
+      $$CompletionsTableCreateCompanionBuilder,
+      $$CompletionsTableUpdateCompanionBuilder,
+      (
+        Completion,
+        BaseReferences<_$AppDatabase, $CompletionsTable, Completion>,
+      ),
+      Completion,
+      PrefetchHooks Function()
+    >;
+typedef $$ProjectCommentsTableCreateCompanionBuilder =
+    ProjectCommentsCompanion Function({
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<DateTime?> deletedAt,
+      required String id,
+      required String projectId,
+      required String body,
+      Value<int> rowid,
+    });
+typedef $$ProjectCommentsTableUpdateCompanionBuilder =
+    ProjectCommentsCompanion Function({
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<String> id,
+      Value<String> projectId,
+      Value<String> body,
+      Value<int> rowid,
+    });
+
+class $$ProjectCommentsTableFilterComposer
+    extends Composer<_$AppDatabase, $ProjectCommentsTable> {
+  $$ProjectCommentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get projectId => $composableBuilder(
+    column: $table.projectId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ProjectCommentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ProjectCommentsTable> {
+  $$ProjectCommentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get projectId => $composableBuilder(
+    column: $table.projectId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ProjectCommentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ProjectCommentsTable> {
+  $$ProjectCommentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get projectId =>
+      $composableBuilder(column: $table.projectId, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+}
+
+class $$ProjectCommentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ProjectCommentsTable,
+          ProjectComment,
+          $$ProjectCommentsTableFilterComposer,
+          $$ProjectCommentsTableOrderingComposer,
+          $$ProjectCommentsTableAnnotationComposer,
+          $$ProjectCommentsTableCreateCompanionBuilder,
+          $$ProjectCommentsTableUpdateCompanionBuilder,
+          (
+            ProjectComment,
+            BaseReferences<
+              _$AppDatabase,
+              $ProjectCommentsTable,
+              ProjectComment
+            >,
+          ),
+          ProjectComment,
+          PrefetchHooks Function()
+        > {
+  $$ProjectCommentsTableTableManager(
+    _$AppDatabase db,
+    $ProjectCommentsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ProjectCommentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ProjectCommentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ProjectCommentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<String> id = const Value.absent(),
+                Value<String> projectId = const Value.absent(),
+                Value<String> body = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ProjectCommentsCompanion(
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                id: id,
+                projectId: projectId,
+                body: body,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
+                required String id,
+                required String projectId,
+                required String body,
+                Value<int> rowid = const Value.absent(),
+              }) => ProjectCommentsCompanion.insert(
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                id: id,
+                projectId: projectId,
+                body: body,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ProjectCommentsTable, ProjectComment>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $ProjectCommentsTable,
+                    ProjectComment
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ProjectCommentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ProjectCommentsTable,
+      ProjectComment,
+      $$ProjectCommentsTableFilterComposer,
+      $$ProjectCommentsTableOrderingComposer,
+      $$ProjectCommentsTableAnnotationComposer,
+      $$ProjectCommentsTableCreateCompanionBuilder,
+      $$ProjectCommentsTableUpdateCompanionBuilder,
+      (
+        ProjectComment,
+        BaseReferences<_$AppDatabase, $ProjectCommentsTable, ProjectComment>,
+      ),
+      ProjectComment,
+      PrefetchHooks Function()
+    >;
 typedef $$SettingsTableCreateCompanionBuilder =
     SettingsCompanion Function({
       required String key,
@@ -5129,6 +7293,12 @@ class $AppDatabaseManager {
       $$TaskLabelsTableTableManager(_db, _db.taskLabels);
   $$CommentsTableTableManager get comments =>
       $$CommentsTableTableManager(_db, _db.comments);
+  $$RemindersTableTableManager get reminders =>
+      $$RemindersTableTableManager(_db, _db.reminders);
+  $$CompletionsTableTableManager get completions =>
+      $$CompletionsTableTableManager(_db, _db.completions);
+  $$ProjectCommentsTableTableManager get projectComments =>
+      $$ProjectCommentsTableTableManager(_db, _db.projectComments);
   $$SettingsTableTableManager get settings =>
       $$SettingsTableTableManager(_db, _db.settings);
 }

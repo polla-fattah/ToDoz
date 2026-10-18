@@ -34,6 +34,13 @@ String dueLabel(String iso, DateTime now) {
   return '${d.day} ${mo[d.month]}$year';
 }
 
+/// "Today 16:30", "Tomorrow", "Mon 19 Oct 08:00".
+String dueText(String iso, String? hhmm, DateTime now, {bool use24h = true}) {
+  final day = dueLabel(iso, now);
+  final m = hhmm == null ? null : parseClock(hhmm);
+  return m == null ? day : '$day ${formatTime(m, use24h: use24h)}';
+}
+
 String dayHeading(String iso, DateTime now) {
   final d = parseIsoDate(iso);
   if (d == null) return iso;

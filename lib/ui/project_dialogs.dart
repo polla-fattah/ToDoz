@@ -5,6 +5,7 @@ import '../data/database.dart';
 import 'catalog.dart';
 import 'common.dart';
 import 'quick_add_sheet.dart';
+import 'views.dart' show ProjectNotesScreen;
 
 /// Create or edit a project: name, colour and where it nests (FR-P1, FR-P2).
 Future<String?> showProjectEditor(BuildContext context, {String? projectId, String? parentId}) async {
@@ -90,6 +91,8 @@ Future<void> projectMenu(BuildContext context, String projectId, String action) 
           await repo.createSection(projectId, name);
         });
       }
+    case 'notes':
+      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ProjectNotesScreen(projectId: projectId)));
     case 'duplicate':
       await guarded(context, () async {
         await repo.duplicateProject(projectId);

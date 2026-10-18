@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../core/backup.dart' show inboxId;
 import '../core/date_parser.dart';
+import '../core/reminder.dart' show isOverdue;
 import '../data/database.dart';
+import '../data/repository.dart';
 import 'catalog.dart';
 import 'common.dart';
 import 'project_dialogs.dart';
@@ -105,6 +107,7 @@ class ProjectScreen extends StatelessWidget {
             itemBuilder: (_) => const [
               PopupMenuItem(value: 'edit', child: Text('Edit project')),
               PopupMenuItem(value: 'section', child: Text('Add section')),
+              PopupMenuItem(value: 'notes', child: Text('Project notes')),
               PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
               PopupMenuItem(value: 'archive', child: Text('Archive')),
               PopupMenuItem(value: 'delete', child: Text('Delete')),
@@ -223,7 +226,7 @@ HeaderEntry overdueEntry(BuildContext context, List<Task> overdue, String today)
         if (target == null) return;
         final ids = overdue.map((t) => t.id).toList();
         final before = {for (final t in overdue) t.id: t.dueDate};
-        await repo.rescheduleOverdue(today, target);
+        await repo.rescheduleTasks(ids, target);
         if (context.mounted) {
           showUndo(context, 'Rescheduled ${ids.length} task${ids.length == 1 ? '' : 's'}', () => repo.setDueDates(before));
         }
@@ -253,8 +256,10 @@ class TodayScreen extends StatelessWidget {
         create: () => repo.watchToday(today),
         builder: (context, data) {
           final tasks = data ?? const <Task>[];
-          final overdue = tasks.where((t) => t.dueDate!.compareTo(today) < 0).toList();
-          final due = tasks.where((t) => t.dueDate == today).toList();
+          // FR-D6: a task due today with a time is overdue once that time has passed.
+          bool late(Task t) => isOverdue(dueDate: t.dueDate, dueTime: t.dueTime, now: repo.now);
+          final overdue = tasks.where(late).toList();
+          final due = tasks.where((t) => !late(t) && t.dueDate == today).toList();
           final entries = <ListEntry>[
             WidgetEntry(_GoalCard(goal: catalog.dailyGoal)),
             if (overdue.isNotEmpty) overdueEntry(context, overdue, today),
@@ -318,13 +323,14 @@ class UpcomingScreen extends StatelessWidget {
         create: repo.watchScheduled,
         builder: (context, data) {
           final tasks = data ?? const <Task>[];
-          final overdue = tasks.where((t) => t.dueDate!.compareTo(today) < 0).toList();
+          bool late(Task t) => isOverdue(dueDate: t.dueDate, dueTime: t.dueTime, now: repo.now);
+          final overdue = tasks.where(late).toList();
           final entries = <ListEntry>[
             if (overdue.isNotEmpty) overdueEntry(context, overdue, today),
             for (final t in overdue) TaskEntry(flatRow(t)),
           ];
           final byDay = <String, List<Task>>{};
-          for (final t in tasks.where((t) => t.dueDate!.compareTo(today) >= 0)) {
+          for (final t in tasks.where((t) => !late(t))) {
             byDay.putIfAbsent(t.dueDate!, () => []).add(t);
           }
           for (final e in byDay.entries) {
@@ -507,5 +513,94 @@ class _SearchScreenState extends State<SearchScreen> {
         },
       ),
     );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Project notes (FR-P10)
+// -----------------------------------------------------------------------------
+
+class ProjectNotesScreen extends StatefulWidget {
+  const ProjectNotesScreen({super.key, required this.projectId});
+  final String projectId;
+
+  @override
+  State<ProjectNotesScreen> createState() => _ProjectNotesScreenState();
+}
+
+class _ProjectNotesScreenState extends State<ProjectNotesScreen> {
+  final _c = TextEditingController();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final catalog = AppScope.of(context);
+    final repo = catalog.repo;
+    return Screen(
+      title: '${catalog.project(widget.projectId)?.name ?? 'Project'} notes',
+      showAdd: false,
+      body: Column(children: [
+        Expanded(
+          child: Live<List<ProjectComment>>(
+            id: widget.projectId,
+            create: () => repo.watchProjectComments(widget.projectId),
+            builder: (context, data) {
+              final notes = data ?? const <ProjectComment>[];
+              if (notes.isEmpty) {
+                return const EntryList(entries: [], emptyTitle: 'No notes yet', emptyBody: 'Notes about the whole project go here, apart from task comments.');
+              }
+              return ListView(padding: const EdgeInsets.all(8), children: [
+                for (final n in notes)
+                  Card(
+                    child: ListTile(
+                      title: Text(n.body),
+                      subtitle: Text(formatDate(n.createdAt.toLocal())),
+                      trailing: PopupMenuButton<String>(
+                        onSelected: (v) async {
+                          if (v == 'edit') {
+                            final t = await promptText(context, 'Edit note', initial: n.body);
+                            if (t != null && t.trim().isNotEmpty) await repo.editProjectComment(n.id, t);
+                          } else {
+                            await repo.deleteProjectComment(n.id);
+                          }
+                        },
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(value: 'edit', child: Text('Edit')),
+                          PopupMenuItem(value: 'delete', child: Text('Delete')),
+                        ],
+                      ),
+                    ),
+                  ),
+              ]);
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 4, 4, 12),
+          child: Row(children: [
+            Expanded(
+              child: TextField(
+                controller: _c,
+                decoration: const InputDecoration(hintText: 'Write a note'),
+                onSubmitted: (_) => _add(repo),
+              ),
+            ),
+            IconButton(icon: const Icon(Icons.send), tooltip: 'Add note', onPressed: () => _add(repo)),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  Future<void> _add(Repo repo) async {
+    final t = _c.text;
+    if (t.trim().isEmpty) return;
+    _c.clear();
+    await repo.addProjectComment(widget.projectId, t);
   }
 }

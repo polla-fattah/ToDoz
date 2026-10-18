@@ -151,3 +151,79 @@ DateTime? _monthDay(DateTime today, String monthName, String dayText, String? ye
   }
   return d;
 }
+
+// -----------------------------------------------------------------------------
+// Time of day (FR-Q3, FR-D1)
+// -----------------------------------------------------------------------------
+
+/// A time of day found in text, as minutes after midnight (0-1439).
+class TimeMatch {
+  const TimeMatch(this.minutes, this.start, this.end);
+  final int minutes;
+  final int start;
+  final int end;
+
+  @override
+  String toString() => 'TimeMatch(${formatTime(minutes)}, $start-$end)';
+}
+
+/// Finds the first time of day in [text]: `4pm`, `at 4 pm`, `16:30`,
+/// `4:30pm`, `noon`, `midnight`. A bare hour such as "at 5" is not a time:
+/// it is too easily part of a title ("chapter at 5 points").
+TimeMatch? parseTime(String text) {
+  final found = <TimeMatch>[];
+  RegExp r(String p) => RegExp(p, caseSensitive: false);
+
+  for (final m in r(r'\b(?:at\s+)?(noon|midday|midnight)\b').allMatches(text)) {
+    found.add(TimeMatch(m[1]!.toLowerCase() == 'midnight' ? 0 : 720, m.start, m.end));
+  }
+  // 16:30, 4:30pm. A trailing "am/pm" decides 12- or 24-hour reading.
+  for (final m in r(r'\b(?:at\s+)?(\d{1,2}):(\d{2})(?:\s*(am|pm))?\b').allMatches(text)) {
+    final t = _clock(int.parse(m[1]!), int.parse(m[2]!), m[3]);
+    if (t != null) found.add(TimeMatch(t, m.start, m.end));
+  }
+  for (final m in r(r'\b(?:at\s+)?(\d{1,2})\s*(am|pm)\b').allMatches(text)) {
+    final t = _clock(int.parse(m[1]!), 0, m[2]);
+    if (t != null) found.add(TimeMatch(t, m.start, m.end));
+  }
+  if (found.isEmpty) return null;
+  found.sort((a, b) {
+    final byStart = a.start.compareTo(b.start);
+    return byStart != 0 ? byStart : (b.end - b.start).compareTo(a.end - a.start);
+  });
+  return found.first;
+}
+
+int? _clock(int h, int m, String? meridiem) {
+  if (m > 59) return null;
+  if (meridiem != null) {
+    if (h < 1 || h > 12) return null;
+    final pm = meridiem.toLowerCase() == 'pm';
+    return ((h % 12) + (pm ? 12 : 0)) * 60 + m;
+  }
+  if (h > 23) return null;
+  return h * 60 + m;
+}
+
+/// `HH:MM` as stored in the database.
+String formatTime(int minutes, {bool use24h = true}) {
+  final h = minutes ~/ 60, m = minutes % 60;
+  if (use24h) return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
+  final h12 = h % 12 == 0 ? 12 : h % 12;
+  return '$h12:${m.toString().padLeft(2, '0')} ${h < 12 ? 'AM' : 'PM'}';
+}
+
+int? parseClock(String s) {
+  final m = RegExp(r'^(\d{2}):(\d{2})$').firstMatch(s);
+  if (m == null) return null;
+  return _clock(int.parse(m[1]!), int.parse(m[2]!), null);
+}
+
+/// Combines a stored date (`YYYY-MM-DD`) and optional time (`HH:MM`) into a
+/// local [DateTime]. Without a time the result is the end of that day, which
+/// is when a date-only task becomes overdue.
+DateTime dueMoment(String date, String? time) {
+  final d = parseIsoDate(date)!;
+  final t = time == null ? null : parseClock(time);
+  return t == null ? DateTime(d.year, d.month, d.day, 23, 59, 59) : DateTime(d.year, d.month, d.day, t ~/ 60, t % 60);
+}

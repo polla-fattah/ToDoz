@@ -135,9 +135,9 @@ void main() {
     test('counts completions on a given day', () async {
       final a = await repo.addTask(title: 'a');
       final b = await repo.addTask(title: 'b');
-      await repo.setCompleted(a, true);
+      await repo.completeTask(a);
       clock = fixedNow.add(const Duration(days: 1));
-      await repo.setCompleted(b, true);
+      await repo.completeTask(b);
       expect(await repo.completedOn(DateTime(2026, 10, 14)), 1);
       expect(await repo.completedOn(DateTime(2026, 10, 15)), 1);
     });
@@ -442,7 +442,7 @@ void main() {
 
     test('a manually chosen date overrides the parsed one (FR-Q4)', () async {
       final plan = await repo.planQuickAdd('Call tomorrow');
-      final id = await repo.addFromPlan(plan, overrideDue: '2026-12-01');
+      final id = await repo.addFromPlan(plan, fields: const TaskFields(dueDate: '2026-12-01'));
       expect((await repo.getTask(id))!.dueDate, '2026-12-01');
     });
 

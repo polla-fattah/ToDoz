@@ -124,4 +124,53 @@ void main() {
       expect(parseIsoDate('nope'), isNull);
     });
   });
+
+  group('time of day', () {
+    int? t(String text) => parseTime(text)?.minutes;
+
+    test('12-hour times', () {
+      expect(t('4pm'), 16 * 60);
+      expect(t('at 4 pm'), 16 * 60);
+      expect(t('4:30pm'), 16 * 60 + 30);
+      expect(t('12am'), 0);
+      expect(t('12pm'), 12 * 60);
+      expect(t('9AM'), 9 * 60);
+    });
+    test('24-hour times', () {
+      expect(t('16:30'), 16 * 60 + 30);
+      expect(t('at 07:05'), 7 * 60 + 5);
+      expect(t('0:00'), 0);
+      expect(t('23:59'), 23 * 60 + 59);
+    });
+    test('noon and midnight', () {
+      expect(t('at noon'), 720);
+      expect(t('midday'), 720);
+      expect(t('midnight'), 0);
+    });
+    test('things that are not times', () {
+      expect(t('at 5'), isNull); // a bare hour is too ambiguous
+      expect(t('buy 5 apples'), isNull);
+      expect(t('13pm'), isNull);
+      expect(t('0am'), isNull);
+      expect(t('25:00'), isNull);
+      expect(t('9:75'), isNull);
+    });
+    test('reports where it sits, including "at"', () {
+      const line = 'Call Sam tomorrow at 4pm please';
+      final m = parseTime(line)!;
+      expect(line.substring(m.start, m.end), 'at 4pm');
+    });
+    test('formatTime and parseClock round trip', () {
+      expect(formatTime(16 * 60 + 5), '16:05');
+      expect(formatTime(0, use24h: false), '12:00 AM');
+      expect(formatTime(13 * 60, use24h: false), '1:00 PM');
+      expect(parseClock('07:30'), 450);
+      expect(parseClock('7:30'), isNull);
+      expect(parseClock('24:00'), isNull);
+    });
+    test('dueMoment: a date alone ends at midnight, a time is exact', () {
+      expect(dueMoment('2026-10-14', null), DateTime(2026, 10, 14, 23, 59, 59));
+      expect(dueMoment('2026-10-14', '16:30'), DateTime(2026, 10, 14, 16, 30));
+    });
+  });
 }

@@ -7,6 +7,7 @@ library;
 import 'dart:convert';
 
 import 'date_parser.dart';
+import 'reminder.dart';
 
 const inboxId = 'inbox';
 
@@ -88,6 +89,9 @@ class TaskRec {
     this.parentId,
     this.priority = 4,
     this.dueDate,
+    this.dueTime,
+    this.recurrence,
+    this.deadline,
     this.completedAt,
     this.sortOrder = 0,
     this.isCollapsed = false,
@@ -102,6 +106,9 @@ class TaskRec {
   final String? parentId;
   final int priority;
   final String? dueDate; // YYYY-MM-DD
+  final String? dueTime; // HH:MM
+  final String? recurrence; // the repeat phrase as typed
+  final String? deadline; // YYYY-MM-DD
   final DateTime? completedAt;
   final int sortOrder;
   final bool isCollapsed;
@@ -111,7 +118,8 @@ class TaskRec {
   Map<String, Object?> toJson() => {
         'id': id, 'title': title, 'description': description,
         'projectId': projectId, 'sectionId': sectionId, 'parentId': parentId,
-        'priority': priority, 'dueDate': dueDate,
+        'priority': priority, 'dueDate': dueDate, 'dueTime': dueTime,
+        'recurrence': recurrence, 'deadline': deadline,
         'completedAt': completedAt?.toUtc().toIso8601String(),
         'sortOrder': sortOrder, 'isCollapsed': isCollapsed,
         'labelIds': labelIds, 'createdAt': createdAt.toUtc().toIso8601String(),
@@ -136,6 +144,41 @@ class CommentRec {
       };
 }
 
+class ReminderRec {
+  ReminderRec({required this.id, required this.taskId, required this.spec});
+  final String id;
+  final String taskId;
+  final String spec; // `14:00` or `30m`
+
+  Map<String, Object?> toJson() => {'id': id, 'taskId': taskId, 'spec': spec};
+}
+
+class CompletionRec {
+  CompletionRec({required this.id, required this.taskId, required this.completedAt, this.dueDate, this.dueTime});
+  final String id;
+  final String taskId;
+  final DateTime completedAt;
+  final String? dueDate;
+  final String? dueTime;
+
+  Map<String, Object?> toJson() => {
+        'id': id, 'taskId': taskId, 'completedAt': completedAt.toUtc().toIso8601String(),
+        'dueDate': dueDate, 'dueTime': dueTime,
+      };
+}
+
+class ProjectCommentRec {
+  ProjectCommentRec({required this.id, required this.projectId, required this.body, required this.createdAt});
+  final String id;
+  final String projectId;
+  final String body;
+  final DateTime createdAt;
+
+  Map<String, Object?> toJson() => {
+        'id': id, 'projectId': projectId, 'body': body, 'createdAt': createdAt.toUtc().toIso8601String(),
+      };
+}
+
 /// Everything needed to rebuild the app's data, plus its settings.
 class Bundle {
   Bundle({
@@ -144,6 +187,9 @@ class Bundle {
     required this.labels,
     required this.tasks,
     required this.comments,
+    this.reminders = const [],
+    this.completions = const [],
+    this.projectComments = const [],
     this.settings = const {},
     this.sourceVersion = 2,
   });
@@ -155,6 +201,9 @@ class Bundle {
   final List<LabelRec> labels;
   final List<TaskRec> tasks;
   final List<CommentRec> comments;
+  final List<ReminderRec> reminders;
+  final List<CompletionRec> completions;
+  final List<ProjectCommentRec> projectComments;
   final Map<String, String> settings;
 
   /// Backup format 2 (1.0 used `version: 1`).
@@ -168,6 +217,9 @@ class Bundle {
         'labels': labels.map((e) => e.toJson()).toList(),
         'tasks': tasks.map((e) => e.toJson()).toList(),
         'comments': comments.map((e) => e.toJson()).toList(),
+        'reminders': reminders.map((e) => e.toJson()).toList(),
+        'completions': completions.map((e) => e.toJson()).toList(),
+        'projectComments': projectComments.map((e) => e.toJson()).toList(),
       });
 
   /// Parses a backup of either format (1.0 `version: 1` or 2.0 `version: 2`).
@@ -239,6 +291,10 @@ Bundle _fromV2(Map<String, Object?> j) {
     if (due != null && parseIsoDate(due) == null) _bad('Invalid due date');
     final priority = _as<int>(t['priority'] ?? 4, 'priority');
     if (priority < 1 || priority > 4) _bad('Invalid priority');
+    final dueTime = t['dueTime'] as String?;
+    if (dueTime != null && parseClock(dueTime) == null) _bad('Invalid due time');
+    final deadline = t['deadline'] as String?;
+    if (deadline != null && parseIsoDate(deadline) == null) _bad('Invalid deadline');
     return TaskRec(
       id: _as<String>(t['id'], 'task id'),
       title: _as<String>(t['title'], 'task title'),
@@ -248,6 +304,9 @@ Bundle _fromV2(Map<String, Object?> j) {
       parentId: t['parentId'] as String?,
       priority: priority,
       dueDate: due,
+      dueTime: dueTime,
+      recurrence: t['recurrence'] as String?,
+      deadline: deadline,
       completedAt: t['completedAt'] == null ? null : DateTime.parse(t['completedAt'] as String),
       sortOrder: (t['sortOrder'] as int?) ?? 0,
       isCollapsed: t['isCollapsed'] == true,
@@ -264,11 +323,49 @@ Bundle _fromV2(Map<String, Object?> j) {
           ))
       .toList();
 
+  final reminders = list('reminders')
+      .map((r) => ReminderRec(
+            id: _as<String>(r['id'], 'reminder id'),
+            taskId: _as<String>(r['taskId'], 'reminder task'),
+            spec: _as<String>(r['spec'], 'reminder spec'),
+          ))
+      .toList();
+  final completions = list('completions')
+      .map((c) => CompletionRec(
+            id: _as<String>(c['id'], 'completion id'),
+            taskId: _as<String>(c['taskId'], 'completion task'),
+            completedAt: DateTime.parse(_as<String>(c['completedAt'], 'completion time')),
+            dueDate: c['dueDate'] as String?,
+            dueTime: c['dueTime'] as String?,
+          ))
+      .toList();
+  final projectComments = list('projectComments')
+      .map((c) => ProjectCommentRec(
+            id: _as<String>(c['id'], 'note id'),
+            projectId: _as<String>(c['projectId'], 'note project'),
+            body: _as<String>(c['body'], 'note body'),
+            createdAt: DateTime.parse(_as<String>(c['createdAt'], 'note time')),
+          ))
+      .toList();
+
   _checkReferences(projects, sections, labels, tasks, comments);
+  final taskIds = {for (final t in tasks) t.id};
+  final projectIds = {for (final p in projects) p.id};
+  for (final r in reminders) {
+    if (!taskIds.contains(r.taskId)) _bad('Reminder task missing');
+    if (ReminderSpec.decode(r.spec) == null) _bad('Invalid reminder');
+  }
+  for (final c in completions) {
+    if (!taskIds.contains(c.taskId)) _bad('Completion task missing');
+  }
+  for (final c in projectComments) {
+    if (!projectIds.contains(c.projectId)) _bad('Note project missing');
+  }
   final settings = (j['settings'] as Map?)?.map((k, v) => MapEntry('$k', '$v')) ?? <String, String>{};
   return Bundle(
     projects: projects, sections: sections, labels: labels,
-    tasks: tasks, comments: comments, settings: settings,
+    tasks: tasks, comments: comments, reminders: reminders, completions: completions,
+    projectComments: projectComments, settings: settings,
   );
 }
 

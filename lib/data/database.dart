@@ -62,8 +62,20 @@ class Tasks extends Table with Stamped {
   /// 1 (urgent) to 4 (none), as Todoist.
   IntColumn get priority => integer().withDefault(const Constant(4))();
 
-  /// `YYYY-MM-DD`; times of day arrive with R2.
+  /// `YYYY-MM-DD`.
   TextColumn get dueDate => text().nullable()();
+
+  /// `HH:MM` local time, or null for "any time that day" (FR-D1).
+  TextColumn get dueTime => text().nullable()();
+
+  /// The repeat phrase as typed, e.g. `every other fri at 8pm` (FR-R1..R10).
+  TextColumn get recurrence => text().nullable()();
+
+  /// A separate hard date, `YYYY-MM-DD` (FR-D2).
+  TextColumn get deadline => text().nullable()();
+
+  /// Set by "snooze": the reminder fires again at this moment (FR-N3).
+  DateTimeColumn get snoozedUntil => dateTime().nullable()();
   DateTimeColumn get completedAt => dateTime().nullable()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   BoolColumn get isCollapsed => boolean().withDefault(const Constant(false))();
@@ -90,6 +102,42 @@ class Comments extends Table with Stamped {
   Set<Column> get primaryKey => {id};
 }
 
+/// An extra reminder on a task (FR-N2): `14:00` or `30m` (minutes before).
+@TableIndex(name: 'reminders_task', columns: {#taskId})
+class Reminders extends Table with Stamped {
+  TextColumn get id => text()();
+  TextColumn get taskId => text()();
+  TextColumn get spec => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// One row per completion, so a recurring task keeps its history (FR-R7)
+/// and Karma and charts can be built later from exact times.
+@TableIndex(name: 'completions_at', columns: {#completedAt})
+class Completions extends Table {
+  TextColumn get id => text()();
+  TextColumn get taskId => text()();
+  DateTimeColumn get completedAt => dateTime()();
+  TextColumn get dueDate => text().nullable()();
+  TextColumn get dueTime => text().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Notes about a whole project, separate from task comments (FR-P10).
+@TableIndex(name: 'project_comments_project', columns: {#projectId})
+class ProjectComments extends Table with Stamped {
+  TextColumn get id => text()();
+  TextColumn get projectId => text()();
+  TextColumn get body => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 class Settings extends Table {
   TextColumn get key => text()();
   TextColumn get value => text()();
@@ -98,18 +146,30 @@ class Settings extends Table {
   Set<Column> get primaryKey => {key};
 }
 
-@DriftDatabase(tables: [Projects, Sections, Labels, Tasks, TaskLabels, Comments, Settings])
+@DriftDatabase(tables: [Projects, Sections, Labels, Tasks, TaskLabels, Comments, Reminders, Completions, ProjectComments, Settings])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
           await ensureInbox();
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            // R2: times, repeats, deadlines, snooze, reminders, completion history, project notes.
+            await m.addColumn(tasks, tasks.dueTime);
+            await m.addColumn(tasks, tasks.recurrence);
+            await m.addColumn(tasks, tasks.deadline);
+            await m.addColumn(tasks, tasks.snoozedUntil);
+            await m.createTable(reminders);
+            await m.createTable(completions);
+            await m.createTable(projectComments);
+          }
         },
         beforeOpen: (details) async {
           await ensureInbox();

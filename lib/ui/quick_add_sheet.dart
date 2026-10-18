@@ -4,9 +4,12 @@ import 'package:flutter/material.dart';
 import '../core/backup.dart' show inboxId;
 import '../core/date_parser.dart';
 import '../core/quick_add.dart';
+import '../core/recurrence.dart';
+import '../core/reminder.dart';
 import '../data/repository.dart';
 import 'catalog.dart';
 import 'common.dart';
+import 'when_dialogs.dart';
 
 /// Opens the Quick Add sheet. [defaultProjectId] and [defaultDue] come from
 /// the screen it was opened on (a project view, or Today).
@@ -32,12 +35,17 @@ Future<void> showQuickAdd(
 
 /// A text field that colours recognised Quick Add tokens as you type (FR-Q1).
 class HighlightController extends TextEditingController {
-  HighlightController({required this.now});
+  HighlightController({required this.now, this.weekStart = 1});
   final DateTime now;
+  final int weekStart;
   bool highlight = true;
 
   static Color colorFor(QuickAddKind k, ColorScheme cs) => switch (k) {
         QuickAddKind.date => const Color(0xFF058527),
+        QuickAddKind.time => const Color(0xFF058527),
+        QuickAddKind.repeat => const Color(0xFF058527),
+        QuickAddKind.deadline => const Color(0xFFB8255F),
+        QuickAddKind.reminder => const Color(0xFFC77100),
         QuickAddKind.priority => const Color(0xFFD1453B),
         QuickAddKind.label => const Color(0xFF8D4EC0),
         QuickAddKind.project => cs.primary,
@@ -48,7 +56,7 @@ class HighlightController extends TextEditingController {
   TextSpan buildTextSpan({required BuildContext context, TextStyle? style, required bool withComposing}) {
     if (!highlight || text.isEmpty) return super.buildTextSpan(context: context, style: style, withComposing: withComposing);
     final cs = Theme.of(context).colorScheme;
-    final r = parseQuickAdd(text, now);
+    final r = parseQuickAdd(text, now, weekStart: weekStart);
     final spans = <InlineSpan>[];
     var cursor = 0;
     for (final t in r.tokens) {
@@ -84,18 +92,23 @@ class QuickAddSheet extends StatefulWidget {
 }
 
 class _QuickAddSheetState extends State<QuickAddSheet> {
-  late final HighlightController _text;
-  String? _manualDue; // FR-Q4: a picked date beats a parsed one
-  bool _clearDue = false;
+  late final HighlightController _text = _makeController();
+
+  // The owner's own choices. absent = use what the text says (FR-Q4: a picked
+  // value beats a parsed one); a present null = cleared.
+  Value<String?> _date = const Value.absent();
+  Value<String?> _time = const Value.absent();
+  Value<String?> _repeat = const Value.absent();
+  Value<String?> _deadline = const Value.absent();
+  final _extraReminders = <ReminderSpec>[];
   int? _manualPriority;
   String? _manualProject;
   final _extraLabels = <String>{};
   bool _busy = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _text = HighlightController(now: DateTime.now())..addListener(() => setState(() {}));
+  HighlightController _makeController() {
+    final catalog = AppScope.of(context);
+    return HighlightController(now: catalog.repo.now, weekStart: catalog.weekStart)..addListener(() => setState(() {}));
   }
 
   @override
@@ -104,16 +117,51 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
     super.dispose();
   }
 
-  QuickAddResult get _parsed => parseQuickAdd(_text.text, _text.now);
+  QuickAddResult get _parsed => parseQuickAdd(_text.text, _text.now, weekStart: AppScope.of(context).weekStart);
 
-  String? get _effectiveDue {
-    if (_clearDue) return null;
-    if (_manualDue != null) return _manualDue;
+  // The values that will be saved, combining the text and the owner's choices.
+  String? get _effectiveRepeat => _repeat.present ? _repeat.value : _parsed.recurrence?.text;
+
+  String? get _effectiveTime {
+    if (_time.present) return _time.value;
+    final t = _parsed.dueTime;
+    return t == null ? null : formatTime(t);
+  }
+
+  String? get _effectiveDate {
+    if (_date.present) return _date.value;
     final p = _parsed.due;
-    return p != null ? formatDate(p) : widget.defaultDue;
+    if (p != null) return formatDate(p);
+    final repeat = _effectiveRepeat;
+    if (repeat != null) {
+      try {
+        return formatDate(firstOccurrence(parseRecurrence(repeat, _text.now), _text.now));
+      } on RecurrenceException {
+        // fall through to the default
+      }
+    }
+    if (_effectiveTime != null) return formatDate(dateOnly(_text.now)); // a time alone means today
+    return widget.defaultDue;
+  }
+
+  String? get _effectiveDeadline {
+    if (_deadline.present) return _deadline.value;
+    final d = _parsed.deadline;
+    return d == null ? null : formatDate(d);
   }
 
   int get _effectivePriority => _manualPriority ?? _parsed.priority ?? 4;
+
+  List<ReminderSpec> get _effectiveReminders => [..._parsed.reminders, ..._extraReminders];
+
+  TaskFields get _fields => TaskFields(
+        dueDate: _effectiveDate,
+        dueTime: _effectiveDate == null ? null : _effectiveTime,
+        recurrence: _effectiveDate == null ? null : _effectiveRepeat,
+        deadline: _effectiveDeadline,
+        reminders: _effectiveReminders,
+        priority: _effectivePriority,
+      );
 
   Future<void> _submit() async {
     if (_busy) return;
@@ -128,7 +176,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
     }
     setState(() => _busy = true);
     try {
-      var plan = await repo.planQuickAdd(_text.text, defaultProjectId: widget.defaultProjectId);
+      var plan = await repo.planQuickAdd(_text.text, defaultProjectId: widget.defaultProjectId, weekStart: catalog.weekStart);
       var sectionId = plan.sectionId ?? (plan.projectId == widget.defaultProjectId ? widget.defaultSectionId : null);
       if (_manualProject != null) {
         plan = QuickAddPlan(
@@ -163,22 +211,12 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
         }
         create = choice == 'create';
       }
-      final due = _effectiveDue;
-      final id = await repo.addFromPlan(plan, createMissing: create, overrideDue: due);
-      // Apply the sheet's own choices on top of what the text said.
-      await repo.updateTask(
-        id,
-        priority: _manualPriority ?? plan.parsed.priority ?? 4,
-        dueDate: Value(due),
-        labelIds: {...plan.labelIds, ..._extraLabels, ...(await _createdLabelIds(repo, plan, create))}.toList(),
-      );
+      final id = await repo.addFromPlan(plan, createMissing: create, fields: _fields, extraLabelIds: _extraLabels.toList());
       if (sectionId != null && plan.sectionId == null) {
         await repo.moveTask(id, projectId: plan.projectId, sectionId: sectionId);
       }
       navigator.pop();
-      if (messenger.mounted) {
-        showUndo(messenger, 'Task added', () => repo.deleteTask(id));
-      }
+      if (messenger.mounted) showUndo(messenger, 'Task added', () => repo.deleteTask(id));
     } on RuleException catch (e) {
       if (mounted) {
         showMessage(context, e.message);
@@ -187,32 +225,29 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
     }
   }
 
-  /// When labels were just created from the text, find their ids by name.
-  Future<List<String>> _createdLabelIds(Repo repo, QuickAddPlan plan, bool created) async {
-    if (!created) return const [];
-    final all = await repo.watchLabels().first;
-    return [
-      for (final name in plan.unknownLabels)
-        for (final l in all)
-          if (l.name.toLowerCase() == name) l.id,
-    ];
-  }
-
   Future<void> _pickDate() async {
-    final now = DateTime.now();
-    final current = _effectiveDue == null ? null : parseIsoDate(_effectiveDue!);
+    final now = _text.now;
+    final current = _effectiveDate == null ? null : parseIsoDate(_effectiveDate!);
     final picked = await showDatePicker(
       context: context,
       initialDate: current ?? now,
       firstDate: DateTime(now.year - 1),
       lastDate: DateTime(now.year + 10),
     );
-    if (picked != null) {
-      setState(() {
-        _manualDue = formatDate(picked);
-        _clearDue = false;
-      });
-    }
+    if (picked != null) setState(() => _date = Value(formatDate(picked)));
+  }
+
+  Future<void> _pickDeadline() async {
+    final now = _text.now;
+    final current = _effectiveDeadline == null ? null : parseIsoDate(_effectiveDeadline!);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: current ?? now,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 10),
+      helpText: 'Deadline',
+    );
+    if (picked != null) setState(() => _deadline = Value(formatDate(picked)));
   }
 
   @override
@@ -220,12 +255,15 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
     final catalog = AppScope.of(context);
     final cs = Theme.of(context).colorScheme;
     final parsed = _parsed;
-    final due = _effectiveDue;
-    final projectId = _manualProject ??
-        _resolveProject(catalog, parsed.projectName) ??
-        widget.defaultProjectId;
+    final date = _effectiveDate;
+    final time = _effectiveTime;
+    final repeat = _effectiveRepeat;
+    final deadline = _effectiveDeadline;
+    final reminders = _effectiveReminders;
+    final projectId = _manualProject ?? _resolveProject(catalog, parsed.projectName) ?? widget.defaultProjectId;
     final project = catalog.project(projectId);
     final unknownProject = _manualProject == null && parsed.projectName != null && _resolveProject(catalog, parsed.projectName) == null;
+    const green = Color(0xFF058527);
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -238,29 +276,64 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
             maxLength: 500,
             textInputAction: TextInputAction.done,
             decoration: const InputDecoration(
-              hintText: 'Review paper tomorrow p1 %reading #work',
+              hintText: 'Review paper tomorrow 4pm p1 %reading #work',
               border: InputBorder.none,
               counterText: '',
             ),
             style: Theme.of(context).textTheme.titleMedium,
             onSubmitted: (_) => _submit(),
           ),
+          if (parsed.repeatError != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(parsed.repeatError!, style: TextStyle(color: cs.error, fontSize: 12)),
+            ),
           const SizedBox(height: 4),
           Wrap(spacing: 8, runSpacing: 4, children: [
             ActionChip(
-              avatar: Icon(Icons.event_outlined, size: 18, color: due != null ? const Color(0xFF058527) : null),
-              label: Text(due == null ? 'Date' : dueLabel(due, _text.now)),
+              avatar: Icon(Icons.event_outlined, size: 18, color: date != null ? green : null),
+              label: Text(date == null ? 'Date' : dueLabel(date, _text.now)),
               onPressed: _pickDate,
             ),
-            if (due != null)
+            ActionChip(
+              avatar: Icon(Icons.schedule, size: 18, color: time != null ? green : null),
+              label: Text(time == null ? 'Time' : timeText(context, time)),
+              onPressed: () async {
+                final m = await pickTimeMinutes(context, initial: time == null ? null : parseClock(time));
+                if (m != null) setState(() => _time = Value(formatTime(m)));
+              },
+            ),
+            ActionChip(
+              avatar: Icon(Icons.repeat, size: 18, color: repeat != null ? green : null),
+              label: Text(repeat ?? 'Repeat'),
+              onPressed: () async {
+                final r = await showRepeatDialog(context, initial: repeat);
+                if (r != null) setState(() => _repeat = Value(r.isEmpty ? null : r));
+              },
+            ),
+            if (date != null || time != null || repeat != null)
               ActionChip(
                 avatar: const Icon(Icons.close, size: 16),
-                label: const Text('No date'),
+                label: const Text('Clear'),
                 onPressed: () => setState(() {
-                  _clearDue = true;
-                  _manualDue = null;
+                  _date = const Value(null);
+                  _time = const Value(null);
+                  _repeat = const Value(null);
                 }),
               ),
+            ActionChip(
+              avatar: Icon(Icons.flag_circle_outlined, size: 18, color: deadline != null ? const Color(0xFFB8255F) : null),
+              label: Text(deadline == null ? 'Deadline' : dueLabel(deadline, _text.now)),
+              onPressed: _pickDeadline,
+            ),
+            ActionChip(
+              avatar: const Icon(Icons.notifications_none, size: 18),
+              label: Text(reminders.isEmpty ? 'Reminder' : '${reminders.length} reminder${reminders.length == 1 ? '' : 's'}'),
+              onPressed: () async {
+                final r = await showReminderDialog(context, hasDueTime: time != null);
+                if (r != null) setState(() => _extraReminders.add(r));
+              },
+            ),
             PopupMenuButton<int>(
               tooltip: 'Priority',
               onSelected: (p) => setState(() => _manualPriority = p),
@@ -298,6 +371,17 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
               onPressed: catalog.labels.isEmpty ? null : () => _pickLabels(catalog),
             ),
           ]),
+          if (_extraReminders.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Wrap(spacing: 6, children: [
+                for (final r in _extraReminders)
+                  InputChip(
+                    label: Text(r.describe(use24h: catalog.use24h)),
+                    onDeleted: () => setState(() => _extraReminders.remove(r)),
+                  ),
+              ]),
+            ),
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerRight,

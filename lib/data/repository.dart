@@ -4,6 +4,8 @@ import 'package:uuid/uuid.dart';
 import '../core/backup.dart';
 import '../core/date_parser.dart';
 import '../core/quick_add.dart';
+import '../core/recurrence.dart';
+import '../core/reminder.dart';
 import 'database.dart';
 
 const maxProjectDepth = 3; // FR-P2
@@ -40,6 +42,62 @@ class QuickAddPlan {
   final List<String> unknownLabels;
   bool get hasUnknown =>
       unknownProject != null || unknownSection != null || unknownLabels.isNotEmpty;
+
+  /// The task fields as the typed line describes them.
+  TaskFields get fields => TaskFields(
+        dueDate: parsed.due == null ? null : formatDate(parsed.due!),
+        dueTime: parsed.dueTime == null ? null : formatTime(parsed.dueTime!),
+        recurrence: parsed.recurrence?.text,
+        deadline: parsed.deadline == null ? null : formatDate(parsed.deadline!),
+        reminders: parsed.reminders,
+        priority: parsed.priority ?? 4,
+      );
+}
+
+/// The date, repeat, reminder and priority fields of a new task. The Quick
+/// Add sheet starts from what the text says and applies the owner's own
+/// choices on top before creating the task.
+class TaskFields {
+  const TaskFields({
+    this.dueDate,
+    this.dueTime,
+    this.recurrence,
+    this.deadline,
+    this.reminders = const [],
+    this.priority = 4,
+  });
+  final String? dueDate;
+  final String? dueTime;
+  final String? recurrence;
+  final String? deadline;
+  final List<ReminderSpec> reminders;
+  final int priority;
+}
+
+/// What completing a task did, so the UI can offer an exact Undo.
+class CompletionOutcome {
+  const CompletionOutcome({
+    required this.changedIds,
+    this.rescheduledId,
+    this.previousDueDate,
+    this.previousDueTime,
+    this.completionId,
+    this.reopenedSubtaskIds = const [],
+    this.nextDueDate,
+  });
+
+  /// Tasks marked completed (empty when a repeating task just moved on).
+  final List<String> changedIds;
+
+  /// Set when a repeating task moved to its next date instead of completing.
+  final String? rescheduledId;
+  final String? previousDueDate;
+  final String? previousDueTime;
+  final String? completionId;
+  final List<String> reopenedSubtaskIds;
+  final String? nextDueDate;
+
+  bool get wasRescheduled => rescheduledId != null;
 }
 
 class Repo {
@@ -67,13 +125,23 @@ class Repo {
   /// Overdue and due-today tasks (FR-V1).
   Stream<List<Task>> watchToday(String today) => (_openTasks()
         ..where((t) => t.dueDate.isNotNull() & t.dueDate.isSmallerOrEqualValue(today))
-        ..orderBy([(t) => OrderingTerm.asc(t.dueDate), (t) => OrderingTerm.asc(t.priority), (t) => OrderingTerm.asc(t.sortOrder)]))
+        ..orderBy([
+          (t) => OrderingTerm.asc(t.dueDate),
+          (t) => OrderingTerm(expression: t.dueTime, nulls: NullsOrder.last),
+          (t) => OrderingTerm.asc(t.priority),
+          (t) => OrderingTerm.asc(t.sortOrder),
+        ]))
       .watch();
 
   /// Every open task that has a date, soonest first; the UI groups by day.
   Stream<List<Task>> watchScheduled() => (_openTasks()
         ..where((t) => t.dueDate.isNotNull())
-        ..orderBy([(t) => OrderingTerm.asc(t.dueDate), (t) => OrderingTerm.asc(t.priority), (t) => OrderingTerm.asc(t.sortOrder)]))
+        ..orderBy([
+          (t) => OrderingTerm.asc(t.dueDate),
+          (t) => OrderingTerm(expression: t.dueTime, nulls: NullsOrder.last),
+          (t) => OrderingTerm.asc(t.priority),
+          (t) => OrderingTerm.asc(t.sortOrder),
+        ]))
       .watch();
 
   Stream<List<Task>> watchAllOpen() => (_openTasks()
@@ -165,28 +233,6 @@ class Repo {
   Future<void> setSetting(String key, String value) =>
       db.into(db.settings).insertOnConflictUpdate(SettingsCompanion.insert(key: key, value: value));
 
-  Future<int> completedOn(DateTime day) async {
-    final start = DateTime(day.year, day.month, day.day);
-    final end = start.add(const Duration(days: 1));
-    final rows = await (db.select(db.tasks)
-          ..where((t) => t.deletedAt.isNull() &
-              t.completedAt.isBiggerOrEqualValue(start) &
-              t.completedAt.isSmallerThanValue(end)))
-        .get();
-    return rows.length;
-  }
-
-  Stream<int> watchCompletedOn(DateTime day) {
-    final start = DateTime(day.year, day.month, day.day);
-    final end = start.add(const Duration(days: 1));
-    return (db.select(db.tasks)
-          ..where((t) => t.deletedAt.isNull() &
-              t.completedAt.isBiggerOrEqualValue(start) &
-              t.completedAt.isSmallerThanValue(end)))
-        .watch()
-        .map((r) => r.length);
-  }
-
   // ===========================================================================
   // Tasks
   // ===========================================================================
@@ -222,9 +268,14 @@ class Repo {
     String? parentId,
     int priority = 4,
     String? dueDate,
+    String? dueTime,
+    String? recurrence,
+    String? deadline,
     String description = '',
     List<String> labelIds = const [],
+    List<ReminderSpec> reminders = const [],
   }) async {
+    _checkWhen(dueDate: dueDate, dueTime: dueTime, recurrence: recurrence, deadline: deadline);
     final trimmed = title.trim();
     if (trimmed.isEmpty) throw RuleException('A task needs a title');
     if (trimmed.length > 500) throw RuleException('Titles are limited to 500 characters');
@@ -251,6 +302,9 @@ class Repo {
             parentId: Value(parentId),
             priority: Value(priority.clamp(1, 4)),
             dueDate: Value(dueDate),
+            dueTime: Value(dueTime),
+            recurrence: Value(recurrence),
+            deadline: Value(deadline),
             sortOrder: Value(await _nextTaskOrder(project, parentId)),
             createdAt: stamp,
             updatedAt: stamp,
@@ -258,8 +312,28 @@ class Repo {
       for (final l in labelIds.toSet()) {
         await db.into(db.taskLabels).insert(TaskLabelsCompanion.insert(taskId: id, labelId: l));
       }
+      for (final r in reminders) {
+        await _insertReminder(id, r);
+      }
     });
     return id;
+  }
+
+  /// Validates the date, time and repeat fields (throws [RuleException]).
+  void _checkWhen({String? dueDate, String? dueTime, String? recurrence, String? deadline}) {
+    if (dueDate != null && parseIsoDate(dueDate) == null) throw RuleException('Invalid due date');
+    if (deadline != null && parseIsoDate(deadline) == null) throw RuleException('Invalid deadline');
+    if (dueTime != null) {
+      if (parseClock(dueTime) == null) throw RuleException('Invalid time');
+      if (dueDate == null && recurrence == null) throw RuleException('A time needs a date');
+    }
+    if (recurrence != null) {
+      try {
+        parseRecurrence(recurrence, now);
+      } on RecurrenceException catch (e) {
+        throw RuleException(e.message);
+      }
+    }
   }
 
   /// Resolves a parsed Quick Add line against what exists (FR-Q2, FR-Q5).
@@ -310,10 +384,17 @@ class Repo {
 
   /// Creates the task from a plan. With [createMissing] the unknown project,
   /// section and labels are created first; without it they are dropped.
-  Future<String> addFromPlan(QuickAddPlan plan, {bool createMissing = false, String? overrideDue}) async {
+  /// [fields] replaces what the text said (the sheet applies the owner's own
+  /// choices); [extraLabelIds] adds labels picked in the sheet.
+  Future<String> addFromPlan(
+    QuickAddPlan plan, {
+    bool createMissing = false,
+    TaskFields? fields,
+    List<String> extraLabelIds = const [],
+  }) async {
     var projectId = plan.projectId;
     var sectionId = plan.sectionId;
-    final labelIds = [...plan.labelIds];
+    final labelIds = [...plan.labelIds, ...extraLabelIds];
     if (createMissing) {
       if (plan.unknownProject != null) {
         projectId = await createProject(name: plan.unknownProject!);
@@ -325,14 +406,18 @@ class Repo {
         labelIds.add(await createLabel(name));
       }
     }
-    final due = overrideDue ?? (plan.parsed.due == null ? null : formatDate(plan.parsed.due!));
+    final f = fields ?? plan.fields;
     return addTask(
       title: plan.parsed.title,
       projectId: projectId,
       sectionId: sectionId,
-      priority: plan.parsed.priority ?? 4,
-      dueDate: due,
+      priority: f.priority,
+      dueDate: f.dueDate,
+      dueTime: f.dueTime,
+      recurrence: f.recurrence,
+      deadline: f.deadline,
       labelIds: labelIds,
+      reminders: f.reminders,
     );
   }
 
@@ -342,15 +427,32 @@ class Repo {
     String? description,
     int? priority,
     Value<String?> dueDate = const Value.absent(),
+    Value<String?> dueTime = const Value.absent(),
+    Value<String?> recurrence = const Value.absent(),
+    Value<String?> deadline = const Value.absent(),
     List<String>? labelIds,
   }) async {
     if (title != null && title.trim().isEmpty) throw RuleException('A task needs a title');
+    if (dueDate.present || dueTime.present || recurrence.present || deadline.present) {
+      final current = await getTask(id);
+      if (current != null) {
+        _checkWhen(
+          dueDate: dueDate.present ? dueDate.value : current.dueDate,
+          dueTime: dueTime.present ? dueTime.value : current.dueTime,
+          recurrence: recurrence.present ? recurrence.value : current.recurrence,
+          deadline: deadline.present ? deadline.value : current.deadline,
+        );
+      }
+    }
     await db.transaction(() async {
       await (db.update(db.tasks)..where((t) => t.id.equals(id))).write(TasksCompanion(
         title: title == null ? const Value.absent() : Value(title.trim()),
         description: description == null ? const Value.absent() : Value(description),
         priority: priority == null ? const Value.absent() : Value(priority.clamp(1, 4)),
         dueDate: dueDate,
+        dueTime: dueTime,
+        recurrence: recurrence,
+        deadline: deadline,
         updatedAt: Value(now),
       ));
       if (labelIds != null) {
@@ -517,6 +619,8 @@ class Repo {
       for (final x in ids) {
         await (db.delete(db.taskLabels)..where((l) => l.taskId.equals(x))).go();
         await (db.delete(db.comments)..where((c) => c.taskId.equals(x))).go();
+        await (db.delete(db.reminders)..where((r) => r.taskId.equals(x))).go();
+        await (db.delete(db.completions)..where((c) => c.taskId.equals(x))).go();
         await (db.delete(db.tasks)..where((t) => t.id.equals(x))).go();
       }
     });
@@ -544,6 +648,17 @@ class Repo {
     return n;
   }
 
+  /// Moves the listed tasks to [toDate], keeping their times (FR-D7).
+  Future<void> rescheduleTasks(List<String> ids, String toDate) async {
+    if (parseIsoDate(toDate) == null) throw RuleException('Invalid date');
+    await db.transaction(() async {
+      for (final id in ids) {
+        await (db.update(db.tasks)..where((t) => t.id.equals(id)))
+            .write(TasksCompanion(dueDate: Value(toDate), updatedAt: Value(now)));
+      }
+    });
+  }
+
   /// Puts each task back to a recorded due date (used by Undo of a bulk reschedule).
   Future<void> setDueDates(Map<String, String?> dates) async {
     await db.transaction(() async {
@@ -565,6 +680,293 @@ class Repo {
 
   Future<void> setTaskCollapsed(String id, bool collapsed) =>
       (db.update(db.tasks)..where((t) => t.id.equals(id))).write(TasksCompanion(isCollapsed: Value(collapsed)));
+
+  // ===========================================================================
+  // Completing, repeating, reminders (R2)
+  // ===========================================================================
+
+  Recurrence? _recurrenceOf(Task t) {
+    if (t.recurrence == null || t.dueDate == null) return null;
+    try {
+      return parseRecurrence(t.recurrence!, now);
+    } on RecurrenceException {
+      return null; // an unreadable repeat just completes the task
+    }
+  }
+
+  /// Completes a task. A repeating task does not complete: it moves to its
+  /// next date, its finished sub-tasks reopen, and the completion is logged
+  /// (FR-R7). Every completion is logged, which is what the daily goal counts.
+  Future<CompletionOutcome> completeTask(String id, {bool withSubtasks = false}) async {
+    var outcome = const CompletionOutcome(changedIds: []);
+    await db.transaction(() async {
+      final stamp = now;
+      final task = await getTask(id);
+      if (task == null || task.completedAt != null) return;
+      final completionId = newId();
+      await db.into(db.completions).insert(CompletionsCompanion.insert(
+            id: completionId, taskId: id, completedAt: stamp,
+            dueDate: Value(task.dueDate), dueTime: Value(task.dueTime),
+          ));
+      final rec = _recurrenceOf(task);
+      if (rec != null) {
+        final next = nextDueAfterCompletion(
+          recurrence: rec, dueDate: task.dueDate!, dueTime: task.dueTime, completedAt: stamp,
+        );
+        if (next != null) {
+          outcome = await _advance(task, next, completionId: completionId);
+          return;
+        }
+      }
+      final targets = [task, if (withSubtasks) ...await _descendants(id)];
+      final changed = <String>[];
+      for (final t in targets) {
+        if (t.completedAt != null) continue;
+        await (db.update(db.tasks)..where((x) => x.id.equals(t.id)))
+            .write(TasksCompanion(completedAt: Value(stamp), updatedAt: Value(stamp)));
+        changed.add(t.id);
+      }
+      outcome = CompletionOutcome(changedIds: changed, completionId: completionId);
+    });
+    return outcome;
+  }
+
+  Future<CompletionOutcome> _advance(Task task, NextDue next, {String? completionId}) async {
+    final stamp = now;
+    final reopened = <String>[];
+    for (final d in await _descendants(task.id)) {
+      if (d.completedAt != null && d.deletedAt == null) {
+        await (db.update(db.tasks)..where((x) => x.id.equals(d.id)))
+            .write(TasksCompanion(completedAt: const Value(null), updatedAt: Value(stamp)));
+        reopened.add(d.id);
+      }
+    }
+    await (db.update(db.tasks)..where((x) => x.id.equals(task.id))).write(TasksCompanion(
+      dueDate: Value(next.date),
+      dueTime: Value(next.time),
+      snoozedUntil: const Value(null),
+      updatedAt: Value(stamp),
+    ));
+    return CompletionOutcome(
+      changedIds: const [],
+      rescheduledId: task.id,
+      previousDueDate: task.dueDate,
+      previousDueTime: task.dueTime,
+      completionId: completionId,
+      reopenedSubtaskIds: reopened,
+      nextDueDate: next.date,
+    );
+  }
+
+  /// Skips this occurrence of a repeating task without completing it (FR-R8).
+  Future<CompletionOutcome?> skipOccurrence(String id) async {
+    CompletionOutcome? outcome;
+    await db.transaction(() async {
+      final task = await getTask(id);
+      if (task == null) return;
+      final rec = _recurrenceOf(task);
+      if (rec == null) return;
+      final next = nextDueAfterCompletion(recurrence: rec, dueDate: task.dueDate!, dueTime: task.dueTime, completedAt: now);
+      if (next == null) return;
+      outcome = await _advance(task, next);
+    });
+    return outcome;
+  }
+
+  /// Keeps the task and its current date but stops it repeating (FR-R8).
+  Future<void> stopRecurrence(String id) => updateTask(id, recurrence: const Value(null));
+
+  /// Reverses [completeTask] or [skipOccurrence] exactly.
+  Future<void> undoCompletion(CompletionOutcome o) async {
+    await db.transaction(() async {
+      final stamp = now;
+      if (o.rescheduledId != null) {
+        await (db.update(db.tasks)..where((x) => x.id.equals(o.rescheduledId!))).write(TasksCompanion(
+          dueDate: Value(o.previousDueDate),
+          dueTime: Value(o.previousDueTime),
+          updatedAt: Value(stamp),
+        ));
+        for (final id in o.reopenedSubtaskIds) {
+          await (db.update(db.tasks)..where((x) => x.id.equals(id)))
+              .write(TasksCompanion(completedAt: Value(stamp), updatedAt: Value(stamp)));
+        }
+      } else {
+        for (final id in o.changedIds) {
+          await (db.update(db.tasks)..where((x) => x.id.equals(id)))
+              .write(TasksCompanion(completedAt: const Value(null), updatedAt: Value(stamp)));
+        }
+      }
+      if (o.completionId != null) {
+        await (db.delete(db.completions)..where((c) => c.id.equals(o.completionId!))).go();
+      }
+    });
+  }
+
+  /// Reopens a completed task and takes its last completion out of the history.
+  Future<void> reopenTask(String id) async {
+    await db.transaction(() async {
+      await (db.update(db.tasks)..where((t) => t.id.equals(id)))
+          .write(TasksCompanion(completedAt: const Value(null), updatedAt: Value(now)));
+      final last = await (db.select(db.completions)
+            ..where((c) => c.taskId.equals(id))
+            ..orderBy([(c) => OrderingTerm.desc(c.completedAt)])
+            ..limit(1))
+          .getSingleOrNull();
+      if (last != null) await (db.delete(db.completions)..where((c) => c.id.equals(last.id))).go();
+    });
+  }
+
+  /// Puts a task back to completed after an Undo of a reopen.
+  Future<CompletionOutcome> recomplete(String id) => completeTask(id);
+
+  // --- Reminders ---------------------------------------------------------------
+
+  Future<void> _insertReminder(String taskId, ReminderSpec spec) async {
+    final stamp = now;
+    await db.into(db.reminders).insert(RemindersCompanion.insert(
+          id: newId(), taskId: taskId, spec: spec.encode(), createdAt: stamp, updatedAt: stamp));
+  }
+
+  Future<void> addReminder(String taskId, ReminderSpec spec) async {
+    final existing = await (db.select(db.reminders)..where((r) => r.taskId.equals(taskId) & r.deletedAt.isNull())).get();
+    if (existing.any((r) => r.spec == spec.encode())) return;
+    await _insertReminder(taskId, spec);
+  }
+
+  Future<void> removeReminder(String id) => (db.delete(db.reminders)..where((r) => r.id.equals(id))).go();
+
+  Stream<List<Reminder>> watchReminders(String taskId) => (db.select(db.reminders)
+        ..where((r) => r.taskId.equals(taskId) & r.deletedAt.isNull())
+        ..orderBy([(r) => OrderingTerm.asc(r.createdAt)]))
+      .watch();
+
+  /// Everything the notification scheduler needs, in one read.
+  Future<List<ReminderTask>> reminderTasks() async {
+    final tasks = await (_openTasks()
+          ..where((t) => t.dueDate.isNotNull() | t.snoozedUntil.isNotNull()))
+        .get();
+    final reminders = await (db.select(db.reminders)..where((r) => r.deletedAt.isNull())).get();
+    final byTask = <String, List<ReminderSpec>>{};
+    for (final r in reminders) {
+      final spec = ReminderSpec.decode(r.spec);
+      if (spec != null) byTask.putIfAbsent(r.taskId, () => []).add(spec);
+    }
+    return [
+      for (final t in tasks)
+        ReminderTask(
+          id: t.id, title: t.title, dueDate: t.dueDate, dueTime: t.dueTime,
+          reminders: byTask[t.id] ?? const [], snoozedUntil: t.snoozedUntil,
+        ),
+    ];
+  }
+
+  /// A cheap signal that anything affecting reminders changed.
+  Stream<int> watchReminderChanges() => db
+      .customSelect(
+        'SELECT (SELECT COUNT(*) FROM tasks) AS a, (SELECT IFNULL(MAX(updated_at), 0) FROM tasks) AS b, '
+        '(SELECT COUNT(*) FROM reminders) AS c, (SELECT IFNULL(MAX(updated_at), 0) FROM reminders) AS d',
+        readsFrom: {db.tasks, db.reminders},
+      )
+      .watch()
+      .map((rows) => Object.hash(rows.first.read<int>('a'), rows.first.read<int>('b'), rows.first.read<int>('c'), rows.first.read<int>('d')));
+
+  Future<void> snoozeTask(String id, DateTime until) => (db.update(db.tasks)..where((t) => t.id.equals(id)))
+      .write(TasksCompanion(snoozedUntil: Value(until), updatedAt: Value(now)));
+
+  Future<void> clearSnooze(String id) => (db.update(db.tasks)..where((t) => t.id.equals(id)))
+      .write(TasksCompanion(snoozedUntil: const Value(null), updatedAt: Value(now)));
+
+  // --- Duplicate (FR-T6) -----------------------------------------------------------
+
+  /// Copies a task next to the original, with its labels and reminders, and
+  /// optionally its sub-tasks and comments. The copy is always open.
+  Future<String> duplicateTask(String id, {bool withSubtasks = true, bool withComments = false}) async {
+    final t = await getTask(id);
+    if (t == null) throw RuleException('Task not found');
+    Future<String> copy(Task src, String? parentId) async {
+      final labels = (await (db.select(db.taskLabels)..where((l) => l.taskId.equals(src.id))).get()).map((l) => l.labelId).toList();
+      final reminders = (await (db.select(db.reminders)..where((r) => r.taskId.equals(src.id) & r.deletedAt.isNull())).get())
+          .map((r) => ReminderSpec.decode(r.spec))
+          .whereType<ReminderSpec>()
+          .toList();
+      final newTask = await addTask(
+        title: src.title,
+        description: src.description,
+        projectId: src.projectId,
+        sectionId: src.sectionId,
+        parentId: parentId ?? src.parentId,
+        priority: src.priority,
+        dueDate: src.dueDate,
+        dueTime: src.dueTime,
+        recurrence: src.recurrence,
+        deadline: src.deadline,
+        labelIds: labels,
+        reminders: reminders,
+      );
+      if (withComments) {
+        for (final c in await (db.select(db.comments)..where((c) => c.taskId.equals(src.id) & c.deletedAt.isNull())).get()) {
+          await addComment(newTask, c.body);
+        }
+      }
+      if (withSubtasks) {
+        final kids = await (db.select(db.tasks)
+              ..where((k) => k.parentId.equals(src.id) & k.deletedAt.isNull())
+              ..orderBy([(k) => OrderingTerm.asc(k.sortOrder)]))
+            .get();
+        for (final k in kids) {
+          await copy(k, newTask);
+        }
+      }
+      return newTask;
+    }
+
+    late String result;
+    await db.transaction(() async {
+      result = await copy(t, null);
+    });
+    return result;
+  }
+
+  // --- Project comments (FR-P10) ----------------------------------------------------
+
+  Stream<List<ProjectComment>> watchProjectComments(String projectId) => (db.select(db.projectComments)
+        ..where((c) => c.projectId.equals(projectId) & c.deletedAt.isNull())
+        ..orderBy([(c) => OrderingTerm.asc(c.createdAt)]))
+      .watch();
+
+  Future<String> addProjectComment(String projectId, String body) async {
+    final trimmed = body.trim();
+    if (trimmed.isEmpty) throw RuleException('A comment cannot be empty');
+    final id = newId();
+    final stamp = now;
+    await db.into(db.projectComments).insert(
+        ProjectCommentsCompanion.insert(id: id, projectId: projectId, body: trimmed, createdAt: stamp, updatedAt: stamp));
+    return id;
+  }
+
+  Future<void> editProjectComment(String id, String body) => (db.update(db.projectComments)..where((c) => c.id.equals(id)))
+      .write(ProjectCommentsCompanion(body: Value(body.trim()), updatedAt: Value(now)));
+
+  Future<void> deleteProjectComment(String id) => (db.update(db.projectComments)..where((c) => c.id.equals(id)))
+      .write(ProjectCommentsCompanion(deletedAt: Value(now), updatedAt: Value(now)));
+
+  Future<int> completedOn(DateTime day) async {
+    final start = DateTime(day.year, day.month, day.day);
+    final end = start.add(const Duration(days: 1));
+    final rows = await (db.select(db.completions)
+          ..where((c) => c.completedAt.isBiggerOrEqualValue(start) & c.completedAt.isSmallerThanValue(end)))
+        .get();
+    return rows.length;
+  }
+
+  Stream<int> watchCompletedOn(DateTime day) {
+    final start = DateTime(day.year, day.month, day.day);
+    final end = start.add(const Duration(days: 1));
+    return (db.select(db.completions)
+          ..where((c) => c.completedAt.isBiggerOrEqualValue(start) & c.completedAt.isSmallerThanValue(end)))
+        .watch()
+        .map((r) => r.length);
+  }
 
   // ===========================================================================
   // Projects
@@ -885,6 +1287,9 @@ class Repo {
     final tasks = await (db.select(db.tasks)..where((t) => t.deletedAt.isNull())).get();
     final links = await db.select(db.taskLabels).get();
     final comments = await (db.select(db.comments)..where((c) => c.deletedAt.isNull())).get();
+    final reminderRows = await (db.select(db.reminders)..where((r) => r.deletedAt.isNull())).get();
+    final completionRows = await db.select(db.completions).get();
+    final noteRows = await (db.select(db.projectComments)..where((c) => c.deletedAt.isNull())).get();
     final settings = await db.select(db.settings).get();
     final liveTaskIds = tasks.map((t) => t.id).toSet();
     final byTask = <String, List<String>>{};
@@ -920,7 +1325,8 @@ class Repo {
             id: t.id, title: t.title, description: t.description, projectId: t.projectId,
             sectionId: liveSections.contains(t.sectionId) ? t.sectionId : null,
             parentId: liveTaskIds.contains(t.parentId) ? t.parentId : null,
-            priority: t.priority, dueDate: t.dueDate, completedAt: t.completedAt,
+            priority: t.priority, dueDate: t.dueDate, dueTime: t.dueTime,
+            recurrence: t.recurrence, deadline: t.deadline, completedAt: t.completedAt,
             sortOrder: t.sortOrder, isCollapsed: t.isCollapsed,
             labelIds: (byTask[t.id] ?? const []).where(liveLabels.contains).toList(),
             createdAt: t.createdAt,
@@ -929,6 +1335,18 @@ class Repo {
       comments: [
         for (final c in comments.where((c) => liveTaskIds.contains(c.taskId)))
           CommentRec(id: c.id, taskId: c.taskId, body: c.body, createdAt: c.createdAt),
+      ],
+      reminders: [
+        for (final r in reminderRows.where((r) => liveTaskIds.contains(r.taskId)))
+          ReminderRec(id: r.id, taskId: r.taskId, spec: r.spec),
+      ],
+      completions: [
+        for (final c in completionRows.where((c) => liveTaskIds.contains(c.taskId)))
+          CompletionRec(id: c.id, taskId: c.taskId, completedAt: c.completedAt, dueDate: c.dueDate, dueTime: c.dueTime),
+      ],
+      projectComments: [
+        for (final c in noteRows.where((c) => liveProjects.contains(c.projectId)))
+          ProjectCommentRec(id: c.id, projectId: c.projectId, body: c.body, createdAt: c.createdAt),
       ],
       settings: {for (final s in settings) s.key: s.value},
     );
@@ -941,6 +1359,9 @@ class Repo {
       final stamp = now;
       await db.delete(db.taskLabels).go();
       await db.delete(db.comments).go();
+      await db.delete(db.reminders).go();
+      await db.delete(db.completions).go();
+      await db.delete(db.projectComments).go();
       await db.delete(db.tasks).go();
       await db.delete(db.sections).go();
       await db.delete(db.labels).go();
@@ -967,7 +1388,8 @@ class Repo {
         await db.into(db.tasks).insert(TasksCompanion.insert(
               id: t.id, title: t.title, description: Value(t.description), projectId: t.projectId,
               sectionId: Value(t.sectionId), parentId: Value(t.parentId), priority: Value(t.priority),
-              dueDate: Value(t.dueDate), completedAt: Value(t.completedAt),
+              dueDate: Value(t.dueDate), dueTime: Value(t.dueTime), recurrence: Value(t.recurrence),
+              deadline: Value(t.deadline), completedAt: Value(t.completedAt),
               sortOrder: Value(t.sortOrder), isCollapsed: Value(t.isCollapsed),
               createdAt: t.createdAt, updatedAt: stamp));
         for (final l in t.labelIds) {
@@ -977,6 +1399,19 @@ class Repo {
       for (final c in b.comments) {
         await db.into(db.comments).insert(CommentsCompanion.insert(
               id: c.id, taskId: c.taskId, body: c.body, createdAt: c.createdAt, updatedAt: stamp));
+      }
+      for (final r in b.reminders) {
+        await db.into(db.reminders).insert(RemindersCompanion.insert(
+            id: r.id, taskId: r.taskId, spec: r.spec, createdAt: stamp, updatedAt: stamp));
+      }
+      for (final c in b.completions) {
+        await db.into(db.completions).insert(CompletionsCompanion.insert(
+            id: c.id, taskId: c.taskId, completedAt: c.completedAt,
+            dueDate: Value(c.dueDate), dueTime: Value(c.dueTime)));
+      }
+      for (final c in b.projectComments) {
+        await db.into(db.projectComments).insert(ProjectCommentsCompanion.insert(
+            id: c.id, projectId: c.projectId, body: c.body, createdAt: c.createdAt, updatedAt: stamp));
       }
       for (final e in b.settings.entries) {
         await db.into(db.settings).insert(SettingsCompanion.insert(key: e.key, value: e.value));

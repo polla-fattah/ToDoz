@@ -5,12 +5,14 @@ import 'package:flutter/material.dart';
 
 import '../core/backup.dart' show inboxId;
 import '../core/date_parser.dart';
+import '../core/reminder.dart';
 import '../data/database.dart';
 import '../data/repository.dart';
 import 'catalog.dart';
 import 'common.dart';
 import 'task_tree.dart';
 import 'task_widgets.dart';
+import 'when_dialogs.dart';
 
 class TaskDetailPage extends StatefulWidget {
   const TaskDetailPage({super.key, required this.taskId});
@@ -93,6 +95,11 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
               PopupMenuButton<String>(
                 onSelected: (v) => _menu(context, task, v),
                 itemBuilder: (_) => [
+                  if (task.recurrence != null && task.dueDate != null) ...const [
+                    PopupMenuItem(value: 'skip', child: Text('Skip this time')),
+                    PopupMenuItem(value: 'stop', child: Text('Stop repeating')),
+                  ],
+                  const PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
                   if (task.parentId != null) const PopupMenuItem(value: 'promote', child: Text('Make top-level task')),
                   const PopupMenuItem(value: 'parent', child: Text('Make sub-task of…')),
                   const PopupMenuItem(value: 'delete', child: Text('Delete task')),
@@ -152,7 +159,7 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
     return Column(children: [
       row(
         Icons.event_outlined,
-        'Due date',
+        'Due',
         Wrap(spacing: 6, runSpacing: 4, children: [
           ActionChip(
             label: Text(task.dueDate == null ? 'No date' : dueLabel(task.dueDate!, now)),
@@ -164,17 +171,107 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 firstDate: DateTime(now.year - 2),
                 lastDate: DateTime(now.year + 10),
               );
-              if (picked != null) await repo.updateTask(task.id, dueDate: Value(formatDate(picked)));
+              if (picked != null && context.mounted) {
+                await guarded(context, () => repo.updateTask(task.id, dueDate: Value(formatDate(picked))));
+              }
             },
           ),
-          ActionChip(label: const Text('Today'), onPressed: () => repo.updateTask(task.id, dueDate: Value(formatDate(now)))),
-          ActionChip(
-            label: const Text('Tomorrow'),
-            onPressed: () => repo.updateTask(task.id, dueDate: Value(formatDate(dateOnly(now).add(const Duration(days: 1))))),
-          ),
           if (task.dueDate != null)
-            ActionChip(label: const Text('Clear'), onPressed: () => repo.updateTask(task.id, dueDate: const Value(null))),
+            ActionChip(
+              avatar: const Icon(Icons.schedule, size: 16),
+              label: Text(task.dueTime == null ? 'Add time' : timeText(context, task.dueTime!)),
+              onPressed: () async {
+                final m = await pickTimeMinutes(context, initial: task.dueTime == null ? null : parseClock(task.dueTime!));
+                if (m != null && context.mounted) await guarded(context, () => repo.updateTask(task.id, dueTime: Value(formatTime(m))));
+              },
+            ),
+          if (task.dueTime != null)
+            ActionChip(
+              avatar: const Icon(Icons.close, size: 16),
+              label: const Text('Remove time'),
+              onPressed: () => repo.updateTask(task.id, dueTime: const Value(null)),
+            ),
+          if (task.dueDate == null) ...[
+            ActionChip(label: const Text('Today'), onPressed: () => repo.updateTask(task.id, dueDate: Value(formatDate(now)))),
+            ActionChip(
+              label: const Text('Tomorrow'),
+              onPressed: () => repo.updateTask(task.id, dueDate: Value(formatDate(dateOnly(now).add(const Duration(days: 1))))),
+            ),
+          ] else
+            ActionChip(
+              label: const Text('Clear'),
+              onPressed: () => repo.updateTask(task.id, dueDate: const Value(null), dueTime: const Value(null), recurrence: const Value(null)),
+            ),
         ]),
+      ),
+      if (task.dueDate != null)
+        row(
+          Icons.repeat,
+          'Repeat',
+          Wrap(spacing: 6, runSpacing: 4, children: [
+            ActionChip(
+              label: Text(task.recurrence ?? 'Does not repeat'),
+              onPressed: () async {
+                final r = await showRepeatDialog(context, initial: task.recurrence);
+                if (r != null && context.mounted) {
+                  await guarded(context, () => repo.updateTask(task.id, recurrence: Value(r.isEmpty ? null : r)));
+                }
+              },
+            ),
+          ]),
+        ),
+      row(
+        Icons.flag_circle_outlined,
+        'Deadline',
+        Wrap(spacing: 6, runSpacing: 4, children: [
+          ActionChip(
+            label: Text(task.deadline == null ? 'No deadline' : dueLabel(task.deadline!, now)),
+            onPressed: () async {
+              final current = task.deadline == null ? null : parseIsoDate(task.deadline!);
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: current ?? now,
+                firstDate: DateTime(now.year - 2),
+                lastDate: DateTime(now.year + 10),
+                helpText: 'Deadline',
+              );
+              if (picked != null) await repo.updateTask(task.id, deadline: Value(formatDate(picked)));
+            },
+          ),
+          if (task.deadline != null)
+            ActionChip(label: const Text('Clear'), onPressed: () => repo.updateTask(task.id, deadline: const Value(null))),
+        ]),
+      ),
+      row(
+        Icons.notifications_none,
+        'Reminders',
+        Live<List<Reminder>>(
+          id: task.id,
+          create: () => repo.watchReminders(task.id),
+          builder: (context, data) {
+            final list = data ?? const <Reminder>[];
+            return Wrap(spacing: 6, runSpacing: 4, children: [
+              for (final r in list)
+                InputChip(
+                  label: Text(ReminderSpec.decode(r.spec)?.describe(use24h: catalog.use24h) ?? r.spec),
+                  onDeleted: () => repo.removeReminder(r.id),
+                ),
+              if (list.isEmpty && task.dueTime != null && catalog.autoReminderMinutes != null)
+                Chip(
+                  avatar: const Icon(Icons.auto_awesome_outlined, size: 14),
+                  label: Text('Automatic: ${ReminderSpec.before(catalog.autoReminderMinutes!).describe()}'),
+                ),
+              ActionChip(
+                avatar: const Icon(Icons.add, size: 16),
+                label: const Text('Reminder'),
+                onPressed: () async {
+                  final spec = await showReminderDialog(context, hasDueTime: task.dueTime != null);
+                  if (spec != null) await repo.addReminder(task.id, spec);
+                },
+              ),
+            ]);
+          },
+        ),
       ),
       row(
         Icons.flag_outlined,
@@ -398,6 +495,26 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
             action: SnackBarAction(label: 'Undo', onPressed: () => repo.restoreTasks(ids)),
           ));
         }
+      case 'skip':
+        final o = await repo.skipOccurrence(task.id);
+        if (context.mounted) {
+          if (o == null) {
+            showMessage(context, 'This repeat has no next date.');
+          } else {
+            showUndo(context, 'Skipped. Next: ${dueLabel(o.nextDueDate!, repo.now)}', () => repo.undoCompletion(o));
+          }
+        }
+      case 'stop':
+        await repo.stopRecurrence(task.id);
+        if (context.mounted) showMessage(context, 'No longer repeats');
+      case 'duplicate':
+        await guarded(context, () async {
+          final copy = await repo.duplicateTask(task.id, withComments: false);
+          if (context.mounted) {
+            showMessage(context, 'Duplicated');
+            openTask(context, copy);
+          }
+        });
       case 'promote':
         await guarded(context, () => repo.promoteToTopLevel(task.id));
       case 'parent':

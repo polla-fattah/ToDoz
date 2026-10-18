@@ -141,4 +141,119 @@ void main() {
     expect(find.text('Outline'), findsOneWidget);
     await finish(tester);
   });
+
+  group('R2 screens', () {
+    String today() => formatDate(dateOnly(DateTime.now()));
+
+    testWidgets('Quick Add shows the parsed time and saves it', (tester) async {
+      await start(tester);
+      await tester.tap(find.byTooltip('Add task'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, 'Call Sam tomorrow at 4pm');
+      await tester.pump();
+      expect(find.text('Tomorrow'), findsOneWidget);
+      expect(find.text('16:00'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Add task'));
+      await settle(tester);
+      final tasks = await tester.runAsync(() => repo.watchScheduled().first);
+      expect(tasks!.single.title, 'Call Sam');
+      expect(tasks.single.dueTime, '16:00');
+      await finish(tester);
+    });
+
+    testWidgets('the repeat dialog explains a problem, then previews the next dates', (tester) async {
+      await start(tester);
+      await tester.tap(find.byTooltip('Add task'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, 'Water plants');
+      await tester.tap(find.text('Repeat'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField).last, 'every day except fri');
+      await tester.pump();
+      expect(find.textContaining('except'), findsWidgets);
+      expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Save')).onPressed, isNull);
+
+      await tester.enterText(find.byType(TextField).last, 'every other week');
+      await tester.pump();
+      expect(find.textContaining('Next:'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(find.text('every other week'), findsOneWidget); // the chip
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Add task'));
+      await settle(tester);
+      final tasks = await tester.runAsync(() => repo.watchScheduled().first);
+      expect(tasks!.single.recurrence, 'every other week');
+      expect(tasks.single.dueDate, today());
+      await finish(tester);
+    });
+
+    testWidgets('completing a repeating task moves it on and Undo puts it back', (tester) async {
+      await start(tester);
+      await tester.runAsync(() => repo.addTask(title: 'Water plants', dueDate: today(), recurrence: 'every day'));
+      await settle(tester);
+      expect(find.text('Water plants'), findsOneWidget);
+
+      await tester.tap(find.bySemanticsLabel(RegExp('Complete task')).first);
+      await settle(tester);
+      expect(find.textContaining('Next: Tomorrow'), findsOneWidget);
+      expect(find.text('Water plants'), findsNothing); // moved to tomorrow, so off Today
+      final moved = await tester.runAsync(() => repo.watchScheduled().first);
+      expect(moved!.single.completedAt, isNull);
+
+      await tester.tap(find.text('Undo'));
+      await settle(tester);
+      expect(find.text('Water plants'), findsOneWidget);
+      await finish(tester);
+    });
+
+    testWidgets('a task whose time has passed today is listed as overdue', (tester) async {
+      await start(tester);
+      await tester.runAsync(() => repo.addTask(title: 'Early call', dueDate: today(), dueTime: '00:00'));
+      await tester.runAsync(() => repo.addTask(title: 'All day', dueDate: today()));
+      await settle(tester);
+      expect(find.textContaining('Overdue', findRichText: true), findsOneWidget); // the section heading
+      expect(find.text('Early call'), findsOneWidget);
+      expect(find.text('All day'), findsOneWidget);
+      await finish(tester);
+    });
+
+    testWidgets('the task page edits time, deadline and reminders', (tester) async {
+      await start(tester);
+      final id = await tester.runAsync(() => repo.addTask(title: 'Dentist', dueDate: today(), dueTime: '15:00'));
+      await settle(tester);
+      await tester.tap(find.text('Dentist'));
+      await tester.pumpAndSettle();
+      expect(find.text('Reminders'), findsOneWidget);
+      expect(find.textContaining('Automatic'), findsOneWidget); // 30 minutes before, by default
+
+      await tester.tap(find.widgetWithText(ActionChip, 'Reminder'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('1 hour before'));
+      await settle(tester);
+      final list = await tester.runAsync(() => repo.watchReminders(id!).first);
+      expect(list!.single.spec, '60m');
+      expect(find.text('1 hour before'), findsOneWidget);
+      await finish(tester);
+    });
+
+    testWidgets('settings offer the clock, week start and reminder options', (tester) async {
+      await start(tester);
+      await tester.tap(find.text('Browse'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Settings'));
+      await tester.pumpAndSettle();
+      expect(find.text('24-hour clock'), findsOneWidget);
+      expect(find.text('Week starts on'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Automatic reminder'), 200, scrollable: find.byType(Scrollable).first);
+      expect(find.text('Automatic reminder'), findsOneWidget);
+      expect(find.text('Daily digest'), findsOneWidget);
+      await tester.tap(find.text('24-hour clock'));
+      await settle(tester);
+      expect(await tester.runAsync(() => repo.getSetting('use24h')), 'false');
+      await finish(tester);
+    });
+  });
 }

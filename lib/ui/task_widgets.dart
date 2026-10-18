@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/reminder.dart' show isOverdue;
 import '../data/database.dart';
 import 'catalog.dart';
 import 'common.dart';
@@ -7,17 +8,19 @@ import 'task_detail.dart';
 import 'task_tree.dart';
 
 /// Completes or reopens [task], asking about sub-tasks first (FR-T3) and
-/// offering Undo (FR-T8).
+/// offering Undo (FR-T8). A repeating task does not complete: it moves to its
+/// next date (FR-R7).
 Future<void> toggleTask(BuildContext context, Task task) async {
   final repo = AppScope.repoOf(context);
   final done = task.completedAt != null;
   if (done) {
-    final changed = await repo.setCompleted(task.id, false);
-    if (context.mounted) showUndo(context, 'Task reopened', () => repo.completeAll(changed));
+    await repo.reopenTask(task.id);
+    if (context.mounted) showUndo(context, 'Task reopened', () => repo.completeTask(task.id));
     return;
   }
   var withSubtasks = false;
-  final open = await repo.openDescendants(task.id);
+  final repeating = task.recurrence != null && task.dueDate != null;
+  final open = repeating ? const <Task>[] : await repo.openDescendants(task.id);
   if (open.isNotEmpty && context.mounted) {
     final choice = await showDialog<String>(
       context: context,
@@ -34,18 +37,23 @@ Future<void> toggleTask(BuildContext context, Task task) async {
     if (choice == null) return;
     withSubtasks = choice == 'all';
   }
-  final changed = await repo.setCompleted(task.id, true, withSubtasks: withSubtasks);
+  final outcome = await repo.completeTask(task.id, withSubtasks: withSubtasks);
   if (!context.mounted) return;
-  showUndo(context, 'Task completed', () => repo.reopenAll(changed));
+  final use24h = AppScope.of(context).use24h;
+  final message = outcome.wasRescheduled
+      ? 'Done. Next: ${dueText(outcome.nextDueDate!, (await repo.getTask(task.id))?.dueTime, repo.now, use24h: use24h)}'
+      : 'Task completed';
+  if (!context.mounted) return;
+  showUndo(context, message, () => repo.undoCompletion(outcome));
 
   // Completing the last open sub-task offers to complete the parent.
   final parentId = task.parentId;
-  if (parentId != null) {
+  if (parentId != null && !outcome.wasRescheduled) {
     final parent = await repo.getTask(parentId);
     if (parent != null && parent.completedAt == null && (await repo.openDescendants(parentId)).isEmpty) {
       if (!context.mounted) return;
       final yes = await confirm(context, 'All sub-tasks are done', 'Complete "${parent.title}" too?', action: 'Complete');
-      if (yes) await repo.setCompleted(parentId, true);
+      if (yes) await repo.completeTask(parentId);
     }
   }
 }
@@ -74,17 +82,24 @@ class TaskTile extends StatelessWidget {
     final labels = catalog.labelsFor(task.id);
     final counts = catalog.subtaskCounts[task.id];
     final now = repo.now;
-    final overdue = !done && task.dueDate != null && task.dueDate!.compareTo(_iso(now)) < 0;
-    final dueToday = !done && task.dueDate == _iso(now);
+    final overdue = !done && isOverdue(dueDate: task.dueDate, dueTime: task.dueTime, now: now);
+    final dueToday = !done && !overdue && task.dueDate == _iso(now);
     final pColor = priorityColor(task.priority, cs);
 
     final meta = <Widget>[
       if (task.dueDate != null)
         _meta(
           context,
-          Icons.event_outlined,
-          dueLabel(task.dueDate!, now),
+          task.recurrence != null ? Icons.repeat : Icons.event_outlined,
+          dueText(task.dueDate!, task.dueTime, now, use24h: catalog.use24h),
           color: overdue ? cs.error : (dueToday ? const Color(0xFF058527) : null),
+        ),
+      if (task.deadline != null)
+        _meta(
+          context,
+          Icons.flag_circle_outlined,
+          'Deadline ${dueLabel(task.deadline!, now)}',
+          color: !done && task.deadline!.compareTo(_iso(now)) < 0 ? cs.error : null,
         ),
       if (counts != null) _meta(context, Icons.account_tree_outlined, '${counts.$1}/${counts.$2}'),
       for (final l in labels) _meta(context, Icons.sell_outlined, l.name, color: Color(l.color)),
