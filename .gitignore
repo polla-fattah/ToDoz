@@ -1,0 +1,15 @@
+﻿# Signing keys and secrets: never commit
+*.p12
+*.jks
+*.keystore
+key.properties
+.env
+
+# Build output
+build/
+*.apk
+.dart_tool/
+.gradle/
+local.properties
+.idea/
+*.iml
