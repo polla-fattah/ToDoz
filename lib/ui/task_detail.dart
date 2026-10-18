@@ -243,6 +243,20 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
         ]),
       ),
       row(
+        Icons.timer_outlined,
+        'Duration',
+        Wrap(spacing: 6, runSpacing: 4, children: [
+          ActionChip(
+            label: Text(task.durationMinutes == null ? 'No duration' : formatDuration(task.durationMinutes!)),
+            onPressed: () async {
+              final m = await showDurationDialog(context, initial: task.durationMinutes);
+              if (m == null || !context.mounted) return;
+              await guarded(context, () => repo.updateTask(task.id, durationMinutes: Value(m == 0 ? null : m)));
+            },
+          ),
+        ]),
+      ),
+      row(
         Icons.notifications_none,
         'Reminders',
         Live<List<Reminder>>(

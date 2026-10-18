@@ -2,7 +2,7 @@
 
 A personal, offline-first task manager modelled on Todoist (without AI), built with Flutter for Android and Windows.
 
-The requirements are in the [TaskFlow 2.0 SRS](https://claude.ai/code/artifact/796e7f1d-5c0c-447b-bab0-a5e53108adae). This repository holds **R1 (Foundation)** and **R2 (Time)**; the old 1.0 app is kept in `legacy-v1/` for reference.
+The requirements are in the [TaskFlow 2.0 SRS](https://claude.ai/code/artifact/796e7f1d-5c0c-447b-bab0-a5e53108adae). This repository holds **R1 (Foundation)**, **R2 (Time)** and **R3 (Views and filters)**; the old 1.0 app is kept in `legacy-v1/` for reference.
 
 ## What it has so far
 
@@ -22,17 +22,26 @@ The requirements are in the [TaskFlow 2.0 SRS](https://claude.ai/code/artifact/7
 - Duplicate a task; every completion is logged.
 - Settings: 24-hour clock, week start, reminder options.
 
+**R3 Views and filters**
+- Filters: a query language like Todoist's (`(today | overdue) & #Work`, `p1 & overdue, p4 & today`, `##Home & %errands`, `due before: next monday`, `search: invoice`). Save them as views; the editor underlines mistakes and shows how many tasks match. Full syntax is in Help.
+- Every project and filter can be shown as a **list, board or calendar**, grouped (section, date, priority, label, project) and sorted (manual, name, date, priority, added), with options saved per project.
+- Board: drag cards between columns (this changes the section, priority, date, label or project) and reorder inside a column. Calendar: month or week, drag a task onto a day to reschedule it.
+- Upcoming has a week strip; drag a task onto a day to reschedule it.
+- Long-press tasks to select several, then complete, reschedule, change priority, move, label or delete them together.
+- Search looks in titles, descriptions, comments, projects, sections and labels, understands filters, remembers recent searches, and can include completed tasks.
+- Task duration; a permanent sidebar on wide windows; an in-app help page.
+
 Quick Add syntax: `Review paper tomorrow at 4pm p1 %reading #work /backlog {nov 30} !30 min before`
 
 **Reminders run on Android only for now** and have not yet been tried on a real phone (see below).
 
-Not yet built: filters, board and calendar views, drag and drop, sync, Karma and charts, attachments, widgets, Windows notifications. See section 7 of the SRS.
+Not yet built: sync, Karma and charts, attachments and voice notes, widgets, location reminders, Windows notifications, family sharing. Known simplifications in R3: manual order inside a filter is shared with the task's project order, and the built-in Today and Upcoming views are not yet implemented as filters. See section 7 of the SRS.
 
 ## Layout
 
 | Path | What it holds |
 | --- | --- |
-| `lib/core/` | Pure Dart with no Flutter or database imports: date and time parser, recurrence engine, reminder rules, Quick Add parser, backup and 1.0 import. Shared with the server later. |
+| `lib/core/` | Pure Dart with no Flutter or database imports: date and time parser, recurrence engine, reminder rules, Quick Add parser, filter language, view grouping and sorting, backup and 1.0 import. Shared with the server later. |
 | `lib/platform/` | Operating-system glue: Android notification scheduling. |
 | `lib/data/` | Drift (SQLite) tables and the `Repo` class that holds every rule. |
 | `lib/ui/` | Screens and widgets. |

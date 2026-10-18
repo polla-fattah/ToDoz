@@ -21,6 +21,9 @@ class Projects extends Table with Stamped {
   BoolColumn get isArchived => boolean().withDefault(const Constant(false))();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
 
+  /// Layout, grouping and sorting for this project (JSON, see ViewOptions); null = defaults.
+  TextColumn get viewOptions => text().nullable()();
+
   @override
   Set<Column> get primaryKey => {id};
 }
@@ -76,6 +79,9 @@ class Tasks extends Table with Stamped {
 
   /// Set by "snooze": the reminder fires again at this moment (FR-N3).
   DateTimeColumn get snoozedUntil => dateTime().nullable()();
+
+  /// How long the task takes, in minutes (FR-D3). Days are stored as 1440 each.
+  IntColumn get durationMinutes => integer().nullable()();
   DateTimeColumn get completedAt => dateTime().nullable()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   BoolColumn get isCollapsed => boolean().withDefault(const Constant(false))();
@@ -97,6 +103,20 @@ class Comments extends Table with Stamped {
   TextColumn get id => text()();
   TextColumn get taskId => text()();
   TextColumn get body => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// A saved query shown as its own view (FR-F1).
+class Filters extends Table with Stamped {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get query => text()();
+  IntColumn get color => integer()();
+  BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  TextColumn get viewOptions => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -146,12 +166,12 @@ class Settings extends Table {
   Set<Column> get primaryKey => {key};
 }
 
-@DriftDatabase(tables: [Projects, Sections, Labels, Tasks, TaskLabels, Comments, Reminders, Completions, ProjectComments, Settings])
+@DriftDatabase(tables: [Projects, Sections, Labels, Tasks, TaskLabels, Comments, Reminders, Completions, ProjectComments, Filters, Settings])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -169,6 +189,12 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(reminders);
             await m.createTable(completions);
             await m.createTable(projectComments);
+          }
+          if (from < 3) {
+            // R3: durations, saved filters, per-project view options.
+            await m.addColumn(tasks, tasks.durationMinutes);
+            await m.addColumn(projects, projects.viewOptions);
+            await m.createTable(filters);
           }
         },
         beforeOpen: (details) async {

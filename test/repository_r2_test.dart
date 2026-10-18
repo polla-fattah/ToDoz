@@ -374,10 +374,11 @@ void main() {
       final oldRepo = Repo(old, clock: () => fixedNow);
       await old.ensureInbox();
       final id = await oldRepo.addTask(title: 'written before the upgrade', priority: 2, dueDate: '2026-10-20');
-      for (final col in ['due_time', 'recurrence', 'deadline', 'snoozed_until']) {
+      for (final col in ['due_time', 'recurrence', 'deadline', 'snoozed_until', 'duration_minutes']) {
         await old.customStatement('ALTER TABLE tasks DROP COLUMN $col');
       }
-      for (final t in ['reminders', 'completions', 'project_comments']) {
+      await old.customStatement('ALTER TABLE projects DROP COLUMN view_options');
+      for (final t in ['reminders', 'completions', 'project_comments', 'filters']) {
         await old.customStatement('DROP TABLE $t');
       }
       await old.customStatement('PRAGMA user_version = 1');

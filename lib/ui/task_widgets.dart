@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../core/date_parser.dart' show formatDuration;
 import '../core/reminder.dart' show isOverdue;
 import '../data/database.dart';
 import 'catalog.dart';
 import 'common.dart';
+import 'selection.dart';
 import 'task_detail.dart';
 import 'task_tree.dart';
 
@@ -64,11 +66,20 @@ class TaskTile extends StatelessWidget {
     required this.row,
     this.showProject = true,
     this.onTap,
+    this.draggable = false,
+    this.showDetails = true,
   });
 
   final TreeRow row;
   final bool showProject;
+
+  /// Whether to show the description line under the title.
+  final bool showDetails;
   final VoidCallback? onTap;
+
+  /// Long-press picks the task up to drop on a day or column (Upcoming, calendar).
+  /// Otherwise long-press starts a multi-selection.
+  final bool draggable;
 
   Task get task => row.task;
 
@@ -101,6 +112,7 @@ class TaskTile extends StatelessWidget {
           'Deadline ${dueLabel(task.deadline!, now)}',
           color: !done && task.deadline!.compareTo(_iso(now)) < 0 ? cs.error : null,
         ),
+      if (task.durationMinutes != null) _meta(context, Icons.timer_outlined, formatDuration(task.durationMinutes!)),
       if (counts != null) _meta(context, Icons.account_tree_outlined, '${counts.$1}/${counts.$2}'),
       for (final l in labels) _meta(context, Icons.sell_outlined, l.name, color: Color(l.color)),
       if (showProject)
@@ -113,8 +125,14 @@ class TaskTile extends StatelessWidget {
         ),
     ];
 
-    return InkWell(
-      onTap: onTap ?? () => openTask(context, task.id),
+    final selection = SelectionScope.maybeOf(context);
+    final selected = selection?.contains(task.id) ?? false;
+    final selecting = selection?.active ?? false;
+    final tile = Material(
+      color: selected ? cs.primaryContainer.withValues(alpha: 0.5) : Colors.transparent,
+      child: InkWell(
+      onTap: selecting ? () => selection!.toggle(task.id) : (onTap ?? () => openTask(context, task.id)),
+      onLongPress: selection != null && !draggable ? () => selection.toggle(task.id) : null,
       child: Padding(
         padding: EdgeInsets.fromLTRB(8 + row.depth * 24.0, 2, 8, 2),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -163,7 +181,7 @@ class TaskTile extends StatelessWidget {
                     color: done ? cs.outline : null,
                   ),
                 ),
-                if (task.description.isNotEmpty)
+                if (showDetails && task.description.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(task.description.split('\n').first,
@@ -175,6 +193,20 @@ class TaskTile extends StatelessWidget {
           ),
         ]),
       ),
+    ));
+    if (!draggable || selecting) return tile;
+    return LongPressDraggable<String>(
+      data: task.id,
+      feedback: Material(
+        elevation: 6,
+        borderRadius: BorderRadius.circular(8),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 300),
+          child: Padding(padding: const EdgeInsets.all(12), child: Text(task.title, maxLines: 2, overflow: TextOverflow.ellipsis)),
+        ),
+      ),
+      childWhenDragging: Opacity(opacity: 0.35, child: tile),
+      child: tile,
     );
   }
 
@@ -210,9 +242,10 @@ class HeaderEntry extends ListEntry {
 }
 
 class TaskEntry extends ListEntry {
-  const TaskEntry(this.row, {this.showProject = true});
+  const TaskEntry(this.row, {this.showProject = true, this.showDetails = true});
   final TreeRow row;
   final bool showProject;
+  final bool showDetails;
 }
 
 class WidgetEntry extends ListEntry {
@@ -221,8 +254,17 @@ class WidgetEntry extends ListEntry {
 }
 
 class EntryList extends StatelessWidget {
-  const EntryList({super.key, required this.entries, this.emptyTitle = 'Nothing here', this.emptyBody = 'Tap + to add a task.'});
+  const EntryList({
+    super.key,
+    required this.entries,
+    this.emptyTitle = 'Nothing here',
+    this.emptyBody = 'Tap + to add a task.',
+    this.draggable = false,
+  });
   final List<ListEntry> entries;
+
+  /// Make task rows long-press draggable (Upcoming) instead of selectable.
+  final bool draggable;
   final String emptyTitle;
   final String emptyBody;
 
@@ -263,7 +305,7 @@ class EntryList extends StatelessWidget {
               ]),
             );
           case TaskEntry():
-            return TaskTile(row: e.row, showProject: e.showProject);
+            return TaskTile(row: e.row, showProject: e.showProject, showDetails: e.showDetails, draggable: draggable);
           case WidgetEntry():
             return e.child;
         }

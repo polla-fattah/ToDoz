@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../core/backup.dart' show inboxId;
 import '../core/date_parser.dart' show parseClock;
+import '../core/filter.dart';
+import '../core/view_options.dart';
 import '../data/database.dart';
 import '../data/repository.dart';
 import 'notification_controls.dart';
@@ -19,6 +21,7 @@ class Catalog extends ChangeNotifier {
       repo.watchLabels().listen((v) => _set(() => labels = v)),
       repo.watchLabelLinks().listen((v) => _set(() => links = v)),
       repo.watchSubtaskCounts().listen((v) => _set(() => subtaskCounts = v)),
+      repo.watchFilters().listen((v) => _set(() => filters = v)),
       repo.watchSetting('themeMode').listen((v) => _set(() => themeMode = switch (v) {
             'dark' => ThemeMode.dark,
             'light' => ThemeMode.light,
@@ -44,6 +47,7 @@ class Catalog extends ChangeNotifier {
   List<Label> labels = const [];
   List<TaskLabel> links = const [];
   Map<String, (int, int)> subtaskCounts = const {};
+  List<Filter> filters = const [];
   ThemeMode themeMode = ThemeMode.system;
   int dailyGoal = 5;
 
@@ -94,6 +98,51 @@ class Catalog extends ChangeNotifier {
         for (final l in links.where((l) => l.taskId == taskId))
           if (label(l.labelId) != null) label(l.labelId)!,
       ];
+
+  Filter? filter(String id) {
+    for (final f in filters) {
+      if (f.id == id) return f;
+    }
+    return null;
+  }
+
+  /// The names a filter query can refer to, with today's date.
+  FilterEnv get filterEnv => FilterEnv(
+        now: repo.now,
+        weekStart: weekStart,
+        projects: [for (final p in projects) FilterProject(p.id, p.name, parentId: p.parentId)],
+        sections: [for (final s in sections) FilterSectionInfo(s.id, s.projectId, s.name)],
+      );
+
+  FilterTask filterTask(Task t) => FilterTask(
+        id: t.id, title: t.title, description: t.description, projectId: t.projectId,
+        sectionId: t.sectionId, parentId: t.parentId, priority: t.priority, dueDate: t.dueDate,
+        dueTime: t.dueTime, recurrence: t.recurrence, deadline: t.deadline,
+        labels: [for (final l in labelsFor(t.id)) l.name.toLowerCase()],
+        createdAt: t.createdAt,
+      );
+
+  TaskFacts facts(Task t) => TaskFacts(
+        id: t.id, title: t.title, projectId: t.projectId, sectionId: t.sectionId, priority: t.priority,
+        dueDate: t.dueDate, dueTime: t.dueTime,
+        labelIds: [for (final l in links) if (l.taskId == t.id) l.labelId],
+        createdAt: t.createdAt, sortOrder: t.sortOrder,
+      );
+
+  /// Projects (Inbox first, then tree order), sections and labels in display order.
+  GroupLookups get lookups => GroupLookups(
+        projects: [
+          (id: inboxId, name: 'Inbox'),
+          for (final (p, _) in projectTree()) (id: p.id, name: p.name),
+        ],
+        sections: [
+          for (final (p, _) in [(inbox, 0), ...projectTree()])
+            for (final s in sectionsOf(p.id)) (id: s.id, projectId: p.id, name: s.name),
+        ],
+        labels: [for (final l in labels) (id: l.id, name: l.name)],
+      );
+
+  ViewOptions projectViewOptions(String projectId) => ViewOptions.decode(project(projectId)?.viewOptions);
 
   List<Project> childrenOf(String? parentId) =>
       projects.where((p) => p.parentId == parentId && p.id != inboxId).toList();

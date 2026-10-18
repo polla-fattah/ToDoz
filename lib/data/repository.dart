@@ -3,7 +3,9 @@ import 'package:uuid/uuid.dart';
 
 import '../core/backup.dart';
 import '../core/date_parser.dart';
+import '../core/filter.dart';
 import '../core/quick_add.dart';
+import '../core/view_options.dart';
 import '../core/recurrence.dart';
 import '../core/reminder.dart';
 import 'database.dart';
@@ -117,8 +119,8 @@ class Repo {
   SimpleSelectStatement<$TasksTable, Task> _openTasks() => db.select(db.tasks)
     ..where((t) => t.deletedAt.isNull() & t.completedAt.isNull());
 
-  Stream<List<Task>> watchProjectTasks(String projectId) => (_openTasks()
-        ..where((t) => t.projectId.equals(projectId))
+  Stream<List<Task>> watchProjectTasks(String projectId, {bool includeCompleted = false}) => (db.select(db.tasks)
+        ..where((t) => t.deletedAt.isNull() & t.projectId.equals(projectId) & (includeCompleted ? const Constant(true) : t.completedAt.isNull()))
         ..orderBy([(t) => OrderingTerm.asc(t.sortOrder), (t) => OrderingTerm.asc(t.createdAt)]))
       .watch();
 
@@ -145,6 +147,12 @@ class Repo {
       .watch();
 
   Stream<List<Task>> watchAllOpen() => (_openTasks()
+        ..orderBy([(t) => OrderingTerm.asc(t.sortOrder), (t) => OrderingTerm.asc(t.createdAt)]))
+      .watch();
+
+  /// Every task that is not in the trash, open or completed (search with completed tasks).
+  Stream<List<Task>> watchAllTasks() => (db.select(db.tasks)
+        ..where((t) => t.deletedAt.isNull())
         ..orderBy([(t) => OrderingTerm.asc(t.sortOrder), (t) => OrderingTerm.asc(t.createdAt)]))
       .watch();
 
@@ -271,11 +279,13 @@ class Repo {
     String? dueTime,
     String? recurrence,
     String? deadline,
+    int? durationMinutes,
     String description = '',
     List<String> labelIds = const [],
     List<ReminderSpec> reminders = const [],
   }) async {
     _checkWhen(dueDate: dueDate, dueTime: dueTime, recurrence: recurrence, deadline: deadline);
+    _checkDuration(durationMinutes);
     final trimmed = title.trim();
     if (trimmed.isEmpty) throw RuleException('A task needs a title');
     if (trimmed.length > 500) throw RuleException('Titles are limited to 500 characters');
@@ -305,6 +315,7 @@ class Repo {
             dueTime: Value(dueTime),
             recurrence: Value(recurrence),
             deadline: Value(deadline),
+            durationMinutes: Value(durationMinutes),
             sortOrder: Value(await _nextTaskOrder(project, parentId)),
             createdAt: stamp,
             updatedAt: stamp,
@@ -317,6 +328,12 @@ class Repo {
       }
     });
     return id;
+  }
+
+  void _checkDuration(int? minutes) {
+    if (minutes != null && (minutes < 1 || minutes > 14400)) {
+      throw RuleException('A duration is between 1 minute and 10 days');
+    }
   }
 
   /// Validates the date, time and repeat fields (throws [RuleException]).
@@ -430,9 +447,11 @@ class Repo {
     Value<String?> dueTime = const Value.absent(),
     Value<String?> recurrence = const Value.absent(),
     Value<String?> deadline = const Value.absent(),
+    Value<int?> durationMinutes = const Value.absent(),
     List<String>? labelIds,
   }) async {
     if (title != null && title.trim().isEmpty) throw RuleException('A task needs a title');
+    if (durationMinutes.present) _checkDuration(durationMinutes.value);
     if (dueDate.present || dueTime.present || recurrence.present || deadline.present) {
       final current = await getTask(id);
       if (current != null) {
@@ -453,6 +472,7 @@ class Repo {
         dueTime: dueTime,
         recurrence: recurrence,
         deadline: deadline,
+        durationMinutes: durationMinutes,
         updatedAt: Value(now),
       ));
       if (labelIds != null) {
@@ -900,6 +920,7 @@ class Repo {
         dueTime: src.dueTime,
         recurrence: src.recurrence,
         deadline: src.deadline,
+        durationMinutes: src.durationMinutes,
         labelIds: labels,
         reminders: reminders,
       );
@@ -966,6 +987,183 @@ class Repo {
           ..where((c) => c.completedAt.isBiggerOrEqualValue(start) & c.completedAt.isSmallerThanValue(end)))
         .watch()
         .map((r) => r.length);
+  }
+
+  // ===========================================================================
+  // Filters, view options, bulk actions, drag and drop (R3)
+  // ===========================================================================
+
+  /// The project and section names a filter query can refer to.
+  Future<FilterEnv> filterEnv({int weekStart = 1}) async {
+    final projects = await (db.select(db.projects)..where((p) => p.deletedAt.isNull())).get();
+    final sections = await (db.select(db.sections)..where((s) => s.deletedAt.isNull())).get();
+    return FilterEnv(
+      now: now,
+      weekStart: weekStart,
+      projects: [for (final p in projects) FilterProject(p.id, p.name, parentId: p.parentId)],
+      sections: [for (final s in sections) FilterSectionInfo(s.id, s.projectId, s.name)],
+    );
+  }
+
+  Stream<List<Filter>> watchFilters() => (db.select(db.filters)
+        ..where((f) => f.deletedAt.isNull())
+        ..orderBy([(f) => OrderingTerm.asc(f.sortOrder), (f) => OrderingTerm.asc(f.createdAt)]))
+      .watch();
+
+  Future<Filter?> getFilter(String id) => (db.select(db.filters)..where((f) => f.id.equals(id))).getSingleOrNull();
+
+  Future<void> _checkQuery(String query) async {
+    try {
+      parseFilter(query, await filterEnv());
+    } on FilterException catch (e) {
+      throw RuleException(e.message);
+    }
+  }
+
+  Future<String> createFilter({required String name, required String query, int color = 0xFF4180FF}) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) throw RuleException('A filter needs a name');
+    await _checkQuery(query);
+    final id = newId();
+    final stamp = now;
+    final maxOrder = await (db.selectOnly(db.filters)..addColumns([db.filters.sortOrder.max()]))
+        .map((r) => r.read(db.filters.sortOrder.max()))
+        .getSingle();
+    await db.into(db.filters).insert(FiltersCompanion.insert(
+          id: id, name: trimmed, query: query.trim(), color: color,
+          sortOrder: Value((maxOrder ?? -1) + 1), createdAt: stamp, updatedAt: stamp,
+        ));
+    return id;
+  }
+
+  Future<void> updateFilter(String id, {String? name, String? query, int? color, bool? isFavorite, ViewOptions? viewOptions}) async {
+    if (name != null && name.trim().isEmpty) throw RuleException('A filter needs a name');
+    if (query != null) await _checkQuery(query);
+    await (db.update(db.filters)..where((f) => f.id.equals(id))).write(FiltersCompanion(
+      name: name == null ? const Value.absent() : Value(name.trim()),
+      query: query == null ? const Value.absent() : Value(query.trim()),
+      color: color == null ? const Value.absent() : Value(color),
+      isFavorite: isFavorite == null ? const Value.absent() : Value(isFavorite),
+      viewOptions: viewOptions == null ? const Value.absent() : Value(viewOptions.encode()),
+      updatedAt: Value(now),
+    ));
+  }
+
+  Future<void> deleteFilter(String id) => (db.update(db.filters)..where((f) => f.id.equals(id)))
+      .write(FiltersCompanion(deletedAt: Value(now), updatedAt: Value(now)));
+
+  Future<void> restoreFilter(String id) => (db.update(db.filters)..where((f) => f.id.equals(id)))
+      .write(FiltersCompanion(deletedAt: const Value(null), updatedAt: Value(now)));
+
+  Future<void> reorderFilters(List<String> orderedIds) async {
+    await db.transaction(() async {
+      for (var i = 0; i < orderedIds.length; i++) {
+        await (db.update(db.filters)..where((f) => f.id.equals(orderedIds[i])))
+            .write(FiltersCompanion(sortOrder: Value(i), updatedAt: Value(now)));
+      }
+    });
+  }
+
+  Future<void> setProjectViewOptions(String projectId, ViewOptions options) =>
+      (db.update(db.projects)..where((p) => p.id.equals(projectId)))
+          .write(ProjectsCompanion(viewOptions: Value(options.encode()), updatedAt: Value(now)));
+
+  /// Ids of tasks with a comment containing [text] (search looks in comments, FR-F8).
+  Future<Set<String>> taskIdsWithCommentText(String text) async {
+    final like = '%${text.replaceAll('%', r'\%').replaceAll('_', r'\_')}%';
+    final rows = await db
+        .customSelect(
+          "SELECT DISTINCT task_id FROM comments WHERE deleted_at IS NULL AND body LIKE ? ESCAPE '\\'",
+          variables: [Variable<String>(like)],
+          readsFrom: {db.comments},
+        )
+        .get();
+    return {for (final r in rows) r.read<String>('task_id')};
+  }
+
+  /// Gives a task the value of the group it was dropped on (board and calendar
+  /// drag and drop, FR-V4, FR-V5). [position] places it among the group's
+  /// tasks when the group is manually ordered.
+  Future<void> moveToGroup(String taskId, GroupKey key, {List<String>? orderedIdsInGroup}) async {
+    final task = await getTask(taskId);
+    if (task == null) return;
+    switch (key.kind) {
+      case Grouping.none:
+        break;
+      case Grouping.section:
+        await moveTask(taskId, projectId: task.projectId, sectionId: key.value, parentId: task.parentId);
+      case Grouping.project:
+        if (key.value != null && key.value != task.projectId) {
+          await moveTask(taskId, projectId: key.value!);
+        }
+      case Grouping.priority:
+        await updateTask(taskId, priority: int.tryParse(key.value ?? '') ?? 4);
+      case Grouping.date:
+        if (key.value == 'overdue') break;
+        await updateTask(
+          taskId,
+          dueDate: Value(key.value),
+          dueTime: key.value == null ? const Value(null) : const Value.absent(),
+          recurrence: key.value == null ? const Value(null) : const Value.absent(),
+        );
+      case Grouping.label:
+        if (key.value != null) {
+          final links = await (db.select(db.taskLabels)..where((l) => l.taskId.equals(taskId))).get();
+          final ids = {...links.map((l) => l.labelId), key.value!};
+          await updateTask(taskId, labelIds: ids.toList());
+        }
+    }
+    if (orderedIdsInGroup != null) await reorderTasks(orderedIdsInGroup);
+  }
+
+  // --- Bulk actions on a selection (FR-T7) --------------------------------------
+
+  Future<void> bulkSetPriority(List<String> ids, int priority) async {
+    await db.transaction(() async {
+      for (final id in ids) {
+        await updateTask(id, priority: priority);
+      }
+    });
+  }
+
+  Future<void> bulkMoveToProject(List<String> ids, String projectId) async {
+    await db.transaction(() async {
+      for (final id in ids) {
+        await moveTask(id, projectId: projectId);
+      }
+    });
+  }
+
+  Future<void> bulkAddLabel(List<String> ids, String labelId) async {
+    await db.transaction(() async {
+      for (final id in ids) {
+        await db.into(db.taskLabels).insert(TaskLabelsCompanion.insert(taskId: id, labelId: labelId), mode: InsertMode.insertOrIgnore);
+      }
+    });
+  }
+
+  /// Completes each task (repeating ones move on); returns outcomes for Undo.
+  Future<List<CompletionOutcome>> bulkComplete(List<String> ids) async {
+    final out = <CompletionOutcome>[];
+    for (final id in ids) {
+      out.add(await completeTask(id));
+    }
+    return out;
+  }
+
+  Future<void> bulkUndoComplete(List<CompletionOutcome> outcomes) async {
+    for (final o in outcomes) {
+      await undoCompletion(o);
+    }
+  }
+
+  /// Trashes the tasks; returns every id affected (sub-tasks included) for Undo.
+  Future<List<String>> bulkDelete(List<String> ids) async {
+    final all = <String>[];
+    for (final id in ids) {
+      all.addAll(await deleteTask(id));
+    }
+    return all;
   }
 
   // ===========================================================================
@@ -1290,6 +1488,7 @@ class Repo {
     final reminderRows = await (db.select(db.reminders)..where((r) => r.deletedAt.isNull())).get();
     final completionRows = await db.select(db.completions).get();
     final noteRows = await (db.select(db.projectComments)..where((c) => c.deletedAt.isNull())).get();
+    final filterRows = await (db.select(db.filters)..where((f) => f.deletedAt.isNull())).get();
     final settings = await db.select(db.settings).get();
     final liveTaskIds = tasks.map((t) => t.id).toSet();
     final byTask = <String, List<String>>{};
@@ -1306,6 +1505,7 @@ class Repo {
             id: p.id, name: p.name, color: p.color,
             parentId: liveProjects.contains(p.parentId) ? p.parentId : null,
             isFavorite: p.isFavorite, isArchived: p.isArchived, sortOrder: p.sortOrder,
+            viewOptions: p.viewOptions,
           ),
       ],
       sections: [
@@ -1326,7 +1526,8 @@ class Repo {
             sectionId: liveSections.contains(t.sectionId) ? t.sectionId : null,
             parentId: liveTaskIds.contains(t.parentId) ? t.parentId : null,
             priority: t.priority, dueDate: t.dueDate, dueTime: t.dueTime,
-            recurrence: t.recurrence, deadline: t.deadline, completedAt: t.completedAt,
+            recurrence: t.recurrence, deadline: t.deadline, durationMinutes: t.durationMinutes,
+            completedAt: t.completedAt,
             sortOrder: t.sortOrder, isCollapsed: t.isCollapsed,
             labelIds: (byTask[t.id] ?? const []).where(liveLabels.contains).toList(),
             createdAt: t.createdAt,
@@ -1348,6 +1549,13 @@ class Repo {
         for (final c in noteRows.where((c) => liveProjects.contains(c.projectId)))
           ProjectCommentRec(id: c.id, projectId: c.projectId, body: c.body, createdAt: c.createdAt),
       ],
+      filters: [
+        for (final f in filterRows)
+          FilterRec(
+            id: f.id, name: f.name, query: f.query, color: f.color, isFavorite: f.isFavorite,
+            sortOrder: f.sortOrder, viewOptions: f.viewOptions,
+          ),
+      ],
       settings: {for (final s in settings) s.key: s.value},
     );
   }
@@ -1362,6 +1570,7 @@ class Repo {
       await db.delete(db.reminders).go();
       await db.delete(db.completions).go();
       await db.delete(db.projectComments).go();
+      await db.delete(db.filters).go();
       await db.delete(db.tasks).go();
       await db.delete(db.sections).go();
       await db.delete(db.labels).go();
@@ -1371,7 +1580,13 @@ class Repo {
         await db.into(db.projects).insert(ProjectsCompanion.insert(
               id: p.id, name: p.name, color: p.color, parentId: Value(p.parentId),
               isFavorite: Value(p.isFavorite), isArchived: Value(p.isArchived),
-              sortOrder: Value(p.sortOrder), createdAt: stamp, updatedAt: stamp));
+              sortOrder: Value(p.sortOrder), viewOptions: Value(p.viewOptions),
+              createdAt: stamp, updatedAt: stamp));
+      }
+      for (final f in b.filters) {
+        await db.into(db.filters).insert(FiltersCompanion.insert(
+            id: f.id, name: f.name, query: f.query, color: f.color, isFavorite: Value(f.isFavorite),
+            sortOrder: Value(f.sortOrder), viewOptions: Value(f.viewOptions), createdAt: stamp, updatedAt: stamp));
       }
       for (final s in b.sections) {
         await db.into(db.sections).insert(SectionsCompanion.insert(
@@ -1389,7 +1604,8 @@ class Repo {
               id: t.id, title: t.title, description: Value(t.description), projectId: t.projectId,
               sectionId: Value(t.sectionId), parentId: Value(t.parentId), priority: Value(t.priority),
               dueDate: Value(t.dueDate), dueTime: Value(t.dueTime), recurrence: Value(t.recurrence),
-              deadline: Value(t.deadline), completedAt: Value(t.completedAt),
+              deadline: Value(t.deadline), durationMinutes: Value(t.durationMinutes),
+              completedAt: Value(t.completedAt),
               sortOrder: Value(t.sortOrder), isCollapsed: Value(t.isCollapsed),
               createdAt: t.createdAt, updatedAt: stamp));
         for (final l in t.labelIds) {

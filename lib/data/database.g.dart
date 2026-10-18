@@ -121,6 +121,17 @@ class $ProjectsTable extends Projects with TableInfo<$ProjectsTable, Project> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _viewOptionsMeta = const VerificationMeta(
+    'viewOptions',
+  );
+  @override
+  late final GeneratedColumn<String> viewOptions = GeneratedColumn<String>(
+    'view_options',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     createdAt,
@@ -133,6 +144,7 @@ class $ProjectsTable extends Projects with TableInfo<$ProjectsTable, Project> {
     isFavorite,
     isArchived,
     sortOrder,
+    viewOptions,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -213,6 +225,15 @@ class $ProjectsTable extends Projects with TableInfo<$ProjectsTable, Project> {
         sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
       );
     }
+    if (data.containsKey('view_options')) {
+      context.handle(
+        _viewOptionsMeta,
+        viewOptions.isAcceptableOrUnknown(
+          data['view_options']!,
+          _viewOptionsMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -262,6 +283,10 @@ class $ProjectsTable extends Projects with TableInfo<$ProjectsTable, Project> {
         DriftSqlType.int,
         data['${effectivePrefix}sort_order'],
       )!,
+      viewOptions: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}view_options'],
+      ),
     );
   }
 
@@ -282,6 +307,9 @@ class Project extends DataClass implements Insertable<Project> {
   final bool isFavorite;
   final bool isArchived;
   final int sortOrder;
+
+  /// Layout, grouping and sorting for this project (JSON, see ViewOptions); null = defaults.
+  final String? viewOptions;
   const Project({
     required this.createdAt,
     required this.updatedAt,
@@ -293,6 +321,7 @@ class Project extends DataClass implements Insertable<Project> {
     required this.isFavorite,
     required this.isArchived,
     required this.sortOrder,
+    this.viewOptions,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -311,6 +340,9 @@ class Project extends DataClass implements Insertable<Project> {
     map['is_favorite'] = Variable<bool>(isFavorite);
     map['is_archived'] = Variable<bool>(isArchived);
     map['sort_order'] = Variable<int>(sortOrder);
+    if (!nullToAbsent || viewOptions != null) {
+      map['view_options'] = Variable<String>(viewOptions);
+    }
     return map;
   }
 
@@ -330,6 +362,9 @@ class Project extends DataClass implements Insertable<Project> {
       isFavorite: Value(isFavorite),
       isArchived: Value(isArchived),
       sortOrder: Value(sortOrder),
+      viewOptions: viewOptions == null && nullToAbsent
+          ? const Value.absent()
+          : Value(viewOptions),
     );
   }
 
@@ -349,6 +384,7 @@ class Project extends DataClass implements Insertable<Project> {
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       isArchived: serializer.fromJson<bool>(json['isArchived']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      viewOptions: serializer.fromJson<String?>(json['viewOptions']),
     );
   }
   @override
@@ -365,6 +401,7 @@ class Project extends DataClass implements Insertable<Project> {
       'isFavorite': serializer.toJson<bool>(isFavorite),
       'isArchived': serializer.toJson<bool>(isArchived),
       'sortOrder': serializer.toJson<int>(sortOrder),
+      'viewOptions': serializer.toJson<String?>(viewOptions),
     };
   }
 
@@ -379,6 +416,7 @@ class Project extends DataClass implements Insertable<Project> {
     bool? isFavorite,
     bool? isArchived,
     int? sortOrder,
+    Value<String?> viewOptions = const Value.absent(),
   }) => Project(
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -390,6 +428,7 @@ class Project extends DataClass implements Insertable<Project> {
     isFavorite: isFavorite ?? this.isFavorite,
     isArchived: isArchived ?? this.isArchived,
     sortOrder: sortOrder ?? this.sortOrder,
+    viewOptions: viewOptions.present ? viewOptions.value : this.viewOptions,
   );
   Project copyWithCompanion(ProjectsCompanion data) {
     return Project(
@@ -407,6 +446,9 @@ class Project extends DataClass implements Insertable<Project> {
           ? data.isArchived.value
           : this.isArchived,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      viewOptions: data.viewOptions.present
+          ? data.viewOptions.value
+          : this.viewOptions,
     );
   }
 
@@ -422,7 +464,8 @@ class Project extends DataClass implements Insertable<Project> {
           ..write('parentId: $parentId, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('isArchived: $isArchived, ')
-          ..write('sortOrder: $sortOrder')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('viewOptions: $viewOptions')
           ..write(')'))
         .toString();
   }
@@ -439,6 +482,7 @@ class Project extends DataClass implements Insertable<Project> {
     isFavorite,
     isArchived,
     sortOrder,
+    viewOptions,
   );
   @override
   bool operator ==(Object other) =>
@@ -453,7 +497,8 @@ class Project extends DataClass implements Insertable<Project> {
           other.parentId == this.parentId &&
           other.isFavorite == this.isFavorite &&
           other.isArchived == this.isArchived &&
-          other.sortOrder == this.sortOrder);
+          other.sortOrder == this.sortOrder &&
+          other.viewOptions == this.viewOptions);
 }
 
 class ProjectsCompanion extends UpdateCompanion<Project> {
@@ -467,6 +512,7 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
   final Value<bool> isFavorite;
   final Value<bool> isArchived;
   final Value<int> sortOrder;
+  final Value<String?> viewOptions;
   final Value<int> rowid;
   const ProjectsCompanion({
     this.createdAt = const Value.absent(),
@@ -479,6 +525,7 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
     this.isFavorite = const Value.absent(),
     this.isArchived = const Value.absent(),
     this.sortOrder = const Value.absent(),
+    this.viewOptions = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   ProjectsCompanion.insert({
@@ -492,6 +539,7 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
     this.isFavorite = const Value.absent(),
     this.isArchived = const Value.absent(),
     this.sortOrder = const Value.absent(),
+    this.viewOptions = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : createdAt = Value(createdAt),
        updatedAt = Value(updatedAt),
@@ -509,6 +557,7 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
     Expression<bool>? isFavorite,
     Expression<bool>? isArchived,
     Expression<int>? sortOrder,
+    Expression<String>? viewOptions,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -522,6 +571,7 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
       if (isFavorite != null) 'is_favorite': isFavorite,
       if (isArchived != null) 'is_archived': isArchived,
       if (sortOrder != null) 'sort_order': sortOrder,
+      if (viewOptions != null) 'view_options': viewOptions,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -537,6 +587,7 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
     Value<bool>? isFavorite,
     Value<bool>? isArchived,
     Value<int>? sortOrder,
+    Value<String?>? viewOptions,
     Value<int>? rowid,
   }) {
     return ProjectsCompanion(
@@ -550,6 +601,7 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
       isFavorite: isFavorite ?? this.isFavorite,
       isArchived: isArchived ?? this.isArchived,
       sortOrder: sortOrder ?? this.sortOrder,
+      viewOptions: viewOptions ?? this.viewOptions,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -587,6 +639,9 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
     if (sortOrder.present) {
       map['sort_order'] = Variable<int>(sortOrder.value);
     }
+    if (viewOptions.present) {
+      map['view_options'] = Variable<String>(viewOptions.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -606,6 +661,7 @@ class ProjectsCompanion extends UpdateCompanion<Project> {
           ..write('isFavorite: $isFavorite, ')
           ..write('isArchived: $isArchived, ')
           ..write('sortOrder: $sortOrder, ')
+          ..write('viewOptions: $viewOptions, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1858,6 +1914,17 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _durationMinutesMeta = const VerificationMeta(
+    'durationMinutes',
+  );
+  @override
+  late final GeneratedColumn<int> durationMinutes = GeneratedColumn<int>(
+    'duration_minutes',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _completedAtMeta = const VerificationMeta(
     'completedAt',
   );
@@ -1913,6 +1980,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     recurrence,
     deadline,
     snoozedUntil,
+    durationMinutes,
     completedAt,
     sortOrder,
     isCollapsed,
@@ -2032,6 +2100,15 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         ),
       );
     }
+    if (data.containsKey('duration_minutes')) {
+      context.handle(
+        _durationMinutesMeta,
+        durationMinutes.isAcceptableOrUnknown(
+          data['duration_minutes']!,
+          _durationMinutesMeta,
+        ),
+      );
+    }
     if (data.containsKey('completed_at')) {
       context.handle(
         _completedAtMeta,
@@ -2125,6 +2202,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}snoozed_until'],
       ),
+      durationMinutes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}duration_minutes'],
+      ),
       completedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}completed_at'],
@@ -2174,6 +2255,9 @@ class Task extends DataClass implements Insertable<Task> {
 
   /// Set by "snooze": the reminder fires again at this moment (FR-N3).
   final DateTime? snoozedUntil;
+
+  /// How long the task takes, in minutes (FR-D3). Days are stored as 1440 each.
+  final int? durationMinutes;
   final DateTime? completedAt;
   final int sortOrder;
   final bool isCollapsed;
@@ -2193,6 +2277,7 @@ class Task extends DataClass implements Insertable<Task> {
     this.recurrence,
     this.deadline,
     this.snoozedUntil,
+    this.durationMinutes,
     this.completedAt,
     required this.sortOrder,
     required this.isCollapsed,
@@ -2230,6 +2315,9 @@ class Task extends DataClass implements Insertable<Task> {
     }
     if (!nullToAbsent || snoozedUntil != null) {
       map['snoozed_until'] = Variable<DateTime>(snoozedUntil);
+    }
+    if (!nullToAbsent || durationMinutes != null) {
+      map['duration_minutes'] = Variable<int>(durationMinutes);
     }
     if (!nullToAbsent || completedAt != null) {
       map['completed_at'] = Variable<DateTime>(completedAt);
@@ -2272,6 +2360,9 @@ class Task extends DataClass implements Insertable<Task> {
       snoozedUntil: snoozedUntil == null && nullToAbsent
           ? const Value.absent()
           : Value(snoozedUntil),
+      durationMinutes: durationMinutes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(durationMinutes),
       completedAt: completedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(completedAt),
@@ -2301,6 +2392,7 @@ class Task extends DataClass implements Insertable<Task> {
       recurrence: serializer.fromJson<String?>(json['recurrence']),
       deadline: serializer.fromJson<String?>(json['deadline']),
       snoozedUntil: serializer.fromJson<DateTime?>(json['snoozedUntil']),
+      durationMinutes: serializer.fromJson<int?>(json['durationMinutes']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       isCollapsed: serializer.fromJson<bool>(json['isCollapsed']),
@@ -2325,6 +2417,7 @@ class Task extends DataClass implements Insertable<Task> {
       'recurrence': serializer.toJson<String?>(recurrence),
       'deadline': serializer.toJson<String?>(deadline),
       'snoozedUntil': serializer.toJson<DateTime?>(snoozedUntil),
+      'durationMinutes': serializer.toJson<int?>(durationMinutes),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
       'sortOrder': serializer.toJson<int>(sortOrder),
       'isCollapsed': serializer.toJson<bool>(isCollapsed),
@@ -2347,6 +2440,7 @@ class Task extends DataClass implements Insertable<Task> {
     Value<String?> recurrence = const Value.absent(),
     Value<String?> deadline = const Value.absent(),
     Value<DateTime?> snoozedUntil = const Value.absent(),
+    Value<int?> durationMinutes = const Value.absent(),
     Value<DateTime?> completedAt = const Value.absent(),
     int? sortOrder,
     bool? isCollapsed,
@@ -2366,6 +2460,9 @@ class Task extends DataClass implements Insertable<Task> {
     recurrence: recurrence.present ? recurrence.value : this.recurrence,
     deadline: deadline.present ? deadline.value : this.deadline,
     snoozedUntil: snoozedUntil.present ? snoozedUntil.value : this.snoozedUntil,
+    durationMinutes: durationMinutes.present
+        ? durationMinutes.value
+        : this.durationMinutes,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
     sortOrder: sortOrder ?? this.sortOrder,
     isCollapsed: isCollapsed ?? this.isCollapsed,
@@ -2393,6 +2490,9 @@ class Task extends DataClass implements Insertable<Task> {
       snoozedUntil: data.snoozedUntil.present
           ? data.snoozedUntil.value
           : this.snoozedUntil,
+      durationMinutes: data.durationMinutes.present
+          ? data.durationMinutes.value
+          : this.durationMinutes,
       completedAt: data.completedAt.present
           ? data.completedAt.value
           : this.completedAt,
@@ -2421,6 +2521,7 @@ class Task extends DataClass implements Insertable<Task> {
           ..write('recurrence: $recurrence, ')
           ..write('deadline: $deadline, ')
           ..write('snoozedUntil: $snoozedUntil, ')
+          ..write('durationMinutes: $durationMinutes, ')
           ..write('completedAt: $completedAt, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('isCollapsed: $isCollapsed')
@@ -2445,6 +2546,7 @@ class Task extends DataClass implements Insertable<Task> {
     recurrence,
     deadline,
     snoozedUntil,
+    durationMinutes,
     completedAt,
     sortOrder,
     isCollapsed,
@@ -2468,6 +2570,7 @@ class Task extends DataClass implements Insertable<Task> {
           other.recurrence == this.recurrence &&
           other.deadline == this.deadline &&
           other.snoozedUntil == this.snoozedUntil &&
+          other.durationMinutes == this.durationMinutes &&
           other.completedAt == this.completedAt &&
           other.sortOrder == this.sortOrder &&
           other.isCollapsed == this.isCollapsed);
@@ -2489,6 +2592,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<String?> recurrence;
   final Value<String?> deadline;
   final Value<DateTime?> snoozedUntil;
+  final Value<int?> durationMinutes;
   final Value<DateTime?> completedAt;
   final Value<int> sortOrder;
   final Value<bool> isCollapsed;
@@ -2509,6 +2613,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.recurrence = const Value.absent(),
     this.deadline = const Value.absent(),
     this.snoozedUntil = const Value.absent(),
+    this.durationMinutes = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.isCollapsed = const Value.absent(),
@@ -2530,6 +2635,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.recurrence = const Value.absent(),
     this.deadline = const Value.absent(),
     this.snoozedUntil = const Value.absent(),
+    this.durationMinutes = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.isCollapsed = const Value.absent(),
@@ -2555,6 +2661,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Expression<String>? recurrence,
     Expression<String>? deadline,
     Expression<DateTime>? snoozedUntil,
+    Expression<int>? durationMinutes,
     Expression<DateTime>? completedAt,
     Expression<int>? sortOrder,
     Expression<bool>? isCollapsed,
@@ -2576,6 +2683,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       if (recurrence != null) 'recurrence': recurrence,
       if (deadline != null) 'deadline': deadline,
       if (snoozedUntil != null) 'snoozed_until': snoozedUntil,
+      if (durationMinutes != null) 'duration_minutes': durationMinutes,
       if (completedAt != null) 'completed_at': completedAt,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (isCollapsed != null) 'is_collapsed': isCollapsed,
@@ -2599,6 +2707,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Value<String?>? recurrence,
     Value<String?>? deadline,
     Value<DateTime?>? snoozedUntil,
+    Value<int?>? durationMinutes,
     Value<DateTime?>? completedAt,
     Value<int>? sortOrder,
     Value<bool>? isCollapsed,
@@ -2620,6 +2729,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       recurrence: recurrence ?? this.recurrence,
       deadline: deadline ?? this.deadline,
       snoozedUntil: snoozedUntil ?? this.snoozedUntil,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
       completedAt: completedAt ?? this.completedAt,
       sortOrder: sortOrder ?? this.sortOrder,
       isCollapsed: isCollapsed ?? this.isCollapsed,
@@ -2675,6 +2785,9 @@ class TasksCompanion extends UpdateCompanion<Task> {
     if (snoozedUntil.present) {
       map['snoozed_until'] = Variable<DateTime>(snoozedUntil.value);
     }
+    if (durationMinutes.present) {
+      map['duration_minutes'] = Variable<int>(durationMinutes.value);
+    }
     if (completedAt.present) {
       map['completed_at'] = Variable<DateTime>(completedAt.value);
     }
@@ -2708,6 +2821,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
           ..write('recurrence: $recurrence, ')
           ..write('deadline: $deadline, ')
           ..write('snoozedUntil: $snoozedUntil, ')
+          ..write('durationMinutes: $durationMinutes, ')
           ..write('completedAt: $completedAt, ')
           ..write('sortOrder: $sortOrder, ')
           ..write('isCollapsed: $isCollapsed, ')
@@ -4518,6 +4632,615 @@ class ProjectCommentsCompanion extends UpdateCompanion<ProjectComment> {
   }
 }
 
+class $FiltersTable extends Filters with TableInfo<$FiltersTable, Filter> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FiltersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _queryMeta = const VerificationMeta('query');
+  @override
+  late final GeneratedColumn<String> query = GeneratedColumn<String>(
+    'query',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _colorMeta = const VerificationMeta('color');
+  @override
+  late final GeneratedColumn<int> color = GeneratedColumn<int>(
+    'color',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isFavoriteMeta = const VerificationMeta(
+    'isFavorite',
+  );
+  @override
+  late final GeneratedColumn<bool> isFavorite = GeneratedColumn<bool>(
+    'is_favorite',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_favorite" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _viewOptionsMeta = const VerificationMeta(
+    'viewOptions',
+  );
+  @override
+  late final GeneratedColumn<String> viewOptions = GeneratedColumn<String>(
+    'view_options',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    createdAt,
+    updatedAt,
+    deletedAt,
+    id,
+    name,
+    query,
+    color,
+    isFavorite,
+    sortOrder,
+    viewOptions,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'filters';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Filter> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('query')) {
+      context.handle(
+        _queryMeta,
+        query.isAcceptableOrUnknown(data['query']!, _queryMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_queryMeta);
+    }
+    if (data.containsKey('color')) {
+      context.handle(
+        _colorMeta,
+        color.isAcceptableOrUnknown(data['color']!, _colorMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_colorMeta);
+    }
+    if (data.containsKey('is_favorite')) {
+      context.handle(
+        _isFavoriteMeta,
+        isFavorite.isAcceptableOrUnknown(data['is_favorite']!, _isFavoriteMeta),
+      );
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('view_options')) {
+      context.handle(
+        _viewOptionsMeta,
+        viewOptions.isAcceptableOrUnknown(
+          data['view_options']!,
+          _viewOptionsMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Filter map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Filter(
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      query: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}query'],
+      )!,
+      color: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}color'],
+      )!,
+      isFavorite: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_favorite'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      viewOptions: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}view_options'],
+      ),
+    );
+  }
+
+  @override
+  $FiltersTable createAlias(String alias) {
+    return $FiltersTable(attachedDatabase, alias);
+  }
+}
+
+class Filter extends DataClass implements Insertable<Filter> {
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final DateTime? deletedAt;
+  final String id;
+  final String name;
+  final String query;
+  final int color;
+  final bool isFavorite;
+  final int sortOrder;
+  final String? viewOptions;
+  const Filter({
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+    required this.id,
+    required this.name,
+    required this.query,
+    required this.color,
+    required this.isFavorite,
+    required this.sortOrder,
+    this.viewOptions,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt);
+    }
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['query'] = Variable<String>(query);
+    map['color'] = Variable<int>(color);
+    map['is_favorite'] = Variable<bool>(isFavorite);
+    map['sort_order'] = Variable<int>(sortOrder);
+    if (!nullToAbsent || viewOptions != null) {
+      map['view_options'] = Variable<String>(viewOptions);
+    }
+    return map;
+  }
+
+  FiltersCompanion toCompanion(bool nullToAbsent) {
+    return FiltersCompanion(
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      id: Value(id),
+      name: Value(name),
+      query: Value(query),
+      color: Value(color),
+      isFavorite: Value(isFavorite),
+      sortOrder: Value(sortOrder),
+      viewOptions: viewOptions == null && nullToAbsent
+          ? const Value.absent()
+          : Value(viewOptions),
+    );
+  }
+
+  factory Filter.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Filter(
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      deletedAt: serializer.fromJson<DateTime?>(json['deletedAt']),
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      query: serializer.fromJson<String>(json['query']),
+      color: serializer.fromJson<int>(json['color']),
+      isFavorite: serializer.fromJson<bool>(json['isFavorite']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      viewOptions: serializer.fromJson<String?>(json['viewOptions']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'deletedAt': serializer.toJson<DateTime?>(deletedAt),
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'query': serializer.toJson<String>(query),
+      'color': serializer.toJson<int>(color),
+      'isFavorite': serializer.toJson<bool>(isFavorite),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'viewOptions': serializer.toJson<String?>(viewOptions),
+    };
+  }
+
+  Filter copyWith({
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    Value<DateTime?> deletedAt = const Value.absent(),
+    String? id,
+    String? name,
+    String? query,
+    int? color,
+    bool? isFavorite,
+    int? sortOrder,
+    Value<String?> viewOptions = const Value.absent(),
+  }) => Filter(
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    id: id ?? this.id,
+    name: name ?? this.name,
+    query: query ?? this.query,
+    color: color ?? this.color,
+    isFavorite: isFavorite ?? this.isFavorite,
+    sortOrder: sortOrder ?? this.sortOrder,
+    viewOptions: viewOptions.present ? viewOptions.value : this.viewOptions,
+  );
+  Filter copyWithCompanion(FiltersCompanion data) {
+    return Filter(
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      query: data.query.present ? data.query.value : this.query,
+      color: data.color.present ? data.color.value : this.color,
+      isFavorite: data.isFavorite.present
+          ? data.isFavorite.value
+          : this.isFavorite,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      viewOptions: data.viewOptions.present
+          ? data.viewOptions.value
+          : this.viewOptions,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Filter(')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('query: $query, ')
+          ..write('color: $color, ')
+          ..write('isFavorite: $isFavorite, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('viewOptions: $viewOptions')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    createdAt,
+    updatedAt,
+    deletedAt,
+    id,
+    name,
+    query,
+    color,
+    isFavorite,
+    sortOrder,
+    viewOptions,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Filter &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.query == this.query &&
+          other.color == this.color &&
+          other.isFavorite == this.isFavorite &&
+          other.sortOrder == this.sortOrder &&
+          other.viewOptions == this.viewOptions);
+}
+
+class FiltersCompanion extends UpdateCompanion<Filter> {
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<DateTime?> deletedAt;
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> query;
+  final Value<int> color;
+  final Value<bool> isFavorite;
+  final Value<int> sortOrder;
+  final Value<String?> viewOptions;
+  final Value<int> rowid;
+  const FiltersCompanion({
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.query = const Value.absent(),
+    this.color = const Value.absent(),
+    this.isFavorite = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.viewOptions = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FiltersCompanion.insert({
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.deletedAt = const Value.absent(),
+    required String id,
+    required String name,
+    required String query,
+    required int color,
+    this.isFavorite = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.viewOptions = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt),
+       id = Value(id),
+       name = Value(name),
+       query = Value(query),
+       color = Value(color);
+  static Insertable<Filter> custom({
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<DateTime>? deletedAt,
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? query,
+    Expression<int>? color,
+    Expression<bool>? isFavorite,
+    Expression<int>? sortOrder,
+    Expression<String>? viewOptions,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (query != null) 'query': query,
+      if (color != null) 'color': color,
+      if (isFavorite != null) 'is_favorite': isFavorite,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (viewOptions != null) 'view_options': viewOptions,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FiltersCompanion copyWith({
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<DateTime?>? deletedAt,
+    Value<String>? id,
+    Value<String>? name,
+    Value<String>? query,
+    Value<int>? color,
+    Value<bool>? isFavorite,
+    Value<int>? sortOrder,
+    Value<String?>? viewOptions,
+    Value<int>? rowid,
+  }) {
+    return FiltersCompanion(
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      id: id ?? this.id,
+      name: name ?? this.name,
+      query: query ?? this.query,
+      color: color ?? this.color,
+      isFavorite: isFavorite ?? this.isFavorite,
+      sortOrder: sortOrder ?? this.sortOrder,
+      viewOptions: viewOptions ?? this.viewOptions,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (query.present) {
+      map['query'] = Variable<String>(query.value);
+    }
+    if (color.present) {
+      map['color'] = Variable<int>(color.value);
+    }
+    if (isFavorite.present) {
+      map['is_favorite'] = Variable<bool>(isFavorite.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (viewOptions.present) {
+      map['view_options'] = Variable<String>(viewOptions.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FiltersCompanion(')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('query: $query, ')
+          ..write('color: $color, ')
+          ..write('isFavorite: $isFavorite, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('viewOptions: $viewOptions, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -4737,6 +5460,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ProjectCommentsTable projectComments = $ProjectCommentsTable(
     this,
   );
+  late final $FiltersTable filters = $FiltersTable(this);
   late final $SettingsTable settings = $SettingsTable(this);
   late final Index tasksProject = Index(
     'tasks_project',
@@ -4780,6 +5504,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     reminders,
     completions,
     projectComments,
+    filters,
     settings,
     tasksProject,
     tasksParent,
@@ -4803,6 +5528,7 @@ typedef $$ProjectsTableCreateCompanionBuilder =
       Value<bool> isFavorite,
       Value<bool> isArchived,
       Value<int> sortOrder,
+      Value<String?> viewOptions,
       Value<int> rowid,
     });
 typedef $$ProjectsTableUpdateCompanionBuilder =
@@ -4817,6 +5543,7 @@ typedef $$ProjectsTableUpdateCompanionBuilder =
       Value<bool> isFavorite,
       Value<bool> isArchived,
       Value<int> sortOrder,
+      Value<String?> viewOptions,
       Value<int> rowid,
     });
 
@@ -4876,6 +5603,11 @@ class $$ProjectsTableFilterComposer
 
   ColumnFilters<int> get sortOrder => $composableBuilder(
     column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get viewOptions => $composableBuilder(
+    column: $table.viewOptions,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -4938,6 +5670,11 @@ class $$ProjectsTableOrderingComposer
     column: $table.sortOrder,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get viewOptions => $composableBuilder(
+    column: $table.viewOptions,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ProjectsTableAnnotationComposer
@@ -4982,6 +5719,11 @@ class $$ProjectsTableAnnotationComposer
 
   GeneratedColumn<int> get sortOrder =>
       $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<String> get viewOptions => $composableBuilder(
+    column: $table.viewOptions,
+    builder: (column) => column,
+  );
 }
 
 class $$ProjectsTableTableManager
@@ -5022,6 +5764,7 @@ class $$ProjectsTableTableManager
                 Value<bool> isFavorite = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
+                Value<String?> viewOptions = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ProjectsCompanion(
                 createdAt: createdAt,
@@ -5034,6 +5777,7 @@ class $$ProjectsTableTableManager
                 isFavorite: isFavorite,
                 isArchived: isArchived,
                 sortOrder: sortOrder,
+                viewOptions: viewOptions,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -5048,6 +5792,7 @@ class $$ProjectsTableTableManager
                 Value<bool> isFavorite = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
+                Value<String?> viewOptions = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ProjectsCompanion.insert(
                 createdAt: createdAt,
@@ -5060,6 +5805,7 @@ class $$ProjectsTableTableManager
                 isFavorite: isFavorite,
                 isArchived: isArchived,
                 sortOrder: sortOrder,
+                viewOptions: viewOptions,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -5655,6 +6401,7 @@ typedef $$TasksTableCreateCompanionBuilder =
       Value<String?> recurrence,
       Value<String?> deadline,
       Value<DateTime?> snoozedUntil,
+      Value<int?> durationMinutes,
       Value<DateTime?> completedAt,
       Value<int> sortOrder,
       Value<bool> isCollapsed,
@@ -5677,6 +6424,7 @@ typedef $$TasksTableUpdateCompanionBuilder =
       Value<String?> recurrence,
       Value<String?> deadline,
       Value<DateTime?> snoozedUntil,
+      Value<int?> durationMinutes,
       Value<DateTime?> completedAt,
       Value<int> sortOrder,
       Value<bool> isCollapsed,
@@ -5763,6 +6511,11 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<DateTime> get snoozedUntil => $composableBuilder(
     column: $table.snoozedUntil,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get durationMinutes => $composableBuilder(
+    column: $table.durationMinutes,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5866,6 +6619,11 @@ class $$TasksTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get durationMinutes => $composableBuilder(
+    column: $table.durationMinutes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get completedAt => $composableBuilder(
     column: $table.completedAt,
     builder: (column) => ColumnOrderings(column),
@@ -5942,6 +6700,11 @@ class $$TasksTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get durationMinutes => $composableBuilder(
+    column: $table.durationMinutes,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get completedAt => $composableBuilder(
     column: $table.completedAt,
     builder: (column) => column,
@@ -5999,6 +6762,7 @@ class $$TasksTableTableManager
                 Value<String?> recurrence = const Value.absent(),
                 Value<String?> deadline = const Value.absent(),
                 Value<DateTime?> snoozedUntil = const Value.absent(),
+                Value<int?> durationMinutes = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> isCollapsed = const Value.absent(),
@@ -6019,6 +6783,7 @@ class $$TasksTableTableManager
                 recurrence: recurrence,
                 deadline: deadline,
                 snoozedUntil: snoozedUntil,
+                durationMinutes: durationMinutes,
                 completedAt: completedAt,
                 sortOrder: sortOrder,
                 isCollapsed: isCollapsed,
@@ -6041,6 +6806,7 @@ class $$TasksTableTableManager
                 Value<String?> recurrence = const Value.absent(),
                 Value<String?> deadline = const Value.absent(),
                 Value<DateTime?> snoozedUntil = const Value.absent(),
+                Value<int?> durationMinutes = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> isCollapsed = const Value.absent(),
@@ -6061,6 +6827,7 @@ class $$TasksTableTableManager
                 recurrence: recurrence,
                 deadline: deadline,
                 snoozedUntil: snoozedUntil,
+                durationMinutes: durationMinutes,
                 completedAt: completedAt,
                 sortOrder: sortOrder,
                 isCollapsed: isCollapsed,
@@ -7135,6 +7902,308 @@ typedef $$ProjectCommentsTableProcessedTableManager =
       ProjectComment,
       PrefetchHooks Function()
     >;
+typedef $$FiltersTableCreateCompanionBuilder =
+    FiltersCompanion Function({
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<DateTime?> deletedAt,
+      required String id,
+      required String name,
+      required String query,
+      required int color,
+      Value<bool> isFavorite,
+      Value<int> sortOrder,
+      Value<String?> viewOptions,
+      Value<int> rowid,
+    });
+typedef $$FiltersTableUpdateCompanionBuilder =
+    FiltersCompanion Function({
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<DateTime?> deletedAt,
+      Value<String> id,
+      Value<String> name,
+      Value<String> query,
+      Value<int> color,
+      Value<bool> isFavorite,
+      Value<int> sortOrder,
+      Value<String?> viewOptions,
+      Value<int> rowid,
+    });
+
+class $$FiltersTableFilterComposer
+    extends Composer<_$AppDatabase, $FiltersTable> {
+  $$FiltersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get query => $composableBuilder(
+    column: $table.query,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get viewOptions => $composableBuilder(
+    column: $table.viewOptions,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FiltersTableOrderingComposer
+    extends Composer<_$AppDatabase, $FiltersTable> {
+  $$FiltersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get query => $composableBuilder(
+    column: $table.query,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get viewOptions => $composableBuilder(
+    column: $table.viewOptions,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FiltersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FiltersTable> {
+  $$FiltersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get query =>
+      $composableBuilder(column: $table.query, builder: (column) => column);
+
+  GeneratedColumn<int> get color =>
+      $composableBuilder(column: $table.color, builder: (column) => column);
+
+  GeneratedColumn<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<String> get viewOptions => $composableBuilder(
+    column: $table.viewOptions,
+    builder: (column) => column,
+  );
+}
+
+class $$FiltersTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FiltersTable,
+          Filter,
+          $$FiltersTableFilterComposer,
+          $$FiltersTableOrderingComposer,
+          $$FiltersTableAnnotationComposer,
+          $$FiltersTableCreateCompanionBuilder,
+          $$FiltersTableUpdateCompanionBuilder,
+          (Filter, BaseReferences<_$AppDatabase, $FiltersTable, Filter>),
+          Filter,
+          PrefetchHooks Function()
+        > {
+  $$FiltersTableTableManager(_$AppDatabase db, $FiltersTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FiltersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FiltersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FiltersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<DateTime?> deletedAt = const Value.absent(),
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> query = const Value.absent(),
+                Value<int> color = const Value.absent(),
+                Value<bool> isFavorite = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<String?> viewOptions = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FiltersCompanion(
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                id: id,
+                name: name,
+                query: query,
+                color: color,
+                isFavorite: isFavorite,
+                sortOrder: sortOrder,
+                viewOptions: viewOptions,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<DateTime?> deletedAt = const Value.absent(),
+                required String id,
+                required String name,
+                required String query,
+                required int color,
+                Value<bool> isFavorite = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<String?> viewOptions = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FiltersCompanion.insert(
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                id: id,
+                name: name,
+                query: query,
+                color: color,
+                isFavorite: isFavorite,
+                sortOrder: sortOrder,
+                viewOptions: viewOptions,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$FiltersTable, Filter>(table),
+                  BaseReferences<_$AppDatabase, $FiltersTable, Filter>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FiltersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FiltersTable,
+      Filter,
+      $$FiltersTableFilterComposer,
+      $$FiltersTableOrderingComposer,
+      $$FiltersTableAnnotationComposer,
+      $$FiltersTableCreateCompanionBuilder,
+      $$FiltersTableUpdateCompanionBuilder,
+      (Filter, BaseReferences<_$AppDatabase, $FiltersTable, Filter>),
+      Filter,
+      PrefetchHooks Function()
+    >;
 typedef $$SettingsTableCreateCompanionBuilder =
     SettingsCompanion Function({
       required String key,
@@ -7299,6 +8368,8 @@ class $AppDatabaseManager {
       $$CompletionsTableTableManager(_db, _db.completions);
   $$ProjectCommentsTableTableManager get projectComments =>
       $$ProjectCommentsTableTableManager(_db, _db.projectComments);
+  $$FiltersTableTableManager get filters =>
+      $$FiltersTableTableManager(_db, _db.filters);
   $$SettingsTableTableManager get settings =>
       $$SettingsTableTableManager(_db, _db.settings);
 }

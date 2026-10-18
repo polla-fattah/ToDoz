@@ -1,20 +1,29 @@
+import 'dart:convert';
+
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 
 import '../core/backup.dart' show inboxId;
 import '../core/date_parser.dart';
+import '../core/filter.dart';
 import '../core/reminder.dart' show isOverdue;
+import '../core/view_options.dart';
 import '../data/database.dart';
 import '../data/repository.dart';
 import 'catalog.dart';
+import 'collection.dart';
 import 'common.dart';
+import 'filter_editor.dart';
 import 'project_dialogs.dart';
 import 'quick_add_sheet.dart';
+import 'selection.dart';
 import 'task_tree.dart';
 import 'task_widgets.dart';
 
-/// Page frame shared by every task screen: title, optional actions, and the
-/// add button that opens Quick Add with this screen's defaults.
-class Screen extends StatelessWidget {
+/// Page frame shared by every task screen: title, optional actions, the
+/// add button that opens Quick Add with this screen's defaults, and
+/// multi-selection (long-press a task, FR-T7).
+class Screen extends StatefulWidget {
   const Screen({
     super.key,
     required this.title,
@@ -26,6 +35,7 @@ class Screen extends StatelessWidget {
     this.showAdd = true,
     this.automaticallyImplyLeading = true,
     this.subtitle,
+    this.selectable = true,
   });
 
   final String title;
@@ -37,39 +47,74 @@ class Screen extends StatelessWidget {
   final String? addDue;
   final bool showAdd;
   final bool automaticallyImplyLeading;
+  final bool selectable;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          automaticallyImplyLeading: automaticallyImplyLeading,
-          title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title),
-            if (subtitle != null) Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
-          ]),
-          actions: [
-            if (!automaticallyImplyLeading && showAdd)
-              IconButton(
-                tooltip: 'Search',
-                icon: const Icon(Icons.search),
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SearchScreen())),
+  State<Screen> createState() => _ScreenState();
+}
+
+class _ScreenState extends State<Screen> {
+  final Selection _selection = Selection();
+
+  @override
+  void dispose() {
+    _selection.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => SelectionScope(
+        selection: _selection,
+        child: ListenableBuilder(
+          listenable: _selection,
+          builder: (context, _) {
+            final selecting = widget.selectable && _selection.active;
+            return PopScope(
+              canPop: !selecting,
+              onPopInvokedWithResult: (didPop, _) {
+                if (!didPop) _selection.clear();
+              },
+              child: Scaffold(
+                appBar: selecting
+                    ? AppBar(
+                        leading: IconButton(tooltip: 'Cancel selection', icon: const Icon(Icons.close), onPressed: _selection.clear),
+                        title: Text('${_selection.ids.length} selected'),
+                        actions: selectionActions(context, _selection),
+                      )
+                    : AppBar(
+                        automaticallyImplyLeading: widget.automaticallyImplyLeading,
+                        title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(widget.title),
+                          if (widget.subtitle != null) Text(widget.subtitle!, style: Theme.of(context).textTheme.bodySmall),
+                        ]),
+                        actions: [
+                          if (!widget.automaticallyImplyLeading && widget.showAdd)
+                            IconButton(
+                              tooltip: 'Search',
+                              icon: const Icon(Icons.search),
+                              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SearchScreen())),
+                            ),
+                          ...widget.actions,
+                        ],
+                      ),
+                body: widget.body,
+                floatingActionButton: widget.showAdd && !selecting
+                    ? FloatingActionButton(
+                        heroTag: null, // every tab has its own button; shared hero tags clash on navigation
+                        tooltip: 'Add task',
+                        onPressed: () => showQuickAdd(
+                          context,
+                          defaultProjectId: widget.addProjectId ?? inboxId,
+                          defaultSectionId: widget.addSectionId,
+                          defaultDue: widget.addDue,
+                        ),
+                        child: const Icon(Icons.add),
+                      )
+                    : null,
               ),
-            ...actions,
-          ],
+            );
+          },
         ),
-        body: body,
-        floatingActionButton: showAdd
-            ? FloatingActionButton(
-                heroTag: null, // every tab has its own button; shared hero tags clash on navigation
-                tooltip: 'Add task',
-                onPressed: () => showQuickAdd(
-                  context,
-                  defaultProjectId: addProjectId ?? inboxId,
-                  defaultSectionId: addSectionId,
-                  defaultDue: addDue,
-                ),
-                child: const Icon(Icons.add),
-              )
-            : null,
       );
 }
 
@@ -90,11 +135,17 @@ class ProjectScreen extends StatelessWidget {
     final repo = catalog.repo;
     final project = catalog.project(projectId);
     final isInbox = projectId == inboxId;
+    final options = catalog.projectViewOptions(projectId);
+    final defaultGroup = isInbox ? Grouping.none : Grouping.section;
     return Screen(
       title: project?.name ?? 'Project',
       automaticallyImplyLeading: !isTab,
       addProjectId: projectId,
       actions: [
+        viewOptionsButton(
+          context, options, (o) => repo.setProjectViewOptions(projectId, o),
+          isProject: true, defaultGroup: defaultGroup,
+        ),
         if (!isInbox && project != null)
           IconButton(
             tooltip: project.isFavorite ? 'Remove from favorites' : 'Add to favorites',
@@ -115,72 +166,122 @@ class ProjectScreen extends StatelessWidget {
           ),
       ],
       body: Live<List<Task>>(
-        id: projectId,
-        create: () => repo.watchProjectTasks(projectId),
-        builder: (context, tasksData) => Live<List<Section>>(
-          id: projectId,
-          create: () => repo.watchSections(projectId),
-          builder: (context, secData) {
-            final tasks = tasksData ?? const <Task>[];
-            final sections = secData ?? const <Section>[];
-            final sectionIds = {for (final s in sections) s.id};
-            final entries = <ListEntry>[];
-
-            final loose = tasks.where((t) => t.sectionId == null || !sectionIds.contains(t.sectionId)).toList();
-            for (final r in flattenTasks(loose)) {
-              entries.add(TaskEntry(r, showProject: false));
-            }
-            for (final s in sections) {
-              final inSection = tasks.where((t) => t.sectionId == s.id).toList();
-              entries.add(HeaderEntry(
-                s.name,
-                count: inSection.length,
-                onTap: () => repo.updateSection(s.id, isCollapsed: !s.isCollapsed),
-                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                  PopupMenuButton<String>(
-                    onSelected: (v) => sectionMenu(context, s, v),
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'add', child: Text('Add task')),
-                      PopupMenuItem(value: 'rename', child: Text('Rename')),
-                      PopupMenuItem(value: 'archive', child: Text('Archive')),
-                      PopupMenuItem(value: 'delete', child: Text('Delete section')),
-                    ],
-                  ),
-                  Icon(s.isCollapsed ? Icons.chevron_right : Icons.expand_more),
-                  const SizedBox(width: 4),
-                ]),
-              ));
-              if (!s.isCollapsed) {
-                for (final r in flattenTasks(inSection)) {
-                  entries.add(TaskEntry(r, showProject: false));
-                }
-              }
-            }
-            if (!isInbox) {
-              entries.add(WidgetEntry(Padding(
-                padding: const EdgeInsets.fromLTRB(8, 16, 8, 0),
-                child: TextButton.icon(
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add section'),
-                  onPressed: () async {
-                    final name = await promptText(context, 'New section', hint: 'Section name', action: 'Add');
-                    if (name != null && name.trim().isNotEmpty && context.mounted) {
-                      await guarded(context, () async {
-                        await repo.createSection(projectId, name);
-                      });
-                    }
-                  },
-                ),
-              )));
-            }
-            return EntryList(
-              entries: entries,
-              emptyTitle: isInbox ? 'Inbox is empty' : 'No tasks yet',
-              emptyBody: isInbox ? 'Anything you add without a project lands here.' : 'Tap + to add the first task.',
-            );
-          },
+        id: '$projectId|${options.showCompleted}',
+        create: () => repo.watchProjectTasks(projectId, includeCompleted: options.showCompleted),
+        builder: (context, data) => TaskCollection(
+          tasks: data ?? const <Task>[],
+          options: options,
+          defaultGroup: defaultGroup,
+          projectId: projectId,
+          emptyTitle: isInbox ? 'Inbox is empty' : 'No tasks yet',
+          emptyBody: isInbox ? 'Anything you add without a project lands here.' : 'Tap + to add the first task.',
         ),
       ),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Saved filter (FR-F1)
+// -----------------------------------------------------------------------------
+
+class FilterScreen extends StatelessWidget {
+  const FilterScreen({super.key, required this.filterId});
+  final String filterId;
+
+  @override
+  Widget build(BuildContext context) {
+    final catalog = AppScope.of(context);
+    final repo = catalog.repo;
+    final filter = catalog.filter(filterId);
+    if (filter == null) {
+      return Screen(title: 'Filter', showAdd: false, body: const Center(child: Text('This filter no longer exists.')));
+    }
+    final options = ViewOptions.decode(filter.viewOptions);
+    final defaultGroup = options.layout == ViewLayout.board ? Grouping.priority : Grouping.none;
+
+    CompiledFilter? compiled;
+    String? error;
+    try {
+      compiled = parseFilter(filter.query, catalog.filterEnv);
+    } on FilterException catch (e) {
+      error = e.message;
+    }
+
+    return Screen(
+      title: filter.name,
+      subtitle: filter.query,
+      actions: [
+        viewOptionsButton(
+          context, options, (o) => repo.updateFilter(filterId, viewOptions: o),
+          isProject: false, defaultGroup: defaultGroup,
+        ),
+        IconButton(
+          tooltip: filter.isFavorite ? 'Remove from favorites' : 'Add to favorites',
+          icon: Icon(filter.isFavorite ? Icons.favorite : Icons.favorite_border),
+          onPressed: () => repo.updateFilter(filterId, isFavorite: !filter.isFavorite),
+        ),
+        PopupMenuButton<String>(
+          onSelected: (v) async {
+            if (v == 'edit') {
+              await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => FilterEditorPage(filterId: filterId)));
+            } else if (v == 'delete') {
+              await repo.deleteFilter(filterId);
+              if (context.mounted) {
+                Navigator.of(context).pop();
+                showUndo(context, 'Filter deleted', () => repo.restoreFilter(filterId));
+              }
+            }
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem(value: 'edit', child: Text('Edit filter')),
+            PopupMenuItem(value: 'delete', child: Text('Delete filter')),
+          ],
+        ),
+      ],
+      body: error != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.error_outline, size: 40, color: Theme.of(context).colorScheme.error),
+                  const SizedBox(height: 8),
+                  Text(error, textAlign: TextAlign.center),
+                  const SizedBox(height: 8),
+                  FilledButton(
+                    onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => FilterEditorPage(filterId: filterId))),
+                    child: const Text('Edit the filter'),
+                  ),
+                ]),
+              ),
+            )
+          : Live<List<Task>>(
+              create: repo.watchAllOpen,
+              builder: (context, data) {
+                final all = data ?? const <Task>[];
+                final c = compiled!;
+                if (c.isSingle) {
+                  final hits = all.where((t) => c.branches.first.matches(catalog.filterTask(t))).toList();
+                  return TaskCollection(
+                    tasks: hits,
+                    options: options,
+                    defaultGroup: defaultGroup,
+                    emptyTitle: 'Nothing matches',
+                    emptyBody: 'No open task fits "${filter.query}".',
+                  );
+                }
+                // Several comma-separated lists: each gets its own heading.
+                final entries = <ListEntry>[];
+                for (final b in c.branches) {
+                  final hits = all.where((t) => b.matches(catalog.filterTask(t))).toList();
+                  entries.add(HeaderEntry(b.text, count: hits.length));
+                  for (final r in flattenTasks(hits)) {
+                    entries.add(TaskEntry(r));
+                  }
+                }
+                return EntryList(entries: entries, emptyTitle: 'Nothing matches', emptyBody: 'No open task fits this filter.');
+              },
+            ),
     );
   }
 }
@@ -308,29 +409,62 @@ class _GoalCard extends StatelessWidget {
 // Upcoming
 // -----------------------------------------------------------------------------
 
-class UpcomingScreen extends StatelessWidget {
+/// Upcoming: a week strip to jump between days and to drop tasks on (FR-V2),
+/// over a list of days. Long-press a task and drag it onto a day to reschedule.
+class UpcomingScreen extends StatefulWidget {
   const UpcomingScreen({super.key});
 
   @override
+  State<UpcomingScreen> createState() => _UpcomingScreenState();
+}
+
+class _UpcomingScreenState extends State<UpcomingScreen> {
+  DateTime? _from; // the first day shown; defaults to today
+
+  @override
   Widget build(BuildContext context) {
-    final repo = AppScope.repoOf(context);
+    final catalog = AppScope.of(context);
+    final repo = catalog.repo;
     final now = repo.now;
-    final today = formatDate(dateOnly(now));
+    final today = dateOnly(now);
+    final from = _from ?? today;
     return Screen(
       title: 'Upcoming',
       automaticallyImplyLeading: false,
+      selectable: false,
+      actions: [
+        IconButton(
+          tooltip: 'Pick a month or day',
+          icon: const Icon(Icons.calendar_month_outlined),
+          onPressed: () async {
+            final d = await showDatePicker(
+              context: context,
+              initialDate: from,
+              firstDate: DateTime(now.year - 1),
+              lastDate: DateTime(now.year + 10),
+            );
+            if (d != null) setState(() => _from = d);
+          },
+        ),
+      ],
       body: Live<List<Task>>(
         create: repo.watchScheduled,
         builder: (context, data) {
           final tasks = data ?? const <Task>[];
           bool late(Task t) => isOverdue(dueDate: t.dueDate, dueTime: t.dueTime, now: repo.now);
-          final overdue = tasks.where(late).toList();
+          final iso = formatDate(from);
+          final todayIso = formatDate(today);
+          final overdue = from == today ? tasks.where(late).toList() : const <Task>[];
+          final counts = <String, int>{};
+          for (final t in tasks) {
+            if (!late(t)) counts[t.dueDate!] = (counts[t.dueDate!] ?? 0) + 1;
+          }
           final entries = <ListEntry>[
-            if (overdue.isNotEmpty) overdueEntry(context, overdue, today),
+            if (overdue.isNotEmpty) overdueEntry(context, overdue, todayIso),
             for (final t in overdue) TaskEntry(flatRow(t)),
           ];
           final byDay = <String, List<Task>>{};
-          for (final t in tasks.where((t) => !late(t))) {
+          for (final t in tasks.where((t) => !late(t) && t.dueDate!.compareTo(iso) >= 0)) {
             byDay.putIfAbsent(t.dueDate!, () => []).add(t);
           }
           for (final e in byDay.entries) {
@@ -339,13 +473,91 @@ class UpcomingScreen extends StatelessWidget {
               entries.add(TaskEntry(flatRow(t)));
             }
           }
-          return EntryList(
-            entries: entries,
-            emptyTitle: 'Nothing scheduled',
-            emptyBody: 'Tasks with a due date show up here, grouped by day.',
-          );
+          return Column(children: [
+            _WeekStrip(
+              selected: from,
+              today: today,
+              weekStart: catalog.weekStart,
+              counts: counts,
+              onSelect: (d) => setState(() => _from = d),
+              onDrop: (taskId, day) => guarded(context, () => repo.updateTask(taskId, dueDate: Value(formatDate(day)))),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: EntryList(
+                entries: entries,
+                draggable: true,
+                emptyTitle: 'Nothing scheduled',
+                emptyBody: 'Tasks with a due date show up here, grouped by day.',
+              ),
+            ),
+          ]);
         },
       ),
+    );
+  }
+}
+
+class _WeekStrip extends StatelessWidget {
+  const _WeekStrip({
+    required this.selected,
+    required this.today,
+    required this.weekStart,
+    required this.counts,
+    required this.onSelect,
+    required this.onDrop,
+  });
+
+  final DateTime selected;
+  final DateTime today;
+  final int weekStart;
+  final Map<String, int> counts;
+  final ValueChanged<DateTime> onSelect;
+  final void Function(String taskId, DateTime day) onDrop;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final start = selected.subtract(Duration(days: (selected.weekday - weekStart + 7) % 7));
+    const names = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
+      child: Row(children: [
+        IconButton(tooltip: 'Previous week', icon: const Icon(Icons.chevron_left), onPressed: () => onSelect(selected.subtract(const Duration(days: 7)))),
+        for (var i = 0; i < 7; i++)
+          Expanded(
+            child: Builder(builder: (context) {
+              final day = start.add(Duration(days: i));
+              final isSel = day == selected;
+              final isToday = day == today;
+              final n = counts[formatDate(day)] ?? 0;
+              return DragTarget<String>(
+                onAcceptWithDetails: (d) => onDrop(d.data, day),
+                builder: (context, candidates, _) => InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => onSelect(day),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      color: candidates.isNotEmpty ? cs.primaryContainer : (isSel ? cs.primary : null),
+                      borderRadius: BorderRadius.circular(10),
+                      border: isToday && !isSel ? Border.all(color: cs.primary) : null,
+                    ),
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Text(names[day.weekday], style: TextStyle(fontSize: 11, color: isSel ? cs.onPrimary : cs.outline)),
+                      Text('${day.day}', style: TextStyle(fontWeight: FontWeight.w700, color: isSel ? cs.onPrimary : null)),
+                      SizedBox(
+                        height: 8,
+                        child: n > 0 ? Icon(Icons.circle, size: 5, color: isSel ? cs.onPrimary : cs.primary) : null,
+                      ),
+                    ]),
+                  ),
+                ),
+              );
+            }),
+          ),
+        IconButton(tooltip: 'Next week', icon: const Icon(Icons.chevron_right), onPressed: () => onSelect(selected.add(const Duration(days: 7)))),
+      ]),
     );
   }
 }
@@ -484,6 +696,45 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   String _q = '';
+  bool _includeCompleted = false;
+  List<String> _recent = const [];
+  Future<Set<String>> _commentHits = Future.value(const {});
+  final _controller = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    Future<void>.microtask(_loadRecent);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadRecent() async {
+    final raw = await AppScope.repoOf(context).getSetting('recentSearches');
+    if (raw == null || !mounted) return;
+    try {
+      setState(() => _recent = (jsonDecode(raw) as List).cast<String>());
+    } catch (_) {}
+  }
+
+  Future<void> _remember(String q) async {
+    final text = q.trim();
+    if (text.isEmpty) return;
+    final next = [text, ..._recent.where((r) => r != text)].take(8).toList();
+    setState(() => _recent = next);
+    await AppScope.repoOf(context).setSetting('recentSearches', jsonEncode(next));
+  }
+
+  void _setQuery(String q) {
+    setState(() {
+      _q = q.trim();
+      _commentHits = _q.isEmpty ? Future.value(const {}) : AppScope.repoOf(context).taskIdsWithCommentText(_q);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -492,26 +743,82 @@ class _SearchScreenState extends State<SearchScreen> {
     return Scaffold(
       appBar: AppBar(
         title: TextField(
+          controller: _controller,
           autofocus: true,
-          decoration: const InputDecoration(hintText: 'Search tasks, descriptions, labels', border: InputBorder.none),
-          onChanged: (v) => setState(() => _q = v.trim().toLowerCase()),
+          textInputAction: TextInputAction.search,
+          decoration: const InputDecoration(hintText: 'Search, or type a filter like p1 & overdue', border: InputBorder.none),
+          onChanged: _setQuery,
+          onSubmitted: _remember,
         ),
+        actions: [
+          IconButton(
+            tooltip: _includeCompleted ? 'Hide completed tasks' : 'Include completed tasks',
+            icon: Icon(_includeCompleted ? Icons.check_circle : Icons.check_circle_outline),
+            onPressed: () => setState(() => _includeCompleted = !_includeCompleted),
+          ),
+        ],
       ),
-      body: Live<List<Task>>(
-        create: repo.watchAllOpen,
-        builder: (context, data) {
-          if (_q.isEmpty) return const EntryList(entries: [], emptyTitle: 'Search', emptyBody: 'Type to search your open tasks.');
-          final hits = (data ?? const <Task>[]).where((t) {
-            final labels = catalog.labelsFor(t.id).map((l) => l.name.toLowerCase()).join(' ');
-            return '${t.title} ${t.description} $labels'.toLowerCase().contains(_q);
-          });
-          return EntryList(
-            entries: [for (final t in hits) TaskEntry(flatRow(t))],
-            emptyTitle: 'No matches',
-            emptyBody: 'Try another word.',
-          );
-        },
-      ),
+      body: _q.isEmpty
+          ? ListView(children: [
+              if (_recent.isNotEmpty) ...[
+                const Padding(padding: EdgeInsets.fromLTRB(16, 16, 16, 4), child: Text('Recent searches', style: TextStyle(fontWeight: FontWeight.w700))),
+                for (final r in _recent)
+                  ListTile(
+                    leading: const Icon(Icons.history),
+                    title: Text(r),
+                    onTap: () {
+                      _controller.text = r;
+                      _setQuery(r);
+                    },
+                  ),
+              ],
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Search titles, descriptions, comments, projects, sections and labels. '
+                  'Filters work here too: p1, #Work, %label, overdue, no date, search: words.',
+                  style: TextStyle(color: Theme.of(context).colorScheme.outline),
+                ),
+              ),
+            ])
+          : Live<List<Task>>(
+              id: _includeCompleted,
+              create: () => _includeCompleted ? repo.watchAllTasks() : repo.watchAllOpen(),
+              builder: (context, data) => FutureBuilder<Set<String>>(
+                future: _commentHits,
+                builder: (context, snap) {
+                  final all = data ?? const <Task>[];
+                  final env = catalog.filterEnv;
+                  final asFilter = looksLikeFilter(_q, env);
+                  final List<Task> hits;
+                  if (asFilter) {
+                    final compiled = parseFilter(_q, env);
+                    hits = all.where((t) => compiled.matches(catalog.filterTask(t))).toList();
+                  } else {
+                    final words = _q.toLowerCase().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+                    final commentIds = snap.data ?? const <String>{};
+                    hits = all.where((t) {
+                      final section = catalog.section(t.sectionId)?.name ?? '';
+                      final text = '${t.title} ${t.description} ${catalog.labelsFor(t.id).map((l) => l.name).join(' ')} '
+                              '${catalog.project(t.projectId)?.name ?? ''} $section'
+                          .toLowerCase();
+                      return words.every(text.contains) || commentIds.contains(t.id);
+                    }).toList();
+                  }
+                  return EntryList(
+                    entries: [
+                      if (asFilter) WidgetEntry(Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                        child: Text('Showing a filter: ${hits.length} match${hits.length == 1 ? '' : 'es'}', style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+                      )),
+                      for (final t in hits) TaskEntry(flatRow(t)),
+                    ],
+                    emptyTitle: 'No matches',
+                    emptyBody: 'Try another word, or include completed tasks.',
+                  );
+                },
+              ),
+            ),
     );
   }
 }

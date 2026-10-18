@@ -1,8 +1,10 @@
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
+import 'package:flutter/gestures.dart' show kLongPressTimeout;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:taskflow/core/date_parser.dart';
+import 'package:taskflow/core/view_options.dart';
 import 'package:taskflow/data/database.dart';
 import 'package:taskflow/data/repository.dart';
 import 'package:taskflow/ui/catalog.dart';
@@ -23,9 +25,11 @@ void main() {
   late Repo repo;
   late Catalog catalog;
 
-  Future<void> start(WidgetTester tester) async {
-    await tester.binding.setSurfaceSize(const Size(420, 900)); // phone layout
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+  Future<void> start(WidgetTester tester, {Size size = const Size(420, 900)}) async {
+    // One logical pixel per physical pixel, so the size below is what the layout sees.
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = size; // default: a phone
+    addTearDown(tester.view.reset);
     await tester.runAsync(() async {
       db = AppDatabase(NativeDatabase.memory());
       repo = Repo(db);
@@ -253,6 +257,186 @@ void main() {
       await tester.tap(find.text('24-hour clock'));
       await settle(tester);
       expect(await tester.runAsync(() => repo.getSetting('use24h')), 'false');
+      await finish(tester);
+    });
+  });
+
+  group('R3 screens', () {
+    String today() => formatDate(dateOnly(DateTime.now()));
+
+    testWidgets('a wide window shows the permanent sidebar and navigates through it', (tester) async {
+      await start(tester, size: const Size(1200, 800));
+      await tester.runAsync(() => repo.createProject(name: 'Garden'));
+      await settle(tester);
+      expect(find.text('PROJECTS'), findsOneWidget);
+      expect(find.text('Garden'), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
+
+      await tester.tap(find.text('Garden'));
+      await settle(tester);
+      expect(find.text('No tasks yet'), findsOneWidget);
+      await tester.tap(find.text('Upcoming'));
+      await settle(tester);
+      expect(find.text('Nothing scheduled'), findsOneWidget);
+      await finish(tester);
+    });
+
+    testWidgets('view options switch a project to a board and are saved', (tester) async {
+      await start(tester);
+      final p = await tester.runAsync(() => repo.createProject(name: 'Work'));
+      await tester.runAsync(() => repo.createSection(p!, 'Todo'));
+      await tester.runAsync(() => repo.addTask(title: 'Write report', projectId: p!));
+      await settle(tester);
+      await tester.tap(find.text('Browse'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Work'));
+      await settle(tester);
+      expect(find.text('Write report'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('View options'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Board'));
+      await settle(tester);
+      final project = await tester.runAsync(() => repo.getProject(p!));
+      expect(ViewOptions.decode(project!.viewOptions).layout, ViewLayout.board);
+      await finish(tester);
+    });
+
+    testWidgets('dragging a card to another board column changes its section', (tester) async {
+      await start(tester, size: const Size(1200, 800));
+      final p = await tester.runAsync(() => repo.createProject(name: 'Work'));
+      final todo = await tester.runAsync(() => repo.createSection(p!, 'Todo'));
+      final doing = await tester.runAsync(() => repo.createSection(p!, 'Doing'));
+      final t = await tester.runAsync(() => repo.addTask(title: 'Write report', projectId: p!, sectionId: todo));
+      await tester.runAsync(() => repo.setProjectViewOptions(p!, const ViewOptions(layout: ViewLayout.board)));
+      await settle(tester);
+      await tester.tap(find.text('Work'));
+      await settle(tester);
+      expect(find.text('Doing'), findsOneWidget);
+
+      final card = tester.getCenter(find.text('Write report'));
+      final target = tester.getCenter(find.text('Doing')) + const Offset(0, 120);
+      final g = await tester.startGesture(card);
+      await tester.pump(kLongPressTimeout + const Duration(milliseconds: 100));
+      await g.moveTo(target);
+      await tester.pump();
+      await g.up();
+      await settle(tester);
+
+      final task = await tester.runAsync(() => repo.getTask(t!));
+      expect(task!.sectionId, doing);
+      await finish(tester);
+    });
+
+    testWidgets('a saved filter lists only matching tasks', (tester) async {
+      await start(tester);
+      await tester.runAsync(() => repo.addTask(title: 'Urgent thing', priority: 1));
+      await tester.runAsync(() => repo.addTask(title: 'Calm thing'));
+      await tester.runAsync(() => repo.createFilter(name: 'Urgent', query: 'p1'));
+      await settle(tester);
+      await tester.tap(find.text('Browse'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Urgent'));
+      await settle(tester);
+      expect(find.text('Urgent thing'), findsOneWidget);
+      expect(find.text('Calm thing'), findsNothing);
+      await finish(tester);
+    });
+
+    testWidgets('the filter editor underlines a mistake and only saves a valid query', (tester) async {
+      await start(tester);
+      await tester.tap(find.text('Browse'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('New filter'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, 'Name'), 'Mine');
+      await tester.enterText(find.widgetWithText(TextField, 'Query'), '#NoSuchProject');
+      await tester.pump();
+      expect(find.textContaining('No project matches'), findsOneWidget);
+      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Save')).onPressed, isNull);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Query'), 'p1 & overdue');
+      await tester.pump();
+      expect(find.text('Looks good'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, 'Save'));
+      await settle(tester);
+      final filters = await tester.runAsync(() => repo.watchFilters().first);
+      expect(filters!.single.query, 'p1 & overdue');
+      await finish(tester);
+    });
+
+    testWidgets('long-press selects tasks and the toolbar completes them', (tester) async {
+      await start(tester);
+      await tester.runAsync(() => repo.addTask(title: 'One', dueDate: today()));
+      await tester.runAsync(() => repo.addTask(title: 'Two', dueDate: today()));
+      await settle(tester);
+      await tester.longPress(find.text('One'));
+      await tester.pump();
+      expect(find.text('1 selected'), findsOneWidget);
+      await tester.tap(find.text('Two')); // while selecting, a tap adds to the selection
+      await tester.pump();
+      expect(find.text('2 selected'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Complete'));
+      await settle(tester);
+      expect(find.text('2 selected'), findsNothing);
+      expect(find.textContaining('2 tasks completed'), findsOneWidget);
+      final open = await tester.runAsync(() => repo.watchAllOpen().first);
+      expect(open, isEmpty);
+      await finish(tester);
+    });
+
+    testWidgets('search understands filters and finds text in comments', (tester) async {
+      await start(tester);
+      final a = await tester.runAsync(() => repo.addTask(title: 'Plain task', priority: 1));
+      await tester.runAsync(() => repo.addTask(title: 'Other'));
+      await tester.runAsync(() => repo.addComment(a!, 'remember the zebra'));
+      await settle(tester);
+      await tester.tap(find.byTooltip('Search').first);
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byType(TextField), 'p1');
+      await settle(tester);
+      expect(find.textContaining('Showing a filter'), findsOneWidget);
+      expect(find.text('Plain task'), findsOneWidget);
+      expect(find.text('Other'), findsNothing);
+
+      await tester.enterText(find.byType(TextField), 'zebra');
+      await settle(tester);
+      expect(find.text('Plain task'), findsOneWidget); // found through its comment
+      expect(find.text('Other'), findsNothing);
+      await finish(tester);
+    });
+
+    testWidgets('the task page sets a duration', (tester) async {
+      await start(tester);
+      final id = await tester.runAsync(() => repo.addTask(title: 'Write', dueDate: today()));
+      await settle(tester);
+      await tester.tap(find.text('Write'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ActionChip, 'No duration'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(ActionChip, '1h'));
+      await settle(tester);
+      final t = await tester.runAsync(() => repo.getTask(id!));
+      expect(t!.durationMinutes, 60);
+      expect(find.text('1h'), findsWidgets);
+      await finish(tester);
+    });
+
+    testWidgets('Upcoming shows a week strip, and the help page is one tap from Browse', (tester) async {
+      await start(tester);
+      await tester.tap(find.text('Upcoming'));
+      await settle(tester);
+      expect(find.byTooltip('Next week'), findsOneWidget);
+      expect(find.text('Mon'), findsOneWidget);
+      await tester.tap(find.text('Browse'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('Help: Quick Add'));
+      await tester.pumpAndSettle();
+      expect(find.text('Quick Add'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Filters'), 400, scrollable: find.byType(Scrollable).first);
+      expect(find.text('Filters'), findsOneWidget);
       await finish(tester);
     });
   });

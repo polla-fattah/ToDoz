@@ -227,3 +227,11 @@ DateTime dueMoment(String date, String? time) {
   final t = time == null ? null : parseClock(time);
   return t == null ? DateTime(d.year, d.month, d.day, 23, 59, 59) : DateTime(d.year, d.month, d.day, t ~/ 60, t % 60);
 }
+
+/// "45m", "1h 30m", "2h", "3d" (FR-D3). Days are 1440 minutes.
+String formatDuration(int minutes) {
+  if (minutes >= 1440 && minutes % 1440 == 0) return '${minutes ~/ 1440}d';
+  if (minutes < 60) return '${minutes}m';
+  final h = minutes ~/ 60, m = minutes % 60;
+  return m == 0 ? '${h}h' : '${h}h ${m}m';
+}

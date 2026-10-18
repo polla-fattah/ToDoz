@@ -20,6 +20,7 @@ class ProjectRec {
     this.isFavorite = false,
     this.isArchived = false,
     this.sortOrder = 0,
+    this.viewOptions,
   });
   final String id;
   final String name;
@@ -28,12 +29,14 @@ class ProjectRec {
   final bool isFavorite;
   final bool isArchived;
   final int sortOrder;
+  final String? viewOptions; // JSON, see ViewOptions
 
   bool get isInbox => id == inboxId;
 
   Map<String, Object?> toJson() => {
         'id': id, 'name': name, 'color': color, 'parentId': parentId,
         'isFavorite': isFavorite, 'isArchived': isArchived, 'sortOrder': sortOrder,
+        'viewOptions': viewOptions,
       };
 }
 
@@ -92,6 +95,7 @@ class TaskRec {
     this.dueTime,
     this.recurrence,
     this.deadline,
+    this.durationMinutes,
     this.completedAt,
     this.sortOrder = 0,
     this.isCollapsed = false,
@@ -109,6 +113,7 @@ class TaskRec {
   final String? dueTime; // HH:MM
   final String? recurrence; // the repeat phrase as typed
   final String? deadline; // YYYY-MM-DD
+  final int? durationMinutes;
   final DateTime? completedAt;
   final int sortOrder;
   final bool isCollapsed;
@@ -119,7 +124,7 @@ class TaskRec {
         'id': id, 'title': title, 'description': description,
         'projectId': projectId, 'sectionId': sectionId, 'parentId': parentId,
         'priority': priority, 'dueDate': dueDate, 'dueTime': dueTime,
-        'recurrence': recurrence, 'deadline': deadline,
+        'recurrence': recurrence, 'deadline': deadline, 'durationMinutes': durationMinutes,
         'completedAt': completedAt?.toUtc().toIso8601String(),
         'sortOrder': sortOrder, 'isCollapsed': isCollapsed,
         'labelIds': labelIds, 'createdAt': createdAt.toUtc().toIso8601String(),
@@ -141,6 +146,30 @@ class CommentRec {
   Map<String, Object?> toJson() => {
         'id': id, 'taskId': taskId, 'body': body,
         'createdAt': createdAt.toUtc().toIso8601String(),
+      };
+}
+
+class FilterRec {
+  FilterRec({
+    required this.id,
+    required this.name,
+    required this.query,
+    required this.color,
+    this.isFavorite = false,
+    this.sortOrder = 0,
+    this.viewOptions,
+  });
+  final String id;
+  final String name;
+  final String query;
+  final int color;
+  final bool isFavorite;
+  final int sortOrder;
+  final String? viewOptions;
+
+  Map<String, Object?> toJson() => {
+        'id': id, 'name': name, 'query': query, 'color': color, 'isFavorite': isFavorite,
+        'sortOrder': sortOrder, 'viewOptions': viewOptions,
       };
 }
 
@@ -190,6 +219,7 @@ class Bundle {
     this.reminders = const [],
     this.completions = const [],
     this.projectComments = const [],
+    this.filters = const [],
     this.settings = const {},
     this.sourceVersion = 2,
   });
@@ -204,6 +234,7 @@ class Bundle {
   final List<ReminderRec> reminders;
   final List<CompletionRec> completions;
   final List<ProjectCommentRec> projectComments;
+  final List<FilterRec> filters;
   final Map<String, String> settings;
 
   /// Backup format 2 (1.0 used `version: 1`).
@@ -220,6 +251,7 @@ class Bundle {
         'reminders': reminders.map((e) => e.toJson()).toList(),
         'completions': completions.map((e) => e.toJson()).toList(),
         'projectComments': projectComments.map((e) => e.toJson()).toList(),
+        'filters': filters.map((e) => e.toJson()).toList(),
       });
 
   /// Parses a backup of either format (1.0 `version: 1` or 2.0 `version: 2`).
@@ -264,6 +296,7 @@ Bundle _fromV2(Map<String, Object?> j) {
             isFavorite: p['isFavorite'] == true,
             isArchived: p['isArchived'] == true,
             sortOrder: (p['sortOrder'] as int?) ?? 0,
+            viewOptions: p['viewOptions'] as String?,
           ))
       .toList();
   if (!projects.any((p) => p.id == inboxId)) _bad('Backup has no Inbox');
@@ -295,6 +328,8 @@ Bundle _fromV2(Map<String, Object?> j) {
     if (dueTime != null && parseClock(dueTime) == null) _bad('Invalid due time');
     final deadline = t['deadline'] as String?;
     if (deadline != null && parseIsoDate(deadline) == null) _bad('Invalid deadline');
+    final duration = t['durationMinutes'] as int?;
+    if (duration != null && (duration < 1 || duration > 14400)) _bad('Invalid duration');
     return TaskRec(
       id: _as<String>(t['id'], 'task id'),
       title: _as<String>(t['title'], 'task title'),
@@ -307,6 +342,7 @@ Bundle _fromV2(Map<String, Object?> j) {
       dueTime: dueTime,
       recurrence: t['recurrence'] as String?,
       deadline: deadline,
+      durationMinutes: duration,
       completedAt: t['completedAt'] == null ? null : DateTime.parse(t['completedAt'] as String),
       sortOrder: (t['sortOrder'] as int?) ?? 0,
       isCollapsed: t['isCollapsed'] == true,
@@ -348,6 +384,18 @@ Bundle _fromV2(Map<String, Object?> j) {
           ))
       .toList();
 
+  final filters = list('filters')
+      .map((f) => FilterRec(
+            id: _as<String>(f['id'], 'filter id'),
+            name: _as<String>(f['name'], 'filter name'),
+            query: _as<String>(f['query'], 'filter query'),
+            color: _as<int>(f['color'], 'filter color'),
+            isFavorite: f['isFavorite'] == true,
+            sortOrder: (f['sortOrder'] as int?) ?? 0,
+            viewOptions: f['viewOptions'] as String?,
+          ))
+      .toList();
+
   _checkReferences(projects, sections, labels, tasks, comments);
   final taskIds = {for (final t in tasks) t.id};
   final projectIds = {for (final p in projects) p.id};
@@ -365,7 +413,7 @@ Bundle _fromV2(Map<String, Object?> j) {
   return Bundle(
     projects: projects, sections: sections, labels: labels,
     tasks: tasks, comments: comments, reminders: reminders, completions: completions,
-    projectComments: projectComments, settings: settings,
+    projectComments: projectComments, filters: filters, settings: settings,
   );
 }
 

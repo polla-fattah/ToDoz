@@ -195,3 +195,91 @@ Future<ReminderSpec?> showReminderDialog(BuildContext context, {required bool ha
   }
   return null;
 }
+
+/// Asks how long a task takes. Returns minutes, 0 to clear, or null if cancelled (FR-D3).
+Future<int?> showDurationDialog(BuildContext context, {int? initial}) {
+  return showDialog<int>(context: context, builder: (_) => _DurationDialog(initial: initial));
+}
+
+class _DurationDialog extends StatefulWidget {
+  const _DurationDialog({this.initial});
+  final int? initial;
+
+  @override
+  State<_DurationDialog> createState() => _DurationDialogState();
+}
+
+class _DurationDialogState extends State<_DurationDialog> {
+  late final TextEditingController _n;
+  late String _unit;
+
+  @override
+  void initState() {
+    super.initState();
+    final m = widget.initial;
+    if (m == null) {
+      _n = TextEditingController(text: '30');
+      _unit = 'minutes';
+    } else if (m % 1440 == 0) {
+      _n = TextEditingController(text: '${m ~/ 1440}');
+      _unit = 'days';
+    } else if (m % 60 == 0) {
+      _n = TextEditingController(text: '${m ~/ 60}');
+      _unit = 'hours';
+    } else {
+      _n = TextEditingController(text: '$m');
+      _unit = 'minutes';
+    }
+  }
+
+  @override
+  void dispose() {
+    _n.dispose();
+    super.dispose();
+  }
+
+  int? get _minutes {
+    final n = int.tryParse(_n.text.trim());
+    if (n == null || n < 1) return null;
+    final m = n * (_unit == 'days' ? 1440 : (_unit == 'hours' ? 60 : 1));
+    return m > 14400 ? null : m;
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: const Text('Duration'),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Wrap(spacing: 6, children: [
+            for (final (label, min) in const [('15m', 15), ('30m', 30), ('1h', 60), ('2h', 120), ('1d', 1440)])
+              ActionChip(label: Text(label), onPressed: () => Navigator.pop(context, min)),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            SizedBox(
+              width: 80,
+              child: TextField(controller: _n, keyboardType: TextInputType.number, onChanged: (_) => setState(() {})),
+            ),
+            const SizedBox(width: 12),
+            DropdownButton<String>(
+              value: _unit,
+              items: const [
+                DropdownMenuItem(value: 'minutes', child: Text('minutes')),
+                DropdownMenuItem(value: 'hours', child: Text('hours')),
+                DropdownMenuItem(value: 'days', child: Text('days')),
+              ],
+              onChanged: (v) => setState(() => _unit = v ?? _unit),
+            ),
+          ]),
+          if (_minutes == null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text('Enter 1 minute to 10 days.', style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12)),
+            ),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          if (widget.initial != null) TextButton(onPressed: () => Navigator.pop(context, 0), child: const Text('Remove')),
+          FilledButton(onPressed: _minutes == null ? null : () => Navigator.pop(context, _minutes), child: const Text('Save')),
+        ],
+      );
+}

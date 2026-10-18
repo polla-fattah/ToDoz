@@ -12,6 +12,7 @@ import '../core/reminder.dart' show ReminderSpec;
 import '../data/repository.dart';
 import 'catalog.dart';
 import 'common.dart';
+import 'help_screen.dart';
 import 'when_dialogs.dart' show pickTimeMinutes;
 
 class SettingsScreen extends StatelessWidget {
@@ -138,6 +139,13 @@ class SettingsScreen extends StatelessWidget {
           title: const Text('Restore from backup'),
           subtitle: const Text('Works with TaskFlow 2.0 backups and TaskFlow 1.0 backups.'),
           onTap: () => _restore(context),
+        ),
+        const _Heading('Help'),
+        ListTile(
+          leading: const Icon(Icons.help_outline),
+          title: const Text('Quick Add, repeats and filters'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const HelpScreen())),
         ),
         const _Heading('About'),
         const ListTile(
