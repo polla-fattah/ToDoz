@@ -13,3 +13,8 @@ build/
 local.properties
 .idea/
 *.iml
+
+# Flutter generated
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
