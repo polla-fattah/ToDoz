@@ -41,7 +41,7 @@ The requirements are in the [TaskFlow 2.0 SRS](https://claude.ai/code/artifact/7
 - Not end-to-end encrypted: whoever runs the server can read the tasks (stated in the app).
 - App lock (PIN and fingerprint), automatic backups to a folder, the Android share sheet ("Share to TaskFlow"), launcher shortcuts and an add-task / complete-task intent.
 - **Syncing while the app is closed (Android):** about every 15 minutes, when there is a connection, a background job pulls what your other devices and people changed, sends what is waiting, shows the notifications for shared projects and rebuilds the reminders. Switch it off under Settings, Sync. Android decides the exact moment: battery saver, Doze and "battery optimisation" can delay it, and the shortest interval Android allows is 15 minutes, so this is not instant. The job does nothing while the app is open.
-- Not done: the Windows build (blocked on the C++ ATL libraries for the notification plugin).
+- **Windows:** `flutter build windows` works (needs Visual Studio Build Tools 2019 or newer with the "Desktop development with C++" workload, including the ATL component, and Developer Mode). Reminders and notifications on Windows are not tried yet, and syncing while the app is closed is Android only. `third_party/record_windows` is a one-line patch of the voice-note plugin so it builds with VS 2019 (see `third_party/README.md`).
 
 **R5 Productivity and integrations**
 - Productivity page: Karma, levels, streaks, a daily and weekly goal with days off, and charts. An activity log of everything changed, with Undo for most entries.

@@ -57,6 +57,11 @@ dependencies:
   workmanager: ^0.10.10
   home_widget: ^0.10.0
 
+dependency_overrides:
+  # Same plugin, CMake minimum lowered for Visual Studio 2019 Build Tools: see third_party/README.md.
+  record_windows:
+    path: third_party/record_windows
+
 dev_dependencies:
   shelf: ^1.4.1
   taskflow_server:
