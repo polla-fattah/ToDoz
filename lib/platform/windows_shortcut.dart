@@ -47,9 +47,9 @@ class WindowsShortcut {
   }
 
   /// Where Windows keeps the Start Menu entries of the signed-in person.
-  static File defaultLink() => File('${Platform.environment['APPDATA']}\\Microsoft\\Windows\\Start Menu\\Programs\\NoteDo.lnk');
+  static File defaultLink() => File('${Platform.environment['APPDATA']}\\Microsoft\\Windows\\Start Menu\\Programs\\ToDoz.lnk');
 
-  static File defaultMarker() => File('${Platform.environment['APPDATA']}\\NoteDo\\shortcut-target.txt');
+  static File defaultMarker() => File('${Platform.environment['APPDATA']}\\ToDoz\\shortcut-target.txt');
 }
 
 /// UTF-16 little-endian, which is what PowerShell's -EncodedCommand wants.
@@ -131,7 +131,7 @@ public static class StartMenuShortcut {
     var link = (IShellLinkW)new CShellLink();
     link.SetPath(target);
     link.SetWorkingDirectory(System.IO.Path.GetDirectoryName(target));
-    link.SetDescription("NoteDo");
+    link.SetDescription("ToDoz");
     if (!string.IsNullOrEmpty(icon)) link.SetIconLocation(icon, 0);
     var store = (IPropertyStore)link;
 

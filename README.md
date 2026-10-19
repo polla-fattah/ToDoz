@@ -1,10 +1,10 @@
-# NoteDo
+# ToDoz
 
-(Formerly TaskFlow 2.0. The name you see is NoteDo; the code, the Android package id and the server keep the name `taskflow` so existing installs, data and updates keep working.)
+(Formerly TaskFlow / NoteDo. The display name is ToDoz; the code, the Android package id and the server keep the name `taskflow` so existing installs, data and updates keep working.)
 
 A personal, offline-first task manager modelled on Todoist (without AI), built with Flutter for Android and Windows.
 
-The requirements are in the [TaskFlow 2.0 SRS](https://claude.ai/code/artifact/796e7f1d-5c0c-447b-bab0-a5e53108adae). This repository holds **R1 (Foundation)**, **R2 (Time)**, **R3 (Views and filters)**, **R4 (Sync)**, **R5 (Productivity and integrations)** and **R6 (Sharing)**; the old 1.0 app is kept in `legacy-v1/` for reference.
+The requirements are in the [TaskFlow 2.0 SRS](https://claude.ai/code/artifact/796e7f1d-5c0c-447b-bab0-a5e53108adae). The design and architecture principles are documented in [PHILOSOPHY.md](PHILOSOPHY.md). This repository holds **R1 (Foundation)**, **R2 (Time)**, **R3 (Views and filters)**, **R4 (Sync)**, **R5 (Productivity and integrations)** and **R6 (Sharing)**; the old 1.0 app is kept in `legacy-v1/` for reference.
 
 ## What it has so far
 
@@ -61,7 +61,7 @@ Quick Add syntax: `Review paper tomorrow at 4pm p1 %reading #work /backlog {nov 
 
 Not yet built: location reminders, workspaces and folders, attachments in the JSON backup, and hiding buttons a read-only member cannot use (the change is refused instead). The Google Calendar connection and voice notes have not been tried on a real account or phone, and the Todoist CSV layout was written from its documentation, not checked against a real export. Known simplifications in R3: manual order inside a filter is shared with the task's project order, and the built-in Today and Upcoming views are not yet implemented as filters. See section 7 of the SRS.
 
-**Web (online only):** the sync server also serves NoteDo for the web at `/app`, a React app: Inbox, Today, Upcoming, projects with a list and a **board** layout, labels and completed tasks; **drag and drop** to move tasks between sections, reorder them, or drop one on a project in the sidebar; Quick Add with a live preview of what it understood; a task panel that saves as you type (date picker, priority, labels, sub-tasks, comments); a command palette (Ctrl+K) and keyboard shortcuts. It needs a connection and keeps nothing in the browser except the sign-in. It is a separate client from the Flutter app (source in `server/web/`), served with a strict content-security policy. Not in the web version yet: attachments, reminders, sharing and filters.
+**Web (online only):** the sync server also serves ToDoz for the web at `/app`, a React app: Inbox, Today, Upcoming, projects with a list and a **board** layout, labels and completed tasks; **drag and drop** to move tasks between sections, reorder them, or drop one on a project in the sidebar; Quick Add with a live preview of what it understood; a task panel that saves as you type (date picker, priority, labels, sub-tasks, comments); a command palette (Ctrl+K) and keyboard shortcuts. It needs a connection and keeps nothing in the browser except the sign-in. It is a separate client from the Flutter app (source in `server/web/`), served with a strict content-security policy. Not in the web version yet: attachments, reminders, sharing and filters.
 
 ## Layout
 

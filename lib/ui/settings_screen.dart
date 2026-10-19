@@ -173,7 +173,7 @@ class SettingsScreen extends StatelessWidget {
         ListTile(
           leading: const Icon(Icons.download_outlined),
           title: const Text('Restore from backup'),
-          subtitle: const Text('Works with NoteDo (TaskFlow 2.0) backups and TaskFlow 1.0 backups.'),
+          subtitle: const Text('Works with ToDoz (TaskFlow 2.0) backups and TaskFlow 1.0 backups.'),
           onTap: () => _restore(context),
         ),
         const _Heading('Your data'),
@@ -193,7 +193,7 @@ class SettingsScreen extends StatelessWidget {
         ),
         const _Heading('About'),
         const ListTile(
-          title: Text('NoteDo'),
+          title: Text('ToDoz'),
           subtitle: Text(
             'Your tasks are stored on this device. Export a backup before uninstalling or changing phones. '
             'No analytics or ads. Sync is optional and goes only to a server you run; family sharing arrives in a later release.',
@@ -261,10 +261,10 @@ class SettingsScreen extends StatelessWidget {
     final bytes = utf8.encode(bundle.toJsonString());
     try {
       final saved = await FilePicker.saveFile(
-        fileName: 'NoteDo-backup-$today.json',
+        fileName: 'ToDoz-backup-$today.json',
         bytes: bytes,
         mimeType: 'application/json',
-        dialogTitle: 'Save NoteDo backup',
+        dialogTitle: 'Save ToDoz backup',
       );
       if (context.mounted && saved != null) showMessage(context, 'Backup saved');
     } catch (_) {
@@ -276,7 +276,7 @@ class SettingsScreen extends StatelessWidget {
     final repo = AppScope.repoOf(context);
     final String raw;
     try {
-      final file = await FilePicker.pickFile(dialogTitle: 'Choose a NoteDo backup');
+      final file = await FilePicker.pickFile(dialogTitle: 'Choose a ToDoz backup');
       if (file == null) return;
       if ((await file.length() ?? 0) > 50 * 1024 * 1024) throw const FormatException('too large');
       raw = utf8.decode(await file.readAsBytes());
@@ -297,7 +297,7 @@ class SettingsScreen extends StatelessWidget {
     final ok = await confirm(
       context,
       'Replace everything with this backup?',
-      '${bundle.sourceVersion == 1 ? 'TaskFlow 1.0 backup' : 'NoteDo backup'}\n'
+      '${bundle.sourceVersion == 1 ? 'TaskFlow 1.0 backup' : 'ToDoz backup'}\n'
       '${bundle.projects.length} projects, $open open tasks, $done completed, ${bundle.comments.length} comments.\n\n'
       'Your current data is saved to a safety copy first.',
       action: 'Restore',
@@ -578,7 +578,7 @@ class _PermissionTileState extends State<_PermissionTile> {
       subtitle: Text(s == null
           ? 'Checking...'
           : ok
-              ? (Platform.isWindows ? 'Reminders appear as Windows notifications, also when NoteDo is closed. Focus assist or Do not disturb can hide them.' : 'Notifications and exact alarms are allowed.')
+              ? (Platform.isWindows ? 'Reminders appear as Windows notifications, also when ToDoz is closed. Focus assist or Do not disturb can hide them.' : 'Notifications and exact alarms are allowed.')
               : [
                   if (!s.notifications) 'Notifications are off.',
                   if (!s.exact) 'Exact alarms are not allowed, so reminders may be a few minutes late.',

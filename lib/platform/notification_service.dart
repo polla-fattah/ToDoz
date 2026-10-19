@@ -25,7 +25,7 @@ const _digestId = 1; // below every task reminder id (those are >= 2)
 const _maxScheduled = 48; // Android keeps a limited number of alarms; schedule a rolling window
 
 /// Windows needs a name, an id and a GUID for the app to show and receive toast notifications.
-const _windowsAppName = 'NoteDo';
+const _windowsAppName = 'ToDoz';
 const _windowsAppId = 'Taskflow.NoteDo.App';
 const _windowsGuid = 'b8f5f1a2-6d3c-4f6e-9a0b-4c2e7d1a9e35';
 
@@ -205,8 +205,8 @@ class NotificationService implements NotificationControls, ShareAlerts {
       for (var i = 0; i < _digestDaysAhead; i++) {
         await _plugin.zonedSchedule(
           id: -1 - i,
-          title: 'Your day in NoteDo',
-          body: i == 0 ? body : 'Open NoteDo to see what is due today.',
+          title: 'Your day in ToDoz',
+          body: i == 0 ? body : 'Open ToDoz to see what is due today.',
           scheduledDate: tz.TZDateTime.from(DateTime(first.year, first.month, first.day + i, first.hour, first.minute), tz.local),
           notificationDetails: details,
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -216,7 +216,7 @@ class NotificationService implements NotificationControls, ShareAlerts {
     }
     await _plugin.zonedSchedule(
       id: _digestId,
-      title: 'Your day in NoteDo',
+      title: 'Your day in ToDoz',
       body: body,
       scheduledDate: tz.TZDateTime.from(first, tz.local),
       notificationDetails: details,

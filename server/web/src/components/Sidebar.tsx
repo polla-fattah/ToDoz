@@ -68,7 +68,7 @@ export function Sidebar({ open }: { open: boolean }) {
     <nav className={`sidebar ${open ? 'open' : ''}`} aria-label="Navigation">
       <div className="brand">
         <BrandMark />
-        NoteDo
+        ToDoz
       </div>
       <button className="add-btn" onClick={() => openQuickAdd()}>
         <Plus size={18} strokeWidth={2.5} /> Add task <kbd>Q</kbd>

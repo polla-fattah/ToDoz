@@ -87,7 +87,7 @@ class _PairingState extends State<_Pairing> {
       Text('Keep your devices in step', style: Theme.of(context).textTheme.titleLarge),
       const SizedBox(height: 8),
       const Text(
-        'Sync copies your tasks between your phone and computer through a NoteDo server you run. '
+        'Sync copies your tasks between your phone and computer through a ToDoz server you run. '
         'The app works fully without it. To pair this device, ask the person who runs the server for a pairing code '
         '(on the server: taskflow_server invite <name>).',
       ),
@@ -248,7 +248,7 @@ class _PairedState extends State<_Paired> {
             builder: (context, snap) {
               final at = int.tryParse(snap.data ?? '');
               final last = at == null ? 'not yet' : _ago(DateTime.fromMillisecondsSinceEpoch(at));
-              return Text('About every 15 minutes when there is a connection, so changes from your other devices and notifications for shared projects arrive without opening NoteDo. Last time: $last.');
+              return Text('About every 15 minutes when there is a connection, so changes from your other devices and notifications for shared projects arrive without opening ToDoz. Last time: $last.');
             },
           ),
           value: s.backgroundSync,

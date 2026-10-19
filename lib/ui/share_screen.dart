@@ -71,7 +71,7 @@ class _ShareScreenState extends State<ShareScreen> {
       await showSecret(
         context,
         title: 'Invitation code',
-        body: 'Give this code to the person. In NoteDo they open Browse, choose "Join a shared project" and type it. It works once and expires in 24 hours. They need an account on the same server.',
+        body: 'Give this code to the person. In ToDoz they open Browse, choose "Join a shared project" and type it. It works once and expires in 24 hours. They need an account on the same server.',
         secret: code,
       );
     });

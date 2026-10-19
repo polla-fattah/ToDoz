@@ -23,7 +23,7 @@ export function Login() {
     <div className="login-wrap">
       <form className="login" onSubmit={submit}>
         <BrandMark />
-        <h1>NoteDo</h1>
+        <h1>ToDoz</h1>
         <p>Sign in to see your tasks in the browser.</p>
         <input
           autoFocus
@@ -41,7 +41,7 @@ export function Login() {
           {busy ? 'Signing in…' : 'Sign in'} <ArrowRight size={16} />
         </button>
         <small>
-          Ask for a one-time code from the person who runs this server, or make one in the NoteDo app under Settings, Sync. It works once and expires in minutes.
+          Ask for a one-time code from the person who runs this server, or make one in the ToDoz app under Settings, Sync. It works once and expires in minutes.
           This web version works online only and keeps nothing offline.
         </small>
       </form>
