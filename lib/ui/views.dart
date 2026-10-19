@@ -359,6 +359,8 @@ class TodayScreen extends StatelessWidget {
     final today = formatDate(dateOnly(now));
     const wd = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const mo = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    // On a wide window (with the sidebar) a task can be carried from here to a project or to another day's place.
+    final wide = MediaQuery.of(context).size.width >= 840;
     return Screen(
       title: 'Today',
       subtitle: '${wd[now.weekday]}, ${now.day} ${mo[now.month]}',
@@ -377,9 +379,9 @@ class TodayScreen extends StatelessWidget {
           final entries = <ListEntry>[
             if (catalog.karmaEnabled && catalog.dailyGoal > 0) WidgetEntry(_GoalCard(goal: catalog.dailyGoal)),
             if (overdue.isNotEmpty) overdueEntry(context, overdue, today),
-            for (final t in overdue) TaskEntry(flatRow(t)),
+            for (final t in overdue) TaskEntry(flatRow(t), handle: wide),
             if (due.isNotEmpty || overdue.isNotEmpty) HeaderEntry('Today', count: due.length),
-            for (final t in due) TaskEntry(flatRow(t)),
+            for (final t in due) TaskEntry(flatRow(t), handle: wide),
           ];
           return EntryList(
             entries: entries,

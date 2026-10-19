@@ -1,6 +1,8 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 
 import 'package:taskflow_core/backup.dart' show inboxId;
+import 'package:taskflow_core/date_parser.dart' show dateOnly, formatDate;
 import 'browse_screen.dart';
 import 'calendar_view.dart';
 import 'catalog.dart';
@@ -48,8 +50,26 @@ class Sidebar extends StatelessWidget {
       }
     }
 
+    // Dropping a dragged task on Today plans it for today (its time of day stays).
+    Future<void> planForToday(String taskId) async {
+      final repo = catalog.repo;
+      final before = await repo.getTask(taskId);
+      final today = formatDate(dateOnly(repo.now));
+      if (before == null || before.dueDate == today) return;
+      if (!context.mounted) return;
+      try {
+        await repo.updateTask(taskId, dueDate: Value(today));
+      } on Exception catch (e) {
+        if (context.mounted) showMessage(context, e.toString());
+        return;
+      }
+      if (context.mounted) {
+        showUndo(context, 'Planned for today', () => repo.updateTask(taskId, dueDate: Value(before.dueDate), dueTime: Value(before.dueTime)));
+      }
+    }
+
     Widget item(String key, IconData icon, String label, WidgetBuilder builder,
-        {Color? color, Widget? trailing, double indent = 0, String? dropProjectId}) {
+        {Color? color, Widget? trailing, double indent = 0, String? dropProjectId, Future<void> Function(String taskId)? onDropTask}) {
       Widget tile(bool hovering) => ListTile(
             dense: true,
             selected: selectedKey == key,
@@ -61,9 +81,9 @@ class Sidebar extends StatelessWidget {
             trailing: trailing,
             onTap: () => onNavigate(key, builder),
           );
-      if (dropProjectId == null) return tile(false);
+      if (dropProjectId == null && onDropTask == null) return tile(false);
       return DragTarget<String>(
-        onAcceptWithDetails: (d) => moveHere(d.data, dropProjectId, label),
+        onAcceptWithDetails: (d) => dropProjectId != null ? moveHere(d.data, dropProjectId, label) : onDropTask!(d.data),
         builder: (context, candidates, _) => tile(candidates.isNotEmpty),
       );
     }
@@ -85,7 +105,7 @@ class Sidebar extends StatelessWidget {
       child: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
         const SizedBox(height: 8),
         item('inbox', Icons.inbox_outlined, 'Inbox', (_) => const ProjectScreen(projectId: inboxId, isTab: true), dropProjectId: inboxId),
-        item('today', Icons.today_outlined, 'Today', (_) => const TodayScreen()),
+        item('today', Icons.today_outlined, 'Today', (_) => const TodayScreen(), onDropTask: planForToday),
         item('upcoming', Icons.calendar_month_outlined, 'Upcoming', (_) => const UpcomingScreen()),
         item('calendar', Icons.calendar_view_week_outlined, 'Calendar', (_) => const CalendarScreen()),
         item('search', Icons.search, 'Search', (_) => const SearchScreen()),

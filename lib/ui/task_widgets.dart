@@ -272,8 +272,11 @@ class HeaderEntry extends ListEntry {
 }
 
 class TaskEntry extends ListEntry {
-  const TaskEntry(this.row, {this.showProject = true, this.showDetails = true, this.zone});
+  const TaskEntry(this.row, {this.showProject = true, this.showDetails = true, this.zone, this.handle = false});
   final TreeRow row;
+
+  /// Show a drag handle even without a [zone] (the row can be carried to the sidebar, but not dropped on in the list).
+  final bool handle;
   final bool showProject;
   final bool showDetails;
 
@@ -381,7 +384,7 @@ class _EntryListState extends State<EntryList> {
               );
             case TaskEntry():
               final canDrop = onDrop != null && e.zone != null && e.row.depth == 0;
-              final tile = TaskTile(row: e.row, showProject: e.showProject, showDetails: e.showDetails, draggable: widget.draggable, dragHandle: canDrop);
+              final tile = TaskTile(row: e.row, showProject: e.showProject, showDetails: e.showDetails, draggable: widget.draggable, dragHandle: canDrop || e.handle);
               if (!canDrop) return tile;
               return DragTarget<String>(
                 onWillAcceptWithDetails: (d) => d.data != e.row.task.id,

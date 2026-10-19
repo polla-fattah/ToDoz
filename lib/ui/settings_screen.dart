@@ -130,8 +130,8 @@ class SettingsScreen extends StatelessWidget {
         if (!(catalog.notifications?.supported ?? false))
           const ListTile(
             leading: Icon(Icons.info_outline),
-            title: Text('Reminders are available on Android'),
-            subtitle: Text('Windows notifications come in a later release.'),
+            title: Text('Reminders are available on Android and Windows'),
+            subtitle: Text('This device cannot show them yet.'),
           ),
         const _Heading('Sync'),
         Builder(builder: (context) {
@@ -578,7 +578,7 @@ class _PermissionTileState extends State<_PermissionTile> {
       subtitle: Text(s == null
           ? 'Checking...'
           : ok
-              ? 'Notifications and exact alarms are allowed.'
+              ? (Platform.isWindows ? 'Reminders appear as Windows notifications, also when NoteDo is closed. Focus assist or Do not disturb can hide them.' : 'Notifications and exact alarms are allowed.')
               : [
                   if (!s.notifications) 'Notifications are off.',
                   if (!s.exact) 'Exact alarms are not allowed, so reminders may be a few minutes late.',

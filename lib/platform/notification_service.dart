@@ -16,6 +16,7 @@ import '../data/database.dart';
 import '../data/repository.dart';
 import '../sync/share_notifier.dart';
 import '../ui/notification_controls.dart';
+import 'windows_shortcut.dart';
 
 const _remindersChannel = 'reminders';
 const _digestChannel = 'digest';
@@ -23,9 +24,20 @@ const _sharedChannel = 'shared';
 const _digestId = 1; // below every task reminder id (those are >= 2)
 const _maxScheduled = 48; // Android keeps a limited number of alarms; schedule a rolling window
 
+/// Windows needs a name, an id and a GUID for the app to show and receive toast notifications.
+const _windowsAppName = 'NoteDo';
+const _windowsAppId = 'Taskflow.NoteDo.App';
+const _windowsGuid = 'b8f5f1a2-6d3c-4f6e-9a0b-4c2e7d1a9e35';
+
+/// A Windows toast button hands back text like `complete:<task id>` (a plain tap hands back just the task id).
+const _completeAction = 'complete';
+const _snoozeAction = 'snooze10';
+const _digestDaysAhead = 7; // Windows cannot repeat a notification, so the next week of digests is scheduled
+
 /// Schedules local notifications for task reminders and the daily digest
-/// (FR-N1 to FR-N8). Android only for now; on other platforms every call does
-/// nothing.
+/// (FR-N1 to FR-N8). Android and Windows; on other platforms every call does
+/// nothing. On Windows they are scheduled toasts, which the system shows at the
+/// right time even when the app is closed (they are rebuilt whenever the app runs).
 ///
 /// Everything it needs comes from the database, so the same code runs in the
 /// app and in the background isolate that handles the Complete and Snooze
@@ -42,11 +54,18 @@ class NotificationService implements NotificationControls, ShareAlerts {
   final _plugin = FlutterLocalNotificationsPlugin();
   bool _ready = false;
 
+  static bool get _windows => !kIsWeb && Platform.isWindows;
+
   @override
-  bool get supported => !kIsWeb && Platform.isAndroid;
+  bool get supported => !kIsWeb && (Platform.isAndroid || Platform.isWindows);
 
   Future<void> init() async {
     if (!supported || _ready) return;
+    // Windows shows a desktop app's notifications only when it has a Start Menu shortcut with its app id.
+    if (_windows) {
+      await WindowsShortcut(appId: _windowsAppId, activatorGuid: _windowsGuid)
+          .ensure(target: Platform.resolvedExecutable, lnk: WindowsShortcut.defaultLink(), marker: WindowsShortcut.defaultMarker());
+    }
     tzdata.initializeTimeZones();
     try {
       final info = await FlutterTimezone.getLocalTimezone();
@@ -55,9 +74,12 @@ class NotificationService implements NotificationControls, ShareAlerts {
       // Keep UTC if the zone cannot be read; reminders then fire in UTC.
     }
     await _plugin.initialize(
-      settings: const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher')),
+      settings: const InitializationSettings(
+        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        windows: WindowsInitializationSettings(appName: _windowsAppName, appUserModelId: _windowsAppId, guid: _windowsGuid),
+      ),
       onDidReceiveNotificationResponse: _onResponse,
-      onDidReceiveBackgroundNotificationResponse: notificationBackgroundHandler,
+      onDidReceiveBackgroundNotificationResponse: _windows ? null : notificationBackgroundHandler,
     );
     final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     await android?.createNotificationChannel(const AndroidNotificationChannel(
@@ -75,11 +97,31 @@ class NotificationService implements NotificationControls, ShareAlerts {
     _ready = true;
   }
 
-  /// If the app was started by tapping a notification, the task it was for.
+  /// If the app was started by tapping a notification, the task it was for. A Complete or Snooze button pressed on
+  /// a Windows toast while the app was closed is carried out here (and gives no task to open).
   Future<String?> launchTaskId() async {
     if (!supported) return null;
     final d = await _plugin.getNotificationAppLaunchDetails();
-    return (d?.didNotificationLaunchApp ?? false) ? d?.notificationResponse?.payload : null;
+    if (!(d?.didNotificationLaunchApp ?? false)) return null;
+    final payload = d?.notificationResponse?.payload;
+    if (payload == null || payload.isEmpty) return null;
+    final action = ToastAction.parse(payload);
+    if (action == null) return payload;
+    await applyAction(action);
+    return null;
+  }
+
+  /// Completes or snoozes the task a toast button was for, then rebuilds the schedule.
+  Future<void> applyAction(ToastAction action) async {
+    switch (action.kind) {
+      case _completeAction:
+        await repo.completeTask(action.taskId);
+      case _snoozeAction:
+        await repo.snoozeTask(action.taskId, repo.now.add(const Duration(minutes: 10)));
+      default:
+        return;
+    }
+    await sync();
   }
 
   /// Asks for the notification permission (Android 13+) and, if needed, the
@@ -88,6 +130,7 @@ class NotificationService implements NotificationControls, ShareAlerts {
   @override
   Future<bool> requestPermissions() async {
     if (!supported) return false;
+    if (_windows) return true; // Windows asks for nothing
     final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     if (android == null) return false;
     final notifications = await android.requestNotificationsPermission() ?? true;
@@ -102,6 +145,7 @@ class NotificationService implements NotificationControls, ShareAlerts {
   @override
   Future<({bool notifications, bool exact})> permissionStatus() async {
     if (!supported) return (notifications: false, exact: false);
+    if (_windows) return (notifications: true, exact: true);
     final android = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     return (
       notifications: await android?.areNotificationsEnabled() ?? false,
@@ -119,7 +163,12 @@ class NotificationService implements NotificationControls, ShareAlerts {
     final lead = autoRaw == 'off' ? null : (int.tryParse(autoRaw ?? '') ?? 30);
     final fires = upcomingFires(await repo.reminderTasks(), now, autoLeadMinutes: lead, limit: _maxScheduled);
 
-    await _plugin.cancelAllPendingNotifications();
+    // Windows has no separate call for the pending ones; its cancelAll removes the scheduled toasts.
+    if (_windows) {
+      await _plugin.cancelAll();
+    } else {
+      await _plugin.cancelAllPendingNotifications();
+    }
     final exactOk = (await _plugin
                 .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
                 ?.canScheduleExactNotifications()) ??
@@ -130,7 +179,7 @@ class NotificationService implements NotificationControls, ShareAlerts {
         title: f.title,
         body: f.spec.isRelative && f.spec.offsetMinutes == 0 && !f.automatic ? 'Snoozed reminder' : f.spec.describe(),
         scheduledDate: tz.TZDateTime.from(f.at, tz.local),
-        notificationDetails: _reminderDetails(),
+        notificationDetails: _reminderDetails(f.taskId),
         androidScheduleMode: exactOk ? AndroidScheduleMode.exactAllowWhileIdle : AndroidScheduleMode.inexactAllowWhileIdle,
         payload: f.taskId,
       );
@@ -145,16 +194,32 @@ class NotificationService implements NotificationControls, ShareAlerts {
     final today = formatDate(dateOnly(now));
     final due = await repo.watchToday(today).first;
     final body = due.isEmpty ? 'Nothing is due today.' : '${due.length} task${due.length == 1 ? '' : 's'} due today or overdue.';
-    var at = tz.TZDateTime(tz.local, now.year, now.month, now.day, minutes ~/ 60, minutes % 60);
-    if (!at.isAfter(tz.TZDateTime.from(now, tz.local))) at = at.add(const Duration(days: 1));
+    var first = DateTime(now.year, now.month, now.day, minutes ~/ 60, minutes % 60);
+    if (!first.isAfter(now)) first = DateTime(now.year, now.month, now.day + 1, minutes ~/ 60, minutes % 60);
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(_digestChannel, 'Daily digest', importance: Importance.defaultImportance),
+      windows: WindowsNotificationDetails(),
+    );
+    if (_windows) {
+      // No repeating notifications on Windows: schedule the next week. Only the first knows today's count.
+      for (var i = 0; i < _digestDaysAhead; i++) {
+        await _plugin.zonedSchedule(
+          id: -1 - i,
+          title: 'Your day in NoteDo',
+          body: i == 0 ? body : 'Open NoteDo to see what is due today.',
+          scheduledDate: tz.TZDateTime.from(DateTime(first.year, first.month, first.day + i, first.hour, first.minute), tz.local),
+          notificationDetails: details,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        );
+      }
+      return;
+    }
     await _plugin.zonedSchedule(
       id: _digestId,
       title: 'Your day in NoteDo',
       body: body,
-      scheduledDate: at,
-      notificationDetails: const NotificationDetails(
-        android: AndroidNotificationDetails(_digestChannel, 'Daily digest', importance: Importance.defaultImportance),
-      ),
+      scheduledDate: tz.TZDateTime.from(first, tz.local),
+      notificationDetails: details,
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
     );
@@ -175,13 +240,20 @@ class NotificationService implements NotificationControls, ShareAlerts {
           channelDescription: 'Comments and assignments from people you share projects with',
           importance: Importance.defaultImportance,
         ),
+        windows: WindowsNotificationDetails(),
       ),
       payload: taskId,
     );
   }
 
-  NotificationDetails _reminderDetails() => const NotificationDetails(
-        android: AndroidNotificationDetails(
+  NotificationDetails _reminderDetails(String taskId) => NotificationDetails(
+        windows: WindowsNotificationDetails(
+          actions: [
+            WindowsAction(content: 'Complete', arguments: '$_completeAction:$taskId'),
+            WindowsAction(content: 'Snooze 10 min', arguments: '$_snoozeAction:$taskId'),
+          ],
+        ),
+        android: const AndroidNotificationDetails(
           _remindersChannel,
           'Reminders',
           channelDescription: 'Task reminders',
@@ -197,7 +269,34 @@ class NotificationService implements NotificationControls, ShareAlerts {
 
   void _onResponse(NotificationResponse r) {
     final id = r.payload;
-    if (id != null && (r.actionId == null || r.actionId!.isEmpty)) onOpenTask?.call(id);
+    if (id == null || id.isEmpty) return;
+    if (_windows) {
+      // A toast button comes back as `complete:<id>` / `snooze10:<id>`; a tap on the toast as the task id.
+      final action = ToastAction.parse(id);
+      if (action != null) {
+        applyAction(action);
+      } else {
+        onOpenTask?.call(id);
+      }
+      return;
+    }
+    if (r.actionId == null || r.actionId!.isEmpty) onOpenTask?.call(id);
+  }
+}
+
+/// What a Windows toast button asks for: `complete:<task id>` or `snooze10:<task id>`.
+class ToastAction {
+  const ToastAction(this.kind, this.taskId);
+  final String kind;
+  final String taskId;
+
+  /// Null for text that is not a button (a plain task id).
+  static ToastAction? parse(String text) {
+    final i = text.indexOf(':');
+    if (i <= 0 || i == text.length - 1) return null;
+    final kind = text.substring(0, i);
+    if (kind != _completeAction && kind != _snoozeAction) return null;
+    return ToastAction(kind, text.substring(i + 1));
   }
 }
 
