@@ -24,7 +24,9 @@ http://{$TASKFLOW_DOMAIN}, https://{$TASKFLOW_DOMAIN} {
 
 	# Backend API, web app, and webhooks
 	handle /app* {
-		reverse_proxy taskflow:8080
+		reverse_proxy taskflow:8080 {
+			header_down Content-Security-Policy "default-src 'none'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://cloudflareinsights.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+		}
 	}
 
 	handle /v1/* {
@@ -35,7 +37,9 @@ http://{$TASKFLOW_DOMAIN}, https://{$TASKFLOW_DOMAIN} {
 	}
 
 	handle /web/* {
-		reverse_proxy taskflow:8080
+		reverse_proxy taskflow:8080 {
+			header_down Content-Security-Policy "default-src 'none'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://cloudflareinsights.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+		}
 	}
 
 	# The REST API: the web app at /app and your own scripts use it. Without this the landing page answers it
