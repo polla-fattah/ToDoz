@@ -7,7 +7,14 @@ http://{$TASKFLOW_DOMAIN}, https://{$TASKFLOW_DOMAIN} {
 		-Server
 	}
 
-	# Attachment files may be large (the server enforces its own limit, 100 MB by default).
+	# Downloads: direct static file serving with attachment header
+	handle /downloads/* {
+		root * /var/www/landing
+		header Content-Disposition "attachment"
+		file_server
+	}
+
+	# Attachment blobs (large payloads up to 110MB)
 	handle /v1/blobs/* {
 		request_body {
 			max_size 110MB
@@ -15,11 +22,38 @@ http://{$TASKFLOW_DOMAIN}, https://{$TASKFLOW_DOMAIN} {
 		reverse_proxy taskflow:8080
 	}
 
-	# Everything else is small JSON.
-	handle {
+	# Backend API, web app, and webhooks
+	handle /app* {
+		reverse_proxy taskflow:8080
+	}
+
+	handle /v1/* {
 		request_body {
 			max_size 2MB
 		}
 		reverse_proxy taskflow:8080
+	}
+
+	handle /web/* {
+		reverse_proxy taskflow:8080
+	}
+
+	handle /ical/* {
+		reverse_proxy taskflow:8080
+	}
+
+	handle /google/* {
+		reverse_proxy taskflow:8080
+	}
+
+	handle /health {
+		reverse_proxy taskflow:8080
+	}
+
+	# Static landing page for root and website assets (CSS, JS, images)
+	handle {
+		root * /var/www/landing
+		file_server
+		try_files {path} /index.html
 	}
 }

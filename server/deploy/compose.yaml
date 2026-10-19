@@ -39,6 +39,7 @@ services:
       TASKFLOW_DOMAIN: ${TASKFLOW_DOMAIN:-} # deploy.sh public <name> checks this is set
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../../landing:/var/www/landing:ro
       - caddy-data:/data
       - caddy-config:/config
     depends_on:
