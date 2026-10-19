@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 
 import '../data/database.dart';
+import 'activity_screen.dart';
 import 'catalog.dart';
 import 'common.dart';
 import 'filter_editor.dart';
 import 'help_screen.dart';
+import 'import_screen.dart';
+import 'progress_screen.dart';
+import 'share_screen.dart';
 import 'project_dialogs.dart';
 import 'settings_screen.dart';
 import 'views.dart';
@@ -31,7 +35,11 @@ class BrowseScreen extends StatelessWidget {
         IconButton(tooltip: 'Settings', icon: const Icon(Icons.settings_outlined), onPressed: () => push(const SettingsScreen())),
       ],
       body: ListView(padding: const EdgeInsets.only(bottom: 48), children: [
+        if (catalog.karmaEnabled) ListTile(leading: const Icon(Icons.insights_outlined), title: const Text('Productivity'), onTap: () => push(const ProgressScreen())),
         ListTile(leading: const Icon(Icons.check_circle_outline), title: const Text('Completed'), onTap: () => push(const CompletedScreen())),
+        ListTile(leading: const Icon(Icons.history), title: const Text('Activity'), onTap: () => push(const ActivityScreen())),
+        ListTile(leading: const Icon(Icons.group_add_outlined), title: const Text('Join a shared project'), onTap: () => showJoinDialog(context)),
+        ListTile(leading: const Icon(Icons.file_download_outlined), title: const Text('Import tasks'), onTap: () => push(const ImportScreen())),
         ListTile(leading: const Icon(Icons.delete_outline), title: const Text('Trash'), onTap: () => push(const TrashScreen())),
         ListTile(leading: const Icon(Icons.help_outline), title: const Text('Help: Quick Add, repeats, filters'), onTap: () => push(const HelpScreen())),
         if (favProjects.isNotEmpty || favLabels.isNotEmpty || favFilters.isNotEmpty) ...[
@@ -75,7 +83,7 @@ class BrowseScreen extends StatelessWidget {
           ListTile(
             contentPadding: EdgeInsets.only(left: 16 + depth * 24.0, right: 8),
             leading: Icon(Icons.circle, size: 14, color: Color(p.color)),
-            title: Text(p.name),
+            title: Row(children: [Flexible(child: Text(p.name)), if (catalog.isShared(p.id)) const Padding(padding: EdgeInsets.only(left: 6), child: Icon(Icons.people_outline, size: 16))]),
             trailing: IconButton(
               tooltip: p.isFavorite ? 'Remove from favorites' : 'Add to favorites',
               icon: Icon(p.isFavorite ? Icons.favorite : Icons.favorite_border, size: 20),

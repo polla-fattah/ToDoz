@@ -1,7 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Sync (R4): talk to the owner's server. Only used once a device is paired. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Reminders (FR-N1..N4): show notifications, fire at an exact time, and
          reschedule after a reboot. SCHEDULE_EXACT_ALARM is a user-granted
          permission on Android 12+; the app asks for it in Settings. -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+    <!-- Voice notes (FR-C3): only when the person taps the microphone button. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
@@ -32,6 +37,36 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <!-- Share sheet (FR-C5): text and links make a task; files and images are attached to one. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="*/*"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="*/*"/>
+            </intent-filter>
+
+            <!-- For Tasker, Automate and similar apps (FR-I7). Extra "text" holds a Quick Add line or a title. -->
+            <intent-filter>
+                <action android:name="com.taskflow.taskflow.ADD_TASK"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.taskflow.taskflow.COMPLETE_TASK"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+
+            <!-- Launcher shortcuts (FR-I2). -->
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts"/>
         </activity>
 
         <!-- flutter_local_notifications: delivers scheduled alarms, re-creates
@@ -60,6 +95,11 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <!-- Opening Google's sign-in page in the browser (url_launcher). -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

@@ -10,14 +10,16 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
-import '../core/date_parser.dart';
-import '../core/reminder.dart';
+import 'package:taskflow_core/date_parser.dart';
+import 'package:taskflow_core/reminder.dart';
 import '../data/database.dart';
 import '../data/repository.dart';
+import '../sync/share_notifier.dart';
 import '../ui/notification_controls.dart';
 
 const _remindersChannel = 'reminders';
 const _digestChannel = 'digest';
+const _sharedChannel = 'shared';
 const _digestId = 1; // below every task reminder id (those are >= 2)
 const _maxScheduled = 48; // Android keeps a limited number of alarms; schedule a rolling window
 
@@ -29,7 +31,7 @@ const _maxScheduled = 48; // Android keeps a limited number of alarms; schedule 
 /// app and in the background isolate that handles the Complete and Snooze
 /// buttons. [upcomingFires] (pure, unit-tested) decides *what* fires and
 /// when; this class only hands it to the operating system.
-class NotificationService implements NotificationControls {
+class NotificationService implements NotificationControls, ShareAlerts {
   NotificationService(this.repo, {this.onOpenTask});
 
   final Repo repo;
@@ -155,6 +157,26 @@ class NotificationService implements NotificationControls {
       ),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
+    );
+  }
+
+  /// An immediate notification about something other people did in a shared project (FR-W3).
+  @override
+  Future<void> show({required int id, required String title, required String body, String? taskId}) async {
+    if (!_ready && !supported) return;
+    await _plugin.show(
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          _sharedChannel,
+          'Shared projects',
+          channelDescription: 'Comments and assignments from people you share projects with',
+          importance: Importance.defaultImportance,
+        ),
+      ),
+      payload: taskId,
     );
   }
 

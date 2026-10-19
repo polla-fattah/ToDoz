@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../core/filter.dart';
+import 'package:taskflow_core/filter.dart';
 import '../data/database.dart';
 import 'catalog.dart';
 import 'common.dart';

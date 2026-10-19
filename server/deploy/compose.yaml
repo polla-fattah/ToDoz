@@ -1,0 +1,63 @@
+# TaskFlow sync server in Docker. Easiest way to run it: ./deploy.sh public sync.example.com   (or: ./deploy.sh private)
+#
+# Two ways to reach it, chosen with the Compose "profile":
+#   public   Caddy in front, gets and renews the HTTPS certificate itself. Needs a DNS name and ports 80/443.
+#   private  No public port at all. The server listens only on this machine (127.0.0.1:8080) and you reach it
+#            through Tailscale (see DEPLOY.md). Nothing on the internet can connect to it.
+#
+# The app container never publishes a port to the outside world (SEC-6).
+services:
+  taskflow:
+    build:
+      context: ../..
+      dockerfile: server/Dockerfile
+    restart: unless-stopped
+    volumes:
+      - taskflow-data:/data # the database and the attachment files (/data/blobs)
+    environment:
+      TASKFLOW_PUBLIC_URL: ${TASKFLOW_PUBLIC_URL:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    expose:
+      - "8080"
+
+  # --- public mode -----------------------------------------------------------------------------
+  caddy:
+    profiles: [public]
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      TASKFLOW_DOMAIN: ${TASKFLOW_DOMAIN:-} # deploy.sh public <name> checks this is set
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - taskflow
+
+  # --- private mode ----------------------------------------------------------------------------
+  # A tiny forwarder that makes the server reachable on the host's own loopback address only, so that
+  # `tailscale serve` (or an SSH tunnel) on the host can pass traffic to it. It is not on the internet.
+  loopback:
+    profiles: [private]
+    image: alpine/socat
+    restart: unless-stopped
+    command: TCP-LISTEN:8080,fork,reuseaddr TCP:taskflow:8080
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      - taskflow
+
+volumes:
+  taskflow-data:
+  caddy-data:
+  caddy-config:

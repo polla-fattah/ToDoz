@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../core/backup.dart' show inboxId;
+import 'package:taskflow_core/backup.dart' show inboxId;
 import 'browse_screen.dart';
 import 'catalog.dart';
 import 'filter_editor.dart';

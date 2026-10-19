@@ -1,8 +1,8 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 
-import '../core/date_parser.dart';
-import '../core/view_options.dart';
+import 'package:taskflow_core/date_parser.dart';
+import 'package:taskflow_core/view_options.dart';
 import '../data/database.dart';
 import 'catalog.dart';
 import 'common.dart';

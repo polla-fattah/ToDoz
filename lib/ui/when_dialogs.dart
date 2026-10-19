@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../core/date_parser.dart';
-import '../core/recurrence.dart';
-import '../core/reminder.dart';
+import 'package:taskflow_core/date_parser.dart';
+import 'package:taskflow_core/recurrence.dart';
+import 'package:taskflow_core/reminder.dart';
 import 'catalog.dart';
 import 'common.dart';
 

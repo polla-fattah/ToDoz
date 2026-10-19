@@ -2,13 +2,15 @@ import 'dart:async';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:taskflow_core/sharing.dart' show reactionEmoji;
 
-import '../core/backup.dart' show inboxId;
-import '../core/date_parser.dart';
-import '../core/reminder.dart';
+import 'package:taskflow_core/backup.dart' show inboxId;
+import 'package:taskflow_core/date_parser.dart';
+import 'package:taskflow_core/reminder.dart';
 import '../data/database.dart';
 import '../data/repository.dart';
 import 'catalog.dart';
+import 'attachments_ui.dart';
 import 'common.dart';
 import 'task_tree.dart';
 import 'task_widgets.dart';
@@ -349,6 +351,32 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
           ),
         ]),
       ),
+      if (catalog.isShared(task.projectId))
+        row(
+          Icons.person_outline,
+          'Assigned to',
+          TextButton.icon(
+            icon: const Icon(Icons.person_outline, size: 18),
+            label: Text(task.assigneeId == null ? 'Nobody' : catalog.displayName(task.assigneeId)),
+            onPressed: !catalog.canEdit(task.projectId)
+                ? null
+                : () async {
+                    final members = catalog.sharedOf(task.projectId)!.members;
+                    final picked = await pickFromList<String>(
+                      context,
+                      'Assign to',
+                      [('', 'Nobody'), for (final m in members) (m.userId, m.userId == catalog.me ? '${m.name} (you)' : m.name)],
+                      selected: task.assigneeId ?? '',
+                    );
+                    if (picked != null && context.mounted) await guarded(context, () => repo.assignTask(task.id, picked.isEmpty ? null : picked));
+                  },
+          ),
+        ),
+      if (task.assigneeId != null && catalog.isShared(task.projectId) && task.assignedBy != null && task.assignedBy != task.assigneeId)
+        Padding(
+          padding: const EdgeInsets.only(left: 40, bottom: 4),
+          child: Text('Assigned by ${catalog.displayName(task.assignedBy)}', style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.outline)),
+        ),
     ]);
   }
 
@@ -432,12 +460,29 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
 
   Widget _comments(BuildContext context, Catalog catalog, Task task) {
     final repo = catalog.repo;
-    final cs = Theme.of(context).colorScheme;
     return Live<List<Comment>>(
       id: task.id,
       create: () => repo.watchComments(task.id),
       builder: (context, data) {
         final comments = data ?? const <Comment>[];
+        return Live<List<Attachment>>(
+          id: task.id,
+          create: () => repo.watchTaskAttachments(task.id),
+          builder: (context, files) => Live<List<Reaction>>(
+            id: task.id,
+            create: () => repo.watchTaskReactions(task.id),
+            builder: (context, reactions) => _commentList(context, catalog, task, comments, files ?? const <Attachment>[], reactions ?? const <Reaction>[]),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _commentList(BuildContext context, Catalog catalog, Task task, List<Comment> comments, List<Attachment> files, List<Reaction> reactions) {
+    final repo = catalog.repo;
+    final cs = Theme.of(context).colorScheme;
+    {
+      {
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Padding(
             padding: const EdgeInsets.only(top: 8, bottom: 4),
@@ -446,9 +491,13 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
           for (final c in comments)
             Card(
               margin: const EdgeInsets.symmetric(vertical: 4),
-              child: ListTile(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                ListTile(
                 title: Text(c.body),
-                subtitle: Text(_stamp(c.createdAt), style: TextStyle(fontSize: 11, color: cs.outline)),
+                subtitle: Text(
+                  [if (c.authorId != null && catalog.isShared(task.projectId)) catalog.displayName(c.authorId), _stamp(c.createdAt)].join(' · '),
+                  style: TextStyle(fontSize: 11, color: cs.outline),
+                ),
                 trailing: PopupMenuButton<String>(
                   onSelected: (v) async {
                     if (v == 'edit') {
@@ -464,6 +513,9 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                   ],
                 ),
               ),
+                CommentAttachments(attachments: [for (final a in files) if (a.commentId == c.id) a]),
+                if (catalog.me != null) _Reactions(commentId: c.id, reactions: [for (final r in reactions) if (r.commentId == c.id) r]),
+              ]),
             ),
           Row(children: [
             Expanded(
@@ -473,11 +525,13 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                 onSubmitted: (v) => _addComment(repo, task.id),
               ),
             ),
+            IconButton(icon: const Icon(Icons.attach_file), tooltip: 'Attach a file', onPressed: () => pickAndAttach(context, task.id)),
+            VoiceNoteButton(taskId: task.id),
             IconButton(icon: const Icon(Icons.send), tooltip: 'Add comment', onPressed: () => _addComment(repo, task.id)),
           ]),
         ]);
-      },
-    );
+      }
+    }
   }
 
   Future<void> _addComment(Repo repo, String taskId) async {
@@ -548,5 +602,63 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
           await guarded(context, () => repo.moveTask(task.id, projectId: task.projectId, parentId: picked));
         }
     }
+  }
+}
+
+
+/// Emoji reactions under a comment: tap one to add or take back your own (FR-W3).
+class _Reactions extends StatelessWidget {
+  const _Reactions({required this.commentId, required this.reactions});
+  final String commentId;
+  final List<Reaction> reactions;
+
+  @override
+  Widget build(BuildContext context) {
+    final catalog = AppScope.of(context);
+    final repo = catalog.repo;
+    final byEmoji = <String, List<Reaction>>{};
+    for (final r in reactions) {
+      byEmoji.putIfAbsent(r.emoji, () => []).add(r);
+    }
+    Future<void> toggle(String e) => guarded(context, () => repo.toggleReaction(commentId, e));
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      child: Wrap(spacing: 6, runSpacing: 4, children: [
+        for (final e in byEmoji.entries)
+          Tooltip(
+            message: e.value.map((r) => catalog.displayName(r.userId)).join(', '),
+            child: FilterChip(
+              visualDensity: VisualDensity.compact,
+              label: Text('${e.key} ${e.value.length}'),
+              selected: e.value.any((r) => r.userId == catalog.me),
+              onSelected: (_) => toggle(e.key),
+            ),
+          ),
+        ActionChip(
+          visualDensity: VisualDensity.compact,
+          avatar: const Icon(Icons.add_reaction_outlined, size: 16),
+          label: const Text('React'),
+          onPressed: () async {
+            final picked = await showModalBottomSheet<String>(
+              context: context,
+              builder: (ctx) => SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Wrap(spacing: 12, runSpacing: 12, children: [
+                    for (final e in reactionEmoji)
+                      InkWell(
+                        onTap: () => Navigator.pop(ctx, e),
+                        borderRadius: BorderRadius.circular(24),
+                        child: Padding(padding: const EdgeInsets.all(8), child: Text(e, style: const TextStyle(fontSize: 28))),
+                      ),
+                  ]),
+                ),
+              ),
+            );
+            if (picked != null) await toggle(picked);
+          },
+        ),
+      ]),
+    );
   }
 }

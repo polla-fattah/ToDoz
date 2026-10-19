@@ -1,0 +1,25 @@
+${TASKFLOW_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
+	# Attachment files may be large (the server enforces its own limit, 100 MB by default).
+	handle /v1/blobs/* {
+		request_body {
+			max_size 110MB
+		}
+		reverse_proxy 127.0.0.1:8080
+	}
+
+	# Everything else is small JSON.
+	handle {
+		request_body {
+			max_size 2MB
+		}
+		reverse_proxy 127.0.0.1:8080
+	}
+}

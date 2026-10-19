@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'ui/catalog.dart';
 import 'ui/home.dart';
+import 'ui/lock_screen.dart';
+import 'ui/progress_screen.dart';
 
 class TaskFlowApp extends StatelessWidget {
   const TaskFlowApp({super.key, required this.catalog, this.navigatorKey});
@@ -31,6 +33,10 @@ class TaskFlowApp extends StatelessWidget {
               darkTheme: _theme(Brightness.dark),
               themeMode: c.themeMode,
               home: const HomeShell(),
+              builder: (context, child) => CelebrationHost(
+                catalog: c,
+                child: LockGate(lock: c.lock, child: child ?? const SizedBox()),
+              ),
             );
           },
         ),

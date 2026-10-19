@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../core/filter.dart';
+import 'package:taskflow_core/filter.dart';
 
 /// The Quick Add, repeat and filter syntax in one place (FR-U5).
 class HelpScreen extends StatelessWidget {

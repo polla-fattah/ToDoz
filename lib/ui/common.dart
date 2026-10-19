@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../core/date_parser.dart';
+import 'package:taskflow_core/date_parser.dart';
 import 'catalog.dart';
 
 /// Priority colours: p1 red, p2 orange, p3 blue, p4 grey (as Todoist).

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shortcut_new_task">Add task</string>
+    <string name="shortcut_new_task_long">Add a task</string>
+    <string name="shortcut_today">Today</string>
+    <string name="shortcut_today_long">Show today\'s tasks</string>
+    <string name="shortcut_search">Search</string>
+    <string name="shortcut_search_long">Search tasks</string>
+</resources>

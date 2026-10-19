@@ -18,3 +18,11 @@ local.properties
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
+
+# Server deployment: local state and backups
+server/deploy/.mode
+server/deploy/backups/
+server/data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

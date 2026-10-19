@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../core/backup.dart' show inboxId;
-import '../core/date_parser.dart';
+import 'package:taskflow_core/backup.dart' show inboxId;
+import 'package:taskflow_core/date_parser.dart';
 import 'catalog.dart';
 import 'common.dart';
 

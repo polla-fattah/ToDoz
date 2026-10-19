@@ -3,10 +3,13 @@ import 'dart:io';
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:taskflow/core/backup.dart';
-import 'package:taskflow/core/reminder.dart';
+import 'package:taskflow_core/backup.dart';
+import 'package:taskflow_core/reminder.dart';
+import 'rewind_util.dart';
+import 'package:taskflow/data/activity_triggers.dart';
 import 'package:taskflow/data/database.dart';
 import 'package:taskflow/data/repository.dart';
+import 'package:taskflow/sync/sync_triggers.dart';
 
 // Wednesday 14 October 2026, 09:00.
 final fixedNow = DateTime(2026, 10, 14, 9);
@@ -374,6 +377,14 @@ void main() {
       final oldRepo = Repo(old, clock: () => fixedNow);
       await old.ensureInbox();
       final id = await oldRepo.addTask(title: 'written before the upgrade', priority: 2, dueDate: '2026-10-20');
+      // Older versions had no sync triggers or tables: remove them before reshaping.
+      for (final name in [...syncTriggerNames(), ...activityTriggerNames()]) {
+        await old.customStatement('DROP TRIGGER IF EXISTS $name');
+      }
+      for (final t in ['sync_meta', 'outbox', 'field_clock']) {
+        await old.customStatement('DROP TABLE IF EXISTS $t');
+      }
+      await dropVersion7(old);
       for (final col in ['due_time', 'recurrence', 'deadline', 'snoozed_until', 'duration_minutes']) {
         await old.customStatement('ALTER TABLE tasks DROP COLUMN $col');
       }

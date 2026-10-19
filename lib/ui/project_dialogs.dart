@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../core/backup.dart' show inboxId;
+import 'package:taskflow_core/backup.dart' show inboxId;
 import '../data/database.dart';
 import 'catalog.dart';
 import 'common.dart';
+import 'import_screen.dart' show exportProjectToFile;
+import 'share_screen.dart';
 import 'quick_add_sheet.dart';
 import 'views.dart' show ProjectNotesScreen;
 
@@ -98,6 +100,18 @@ Future<void> projectMenu(BuildContext context, String projectId, String action) 
         await repo.duplicateProject(projectId);
         if (context.mounted) showMessage(context, 'Project duplicated');
       });
+    case 'share':
+      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ShareScreen(projectId: projectId)));
+    case 'export':
+      await exportProjectToFile(context, projectId, template: false);
+    case 'template':
+      final name = await promptText(context, 'Save as template', hint: 'Template name', initial: catalog.project(projectId)?.name ?? '', action: 'Save');
+      if (name != null && name.trim().isNotEmpty && context.mounted) {
+        await guarded(context, () async {
+          await repo.saveTemplate(name, projectId);
+          if (context.mounted) showMessage(context, 'Template saved. Dates were left out.');
+        });
+      }
     case 'archive':
       await repo.updateProject(projectId, isArchived: true);
       if (context.mounted) {

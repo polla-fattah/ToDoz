@@ -1,0 +1,30 @@
+# For a machine without Docker. Installed by install.sh.
+[Unit]
+Description=TaskFlow sync server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=taskflow
+Group=taskflow
+Environment=TASKFLOW_DB=/var/lib/taskflow/taskflow.sqlite
+# Google Calendar settings and the public address (optional, see DEPLOY.md).
+EnvironmentFile=-/etc/taskflow/taskflow.env
+# Listens only on this machine; Caddy (or another proxy) in front does HTTPS.
+ExecStart=/opt/taskflow/bin/taskflow_server serve --host 127.0.0.1 --port 8080 --trust-proxy
+Restart=on-failure
+RestartSec=3
+
+# Lock the process down (SEC-9)
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ReadWritePaths=/var/lib/taskflow
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallFilter=@system-service
+
+[Install]
+WantedBy=multi-user.target

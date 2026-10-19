@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../core/date_parser.dart' show formatDuration;
-import '../core/reminder.dart' show isOverdue;
+import 'package:taskflow_core/date_parser.dart' show formatDuration;
+import 'package:taskflow_core/reminder.dart' show isOverdue;
 import '../data/database.dart';
 import 'catalog.dart';
 import 'common.dart';
@@ -114,6 +114,8 @@ class TaskTile extends StatelessWidget {
         ),
       if (task.durationMinutes != null) _meta(context, Icons.timer_outlined, formatDuration(task.durationMinutes!)),
       if (counts != null) _meta(context, Icons.account_tree_outlined, '${counts.$1}/${counts.$2}'),
+      if (task.assigneeId != null && catalog.isShared(task.projectId))
+        _meta(context, Icons.person_outline, catalog.displayName(task.assigneeId), color: task.assigneeId == catalog.me ? cs.primary : null),
       for (final l in labels) _meta(context, Icons.sell_outlined, l.name, color: Color(l.color)),
       if (showProject)
         _meta(

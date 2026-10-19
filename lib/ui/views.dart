@@ -1,13 +1,14 @@
+import 'progress_screen.dart';
 import 'dart:convert';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 
-import '../core/backup.dart' show inboxId;
-import '../core/date_parser.dart';
-import '../core/filter.dart';
-import '../core/reminder.dart' show isOverdue;
-import '../core/view_options.dart';
+import 'package:taskflow_core/backup.dart' show inboxId;
+import 'package:taskflow_core/date_parser.dart';
+import 'package:taskflow_core/filter.dart';
+import 'package:taskflow_core/reminder.dart' show isOverdue;
+import 'package:taskflow_core/view_options.dart';
 import '../data/database.dart';
 import '../data/repository.dart';
 import 'catalog.dart';
@@ -156,10 +157,13 @@ class ProjectScreen extends StatelessWidget {
           PopupMenuButton<String>(
             onSelected: (v) => projectMenu(context, projectId, v),
             itemBuilder: (_) => const [
+              PopupMenuItem(value: 'share', child: Text('Share…')),
               PopupMenuItem(value: 'edit', child: Text('Edit project')),
               PopupMenuItem(value: 'section', child: Text('Add section')),
               PopupMenuItem(value: 'notes', child: Text('Project notes')),
               PopupMenuItem(value: 'duplicate', child: Text('Duplicate')),
+              PopupMenuItem(value: 'export', child: Text('Export to CSV')),
+              PopupMenuItem(value: 'template', child: Text('Save as template')),
               PopupMenuItem(value: 'archive', child: Text('Archive')),
               PopupMenuItem(value: 'delete', child: Text('Delete')),
             ],
@@ -365,7 +369,7 @@ class TodayScreen extends StatelessWidget {
           final overdue = tasks.where(late).toList();
           final due = tasks.where((t) => !late(t) && t.dueDate == today).toList();
           final entries = <ListEntry>[
-            WidgetEntry(_GoalCard(goal: catalog.dailyGoal)),
+            if (catalog.karmaEnabled && catalog.dailyGoal > 0) WidgetEntry(_GoalCard(goal: catalog.dailyGoal)),
             if (overdue.isNotEmpty) overdueEntry(context, overdue, today),
             for (final t in overdue) TaskEntry(flatRow(t)),
             if (due.isNotEmpty || overdue.isNotEmpty) HeaderEntry('Today', count: due.length),
@@ -394,14 +398,17 @@ class _GoalCard extends StatelessWidget {
       create: () => repo.watchCompletedOn(repo.now),
       builder: (context, data) {
         final done = data ?? 0;
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            LinearProgressIndicator(value: (done / goal).clamp(0, 1).toDouble(), minHeight: 5, borderRadius: BorderRadius.circular(8)),
-            const SizedBox(height: 6),
-            Text('$done of $goal tasks completed today${done >= goal ? ' · Goal achieved ✓' : ''}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.outline)),
-          ]),
+        return InkWell(
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ProgressScreen())),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              LinearProgressIndicator(value: (done / goal).clamp(0, 1).toDouble(), minHeight: 5, borderRadius: BorderRadius.circular(8)),
+              const SizedBox(height: 6),
+              Text('$done of $goal tasks completed today${done >= goal ? ' · Goal achieved ✓' : ''}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.outline)),
+            ]),
+          ),
         );
       },
     );

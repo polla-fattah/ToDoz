@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:taskflow/core/backup.dart';
+import 'package:taskflow_core/backup.dart';
 import 'package:taskflow/data/database.dart';
 import 'package:taskflow/data/repository.dart';
 

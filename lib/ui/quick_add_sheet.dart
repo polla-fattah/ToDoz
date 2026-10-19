@@ -1,11 +1,11 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 
-import '../core/backup.dart' show inboxId;
-import '../core/date_parser.dart';
-import '../core/quick_add.dart';
-import '../core/recurrence.dart';
-import '../core/reminder.dart';
+import 'package:taskflow_core/backup.dart' show inboxId;
+import 'package:taskflow_core/date_parser.dart';
+import 'package:taskflow_core/quick_add.dart';
+import 'package:taskflow_core/recurrence.dart';
+import 'package:taskflow_core/reminder.dart';
 import '../data/repository.dart';
 import 'catalog.dart';
 import 'common.dart';
@@ -18,6 +18,7 @@ Future<void> showQuickAdd(
   String defaultProjectId = inboxId,
   String? defaultSectionId,
   String? defaultDue,
+  String? initialText,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -29,6 +30,7 @@ Future<void> showQuickAdd(
       defaultProjectId: defaultProjectId,
       defaultSectionId: defaultSectionId,
       defaultDue: defaultDue,
+      initialText: initialText,
     ),
   );
 }
@@ -50,6 +52,7 @@ class HighlightController extends TextEditingController {
         QuickAddKind.label => const Color(0xFF8D4EC0),
         QuickAddKind.project => cs.primary,
         QuickAddKind.section => cs.tertiary,
+        QuickAddKind.assignee => const Color(0xFF1E88E5),
       };
 
   @override
@@ -80,12 +83,16 @@ class QuickAddSheet extends StatefulWidget {
     required this.defaultProjectId,
     this.defaultSectionId,
     this.defaultDue,
+    this.initialText,
   });
 
   final BuildContext outerContext;
   final String defaultProjectId;
   final String? defaultSectionId;
   final String? defaultDue;
+
+  /// Text to start with, for content shared from another app.
+  final String? initialText;
 
   @override
   State<QuickAddSheet> createState() => _QuickAddSheetState();
@@ -105,6 +112,17 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
   String? _manualProject;
   final _extraLabels = <String>{};
   bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialText;
+    if (initial != null && initial.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _text.value = TextEditingValue(text: initial, selection: TextSelection.collapsed(offset: initial.length));
+      });
+    }
+  }
 
   HighlightController _makeController() {
     final catalog = AppScope.of(context);

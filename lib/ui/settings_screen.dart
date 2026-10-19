@@ -6,12 +6,21 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import '../core/backup.dart';
-import '../core/date_parser.dart';
-import '../core/reminder.dart' show ReminderSpec;
+import 'package:taskflow_core/backup.dart';
+import 'package:taskflow_core/date_parser.dart';
+import 'package:taskflow_core/reminder.dart' show ReminderSpec;
 import '../data/repository.dart';
 import 'catalog.dart';
+import '../platform/auto_backup.dart';
+import '../security/app_lock.dart';
 import 'common.dart';
+import 'integrations_screen.dart';
+import 'lock_screen.dart';
+import '../platform/attachment_store.dart';
+import 'attachments_ui.dart' show formatBytes;
+import 'progress_screen.dart';
+import 'sync_screen.dart';
+import '../sync/sync_service.dart' show SyncState;
 import 'help_screen.dart';
 import 'when_dialogs.dart' show pickTimeMinutes;
 
@@ -42,23 +51,20 @@ class SettingsScreen extends StatelessWidget {
             }),
           ),
         ),
-        const _Heading('Daily goal'),
-        ListTile(
-          title: Text('${catalog.dailyGoal} tasks a day'),
-          subtitle: const Text('Shown as a progress bar on Today.'),
-          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-            IconButton(
-              tooltip: 'Fewer',
-              icon: const Icon(Icons.remove_circle_outline),
-              onPressed: catalog.dailyGoal > 1 ? () => repo.setSetting('dailyGoal', '${catalog.dailyGoal - 1}') : null,
-            ),
-            IconButton(
-              tooltip: 'More',
-              icon: const Icon(Icons.add_circle_outline),
-              onPressed: catalog.dailyGoal < 100 ? () => repo.setSetting('dailyGoal', '${catalog.dailyGoal + 1}') : null,
-            ),
-          ]),
+        const _Heading('Goals and Karma'),
+        SwitchListTile(
+          title: const Text('Karma, streaks and goals'),
+          subtitle: const Text('Turn off to hide the goal bar, the Productivity page and celebrations.'),
+          value: catalog.karmaEnabled,
+          onChanged: (v) => repo.setSetting('karma.enabled', '$v'),
         ),
+        if (catalog.karmaEnabled)
+          ListTile(
+            title: Text(catalog.dailyGoal == 0 ? 'Daily goal: off' : 'Daily goal: ${catalog.dailyGoal} tasks'),
+            subtitle: Text(catalog.weeklyGoal == 0 ? 'Weekly goal: off' : 'Weekly goal: ${catalog.weeklyGoal} tasks'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ProgressScreen())),
+          ),
         const _Heading('Time and dates'),
         SwitchListTile(
           title: const Text('24-hour clock'),
@@ -127,7 +133,37 @@ class SettingsScreen extends StatelessWidget {
             title: Text('Reminders are available on Android'),
             subtitle: Text('Windows notifications come in a later release.'),
           ),
+        const _Heading('Sync'),
+        Builder(builder: (context) {
+          final sync = catalog.sync;
+          final status = sync == null
+              ? 'Not available'
+              : switch (sync.state) {
+                  SyncState.unpaired => 'Keep your devices in step through your own server',
+                  SyncState.syncing => 'Syncing…',
+                  SyncState.idle => 'Signed in as ${sync.userName ?? ''}${sync.pendingChanges > 0 ? ' · ${sync.pendingChanges} changes waiting' : ' · up to date'}',
+                  SyncState.error => 'Could not sync: ${sync.lastError ?? ''}',
+                  SyncState.signedOut => 'This device was signed out by the server',
+                };
+          return ListTile(
+            leading: Icon(sync?.state == SyncState.error || sync?.state == SyncState.signedOut ? Icons.cloud_off_outlined : Icons.cloud_sync_outlined),
+            title: Text(sync?.paired == true ? 'Sync' : 'Set up sync'),
+            subtitle: Text(status),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SyncScreen())),
+          );
+        }),
+        const _Heading('Security'),
+        const _AppLockTiles(),
+        ListTile(
+          leading: const Icon(Icons.event_available_outlined),
+          title: const Text('Calendar and integrations'),
+          subtitle: const Text('Google Calendar, a calendar link, API access and webhooks'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const IntegrationsScreen())),
+        ),
         const _Heading('Backup'),
+        const _AutoBackupTiles(),
         ListTile(
           leading: const Icon(Icons.upload_file_outlined),
           title: const Text('Export backup'),
@@ -139,6 +175,14 @@ class SettingsScreen extends StatelessWidget {
           title: const Text('Restore from backup'),
           subtitle: const Text('Works with TaskFlow 2.0 backups and TaskFlow 1.0 backups.'),
           onTap: () => _restore(context),
+        ),
+        const _Heading('Your data'),
+        const _StorageTiles(),
+        ListTile(
+          leading: Icon(Icons.delete_forever_outlined, color: Theme.of(context).colorScheme.error),
+          title: Text('Delete all my data', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          subtitle: const Text('Removes every task and setting from this device (and the server, if you choose).'),
+          onTap: () => _deleteEverything(context),
         ),
         const _Heading('Help'),
         ListTile(
@@ -152,11 +196,62 @@ class SettingsScreen extends StatelessWidget {
           title: Text('TaskFlow 2.0'),
           subtitle: Text(
             'Your tasks are stored on this device. Export a backup before uninstalling or changing phones. '
-            'No account, analytics or ads. Sync between devices and family sharing arrive in later releases.',
+            'No analytics or ads. Sync is optional and goes only to a server you run; family sharing arrives in a later release.',
           ),
         ),
       ]),
     );
+  }
+
+  /// FR-U6: erase this device (and optionally the server copy) after a typed confirmation.
+  Future<void> _deleteEverything(BuildContext context) async {
+    final catalog = AppScope.of(context);
+    final sync = catalog.sync;
+    final paired = sync?.paired ?? false;
+    final c = TextEditingController();
+    var alsoServer = false;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, set) => AlertDialog(
+          title: const Text('Delete all my data?'),
+          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Every task, project, label, comment and setting on this device is erased. This cannot be undone. Export a backup first if you might want it.'),
+            if (paired)
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                value: alsoServer,
+                onChanged: (v) => set(() => alsoServer = v ?? false),
+                title: const Text('Also delete my account and data on the server'),
+                subtitle: const Text('Otherwise the server keeps its copy and this device is just unpaired.'),
+              ),
+            const SizedBox(height: 8),
+            TextField(controller: c, decoration: const InputDecoration(labelText: 'Type DELETE EVERYTHING'), onChanged: (_) => set(() {})),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            FilledButton(onPressed: c.text.trim() == 'DELETE EVERYTHING' ? () => Navigator.pop(ctx, true) : null, child: const Text('Delete')),
+          ],
+        ),
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    try {
+      if (paired) {
+        if (alsoServer) {
+          await sync!.deleteServerData();
+        } else {
+          await sync!.unpair();
+        }
+      }
+      await catalog.repo.deleteEverything();
+      if (context.mounted) {
+        showMessage(context, 'Everything on this device was deleted');
+        Navigator.of(context).popUntil((r) => r.isFirst);
+      }
+    } catch (e) {
+      if (context.mounted) showMessage(context, 'Could not delete: $e');
+    }
   }
 
   Future<void> _export(BuildContext context) async {
@@ -227,6 +322,225 @@ class SettingsScreen extends StatelessWidget {
     await dir.create(recursive: true);
     final stamp = DateTime.now().toIso8601String().replaceAll(':', '-');
     await File(p.join(dir.path, 'pre-restore-$stamp.json')).writeAsString(bundle.toJsonString());
+  }
+}
+
+/// How much room attachments take, with a clean-up (FR-C6).
+class _StorageTiles extends StatefulWidget {
+  const _StorageTiles();
+
+  @override
+  State<_StorageTiles> createState() => _StorageTilesState();
+}
+
+class _StorageTilesState extends State<_StorageTiles> {
+  Future<StorageStats>? _stats;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _stats = AppScope.of(context).attachments?.stats();
+  }
+
+  void _refresh() => setState(() {
+        _stats = AppScope.of(context).attachments?.stats();
+      });
+
+  @override
+  Widget build(BuildContext context) {
+    final catalog = AppScope.of(context);
+    final store = catalog.attachments;
+    if (store == null) return const SizedBox.shrink();
+    return FutureBuilder<StorageStats>(
+      future: _stats,
+      builder: (context, snap) {
+        final s = snap.data;
+        if (s == null) return const SizedBox.shrink();
+        final canOffload = catalog.sync?.paired ?? false;
+        return Column(children: [
+          ListTile(
+            leading: const Icon(Icons.attach_file),
+            title: Text('Attachments: ${s.files} ${s.files == 1 ? 'file' : 'files'}, ${formatBytes(s.bytes)}'),
+            subtitle: Text('${formatBytes(s.localBytes)} on this device${s.orphanBytes > 0 ? ', ${formatBytes(s.orphanBytes)} of it unused' : ''}'),
+          ),
+          if (s.orphanBytes > 0)
+            ListTile(
+              title: const Text('Clean up unused files'),
+              subtitle: const Text('Removes files left behind by deleted comments.'),
+              onTap: () async {
+                final freed = await store.cleanUp();
+                if (context.mounted) showMessage(context, 'Freed ${formatBytes(freed)}');
+                _refresh();
+              },
+            ),
+          if (canOffload && s.localBytes > 0)
+            ListTile(
+              title: const Text('Free up space on this device'),
+              subtitle: const Text('Removes the local copy of files already on the server. They download again when you open them.'),
+              onTap: () async {
+                final freed = await store.offloadUploaded();
+                if (context.mounted) showMessage(context, 'Freed ${formatBytes(freed)}');
+                _refresh();
+              },
+            ),
+        ]);
+      },
+    );
+  }
+}
+
+/// App lock (FR-U4): PIN, optional fingerprint or face.
+class _AppLockTiles extends StatelessWidget {
+  const _AppLockTiles();
+
+  @override
+  Widget build(BuildContext context) {
+    final lock = AppScope.of(context).lock;
+    if (lock == null) return const SizedBox.shrink();
+    return ListenableBuilder(
+      listenable: lock,
+      builder: (context, _) {
+        if (!lock.enabled) {
+          return ListTile(
+            leading: const Icon(Icons.lock_outline),
+            title: const Text('Turn on app lock'),
+            subtitle: const Text('Ask for a PIN when the app opens or comes back after a minute away.'),
+            onTap: () async {
+              final pin = await askNewPin(context);
+              if (pin == null) return;
+              final bio = await lock.canUseBiometric();
+              await lock.enable(pin, useBiometric: bio);
+              if (context.mounted) showMessage(context, bio ? 'App lock is on. Fingerprint or face unlock is on too.' : 'App lock is on');
+            },
+          );
+        }
+        return Column(children: [
+          ListTile(
+            leading: const Icon(Icons.lock),
+            title: const Text('App lock is on'),
+            subtitle: const Text('Locks when the app opens and after a minute in the background.'),
+            trailing: TextButton(onPressed: lock.lockNow, child: const Text('Lock now')),
+          ),
+          FutureBuilder<bool>(
+            future: lock.canUseBiometric(),
+            builder: (context, snap) => snap.data == true
+                ? SwitchListTile(
+                    title: const Text('Unlock with fingerprint or face'),
+                    value: lock.biometricEnabled,
+                    onChanged: (v) => lock.setBiometric(v),
+                  )
+                : const SizedBox.shrink(),
+          ),
+          ListTile(
+            title: const Text('Change PIN'),
+            onTap: () async {
+              final old = await askPin(context, title: 'Enter your current PIN');
+              if (old == null || !context.mounted) return;
+              if (await lock.unlock(old) != UnlockResult.ok) {
+                if (context.mounted) showMessage(context, 'That is not your PIN');
+                return;
+              }
+              if (!context.mounted) return;
+              final pin = await askNewPin(context, title: 'Choose a new PIN');
+              if (pin != null) await lock.enable(pin, useBiometric: lock.biometricEnabled);
+            },
+          ),
+          ListTile(
+            title: const Text('Turn off app lock'),
+            onTap: () async {
+              final pin = await askPin(context);
+              if (pin == null || !context.mounted) return;
+              final ok = await lock.disable(pin);
+              if (context.mounted) showMessage(context, ok ? 'App lock is off' : 'That is not your PIN');
+            },
+          ),
+        ]);
+      },
+    );
+  }
+}
+
+/// Daily automatic backups to a folder (FR-X2).
+class _AutoBackupTiles extends StatefulWidget {
+  const _AutoBackupTiles();
+
+  @override
+  State<_AutoBackupTiles> createState() => _AutoBackupTilesState();
+}
+
+class _AutoBackupTilesState extends State<_AutoBackupTiles> {
+  Future<({bool on, String? folder, int keep, DateTime? last, String? error})> _load(AutoBackup b) async =>
+      (on: await b.enabled, folder: await b.folder, keep: await b.keep, last: await b.lastRun, error: await b.lastError);
+
+  @override
+  Widget build(BuildContext context) {
+    final catalog = AppScope.of(context);
+    final b = catalog.autoBackup;
+    if (b == null) return const SizedBox.shrink();
+    final repo = catalog.repo;
+    // Reload whenever one of the backup settings changes.
+    return StreamBuilder<String?>(
+      stream: repo.watchSetting('backup.last'),
+      builder: (context, _) => StreamBuilder<String?>(
+        stream: repo.watchSetting('backup.auto'),
+        builder: (context, _) => FutureBuilder(
+          future: _load(b),
+          builder: (context, snap) {
+            final s = snap.data;
+            if (s == null) return const SizedBox.shrink();
+            return Column(children: [
+              SwitchListTile(
+                title: const Text('Automatic daily backup'),
+                subtitle: Text(s.last == null
+                    ? 'Writes a backup file every day and keeps the newest ${s.keep}.'
+                    : 'Last backup ${formatDate(dateOnly(s.last!))} at ${formatTime(s.last!.hour * 60 + s.last!.minute, use24h: catalog.use24h)}. Keeps the newest ${s.keep}.'),
+                value: s.on,
+                onChanged: (v) => repo.setSetting('backup.auto', '$v'),
+              ),
+              if (s.error != null && s.error!.isNotEmpty)
+                ListTile(leading: Icon(Icons.error_outline, color: Theme.of(context).colorScheme.error), title: Text(s.error!)),
+              if (s.on) ...[
+                ListTile(
+                  title: const Text('Backup folder'),
+                  subtitle: Text(s.folder == null || s.folder!.isEmpty ? 'Inside the app (lost if you uninstall it). Choose a folder you keep.' : s.folder!),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () async {
+                    try {
+                      final dir = await FilePicker.getDirectoryPath(dialogTitle: 'Choose where backups are saved');
+                      if (dir == null) return;
+                      await repo.setSetting('backup.folder', dir);
+                      final file = await b.backupNow();
+                      if (context.mounted) showMessage(context, file == null ? 'That folder cannot be written to. Pick another.' : 'Backup saved to that folder');
+                    } catch (_) {
+                      if (context.mounted) showMessage(context, 'Could not use that folder');
+                    }
+                  },
+                ),
+                ListTile(
+                  title: const Text('Copies to keep'),
+                  trailing: Text('${s.keep}'),
+                  onTap: () async {
+                    final picked = await pickFromList<int>(context, 'Copies to keep', const [(7, '7'), (14, '14'), (30, '30'), (90, '90')], selected: s.keep);
+                    if (picked != null) {
+                      await repo.setSetting('backup.keep', '$picked');
+                      setState(() {});
+                    }
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.backup_outlined),
+                  title: const Text('Back up now'),
+                  onTap: () async {
+                    final f = await b.backupNow();
+                    if (context.mounted) showMessage(context, f == null ? 'The backup failed' : 'Backup written');
+                  },
+                ),
+              ],
+            ]);
+          },
+        ),
+      ),
+    );
   }
 }
 

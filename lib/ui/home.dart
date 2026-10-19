@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../core/backup.dart' show inboxId;
+import 'package:taskflow_core/backup.dart' show inboxId;
 import 'browse_screen.dart';
+import 'catalog.dart';
 import 'sidebar.dart';
 import 'views.dart';
 
@@ -17,6 +18,37 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _index = 1; // open on Today, as 1.0 did
+
+  Catalog? _catalog;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final c = AppScope.of(context);
+    if (_catalog != c) {
+      _catalog?.navRequest.removeListener(_onNavRequest);
+      _catalog = c..navRequest.addListener(_onNavRequest);
+    }
+  }
+
+  @override
+  void dispose() {
+    _catalog?.navRequest.removeListener(_onNavRequest);
+    super.dispose();
+  }
+
+  void _onNavRequest() {
+    final r = _catalog?.navRequest.value;
+    if (r == null) return;
+    _catalog!.navRequest.value = null;
+    if (r == 'today') {
+      if (MediaQuery.of(context).size.width >= 840) {
+        _navigate('today', (_) => const TodayScreen());
+      } else {
+        setState(() => _index = 1);
+      }
+    }
+  }
 
   final _contentKey = GlobalKey<NavigatorState>();
   String _selected = 'today';

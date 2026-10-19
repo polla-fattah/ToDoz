@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher shortcuts: press and hold the app icon (FR-I2). -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="new_task"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_new_task"
+        android:shortcutLongLabel="@string/shortcut_new_task_long">
+        <intent
+            android:action="com.taskflow.taskflow.NEW_TASK"
+            android:targetPackage="com.taskflow.taskflow"
+            android:targetClass="com.taskflow.taskflow.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="today"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_today"
+        android:shortcutLongLabel="@string/shortcut_today_long">
+        <intent
+            android:action="com.taskflow.taskflow.TODAY"
+            android:targetPackage="com.taskflow.taskflow"
+            android:targetClass="com.taskflow.taskflow.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="search"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_search"
+        android:shortcutLongLabel="@string/shortcut_search_long">
+        <intent
+            android:action="com.taskflow.taskflow.SEARCH"
+            android:targetPackage="com.taskflow.taskflow"
+            android:targetClass="com.taskflow.taskflow.MainActivity" />
+    </shortcut>
+</shortcuts>

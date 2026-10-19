@@ -2,7 +2,7 @@
 
 A personal, offline-first task manager modelled on Todoist (without AI), built with Flutter for Android and Windows.
 
-The requirements are in the [TaskFlow 2.0 SRS](https://claude.ai/code/artifact/796e7f1d-5c0c-447b-bab0-a5e53108adae). This repository holds **R1 (Foundation)**, **R2 (Time)** and **R3 (Views and filters)**; the old 1.0 app is kept in `legacy-v1/` for reference.
+The requirements are in the [TaskFlow 2.0 SRS](https://claude.ai/code/artifact/796e7f1d-5c0c-447b-bab0-a5e53108adae). This repository holds **R1 (Foundation)**, **R2 (Time)**, **R3 (Views and filters)**, **R4 (Sync)**, **R5 (Productivity and integrations)** and **R6 (Sharing)**; the old 1.0 app is kept in `legacy-v1/` for reference.
 
 ## What it has so far
 
@@ -31,17 +31,38 @@ The requirements are in the [TaskFlow 2.0 SRS](https://claude.ai/code/artifact/7
 - Search looks in titles, descriptions, comments, projects, sections and labels, understands filters, remembers recent searches, and can include completed tasks.
 - Task duration; a permanent sidebar on wide windows; an in-app help page.
 
+**R4 Sync**
+- A small sync server you run yourself (`server/`, Dart + SQLite) and a pairing screen in Settings, Sync. Each person has their own account; a device joins with a one-time code and gets its own token that can be revoked.
+- Edits are merged field by field (last writer wins per field), so two devices changing different things of the same task both keep their change. Deleting and restoring sync too. Device-local things (snooze, settings) do not.
+- Works offline: changes queue and are sent when the server is reachable, shortly after each edit, every 30 seconds while the app is open, and when it returns to the foreground. Reset from server, unpair, sign out another device, and delete your data on the server are in the Sync screen.
+- Not end-to-end encrypted: whoever runs the server can read the tasks (stated in the app).
+- App lock (PIN and fingerprint), automatic backups to a folder, the Android share sheet ("Share to TaskFlow"), launcher shortcuts and an add-task / complete-task intent.
+- Not done: the Windows build (blocked on the C++ ATL libraries for the notification plugin) and syncing while the app is closed (today only while it is open).
+
+**R5 Productivity and integrations**
+- Productivity page: Karma, levels, streaks, a daily and weekly goal with days off, and charts. An activity log of everything changed, with Undo for most entries.
+- Import and export: CSV in Todoist's layout, plain-text lists and ICS files; a project can be exported, or created from an import. Templates.
+- Attachments (files, photos) and voice notes on comments, synced through the server and shown inline.
+- Integrations: a REST API with personal tokens, signed outgoing and incoming webhooks, a calendar feed link, and a Google Calendar connection (Settings, Calendar and integrations).
+
+**R6 Sharing**
+- Share a project with other people on the same server by invitation code, with roles owner, admin, member and viewer. Everyone sees its tasks, sections and comments; your Inbox, Today and other projects stay private.
+- Assign tasks (`+name` in Quick Add, "Assigned to" on the task), the filters `assigned to:`, `assigned by:` and `shared`, comment reactions, and notifications for others' comments and for tasks assigned to you (they arrive with the next sync).
+- Leaving or being removed: the project goes from your phone, and tasks assigned to you become unassigned.
+
 Quick Add syntax: `Review paper tomorrow at 4pm p1 %reading #work /backlog {nov 30} !30 min before`
 
 **Reminders run on Android only for now** and have not yet been tried on a real phone (see below).
 
-Not yet built: sync, Karma and charts, attachments and voice notes, widgets, location reminders, Windows notifications, family sharing. Known simplifications in R3: manual order inside a filter is shared with the task's project order, and the built-in Today and Upcoming views are not yet implemented as filters. See section 7 of the SRS.
+Not yet built: home-screen widgets, location reminders, Windows notifications, workspaces and folders, syncing while the app is closed, attachments in the JSON backup, and hiding buttons a read-only member cannot use (the change is refused instead). The Google Calendar connection and voice notes have not been tried on a real account or phone, and the Todoist CSV layout was written from its documentation, not checked against a real export. Known simplifications in R3: manual order inside a filter is shared with the task's project order, and the built-in Today and Upcoming views are not yet implemented as filters. See section 7 of the SRS.
 
 ## Layout
 
 | Path | What it holds |
 | --- | --- |
-| `lib/core/` | Pure Dart with no Flutter or database imports: date and time parser, recurrence engine, reminder rules, Quick Add parser, filter language, view grouping and sorting, backup and 1.0 import. Shared with the server later. |
+| `packages/taskflow_core/` | Pure Dart with no Flutter or database imports, shared by the app and the server: date and time parser, recurrence engine, reminder rules, Quick Add parser, filter language, view grouping and sorting, backup and 1.0 import, sync rules and clocks. |
+| `server/` | The sync server, its admin commands, tests and the deployment kit (`server/deploy/`, start with `DEPLOY.md`). |
+| `lib/sync/` | The app side of sync: change capture (SQL triggers), the sync engine, server client, pairing service. |
 | `lib/platform/` | Operating-system glue: Android notification scheduling. |
 | `lib/data/` | Drift (SQLite) tables and the `Repo` class that holds every rule. |
 | `lib/ui/` | Screens and widgets. |

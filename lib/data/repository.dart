@@ -1,18 +1,55 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:uuid/uuid.dart';
 
-import '../core/backup.dart';
-import '../core/date_parser.dart';
-import '../core/filter.dart';
-import '../core/quick_add.dart';
-import '../core/view_options.dart';
-import '../core/recurrence.dart';
-import '../core/reminder.dart';
+import 'package:taskflow_core/backup.dart';
+import 'package:taskflow_core/csv_io.dart';
+import 'package:taskflow_core/date_parser.dart';
+import 'package:taskflow_core/filter.dart';
+import 'package:taskflow_core/progress.dart';
+import 'package:taskflow_core/sharing.dart';
+import 'package:taskflow_core/quick_add.dart';
+import 'package:taskflow_core/view_options.dart';
+import 'package:taskflow_core/recurrence.dart';
+import 'package:taskflow_core/reminder.dart';
 import 'database.dart';
+import 'streams.dart';
 
 const maxProjectDepth = 3; // FR-P2
 const maxTaskDepth = 4; // FR-T2
 const trashDays = 30; // FR-T8
+const maxAttachmentBytes = 100 * 1024 * 1024; // FR-C2
+
+/// What an import created.
+class ImportResult {
+  int tasks = 0;
+  int sections = 0;
+  int comments = 0;
+  int skipped = 0;
+
+  /// Dates in the file that could not be read; those tasks were created without a date.
+  int unreadableDates = 0;
+
+  String get summary {
+    final parts = ['$tasks tasks'];
+    if (sections > 0) parts.add('$sections sections');
+    if (comments > 0) parts.add('$comments comments');
+    final extra = [
+      if (unreadableDates > 0) '$unreadableDates dates could not be read and were left out',
+      if (skipped > 0) '$skipped rows were skipped',
+    ];
+    return 'Imported ${parts.join(', ')}.${extra.isEmpty ? '' : ' ${extra.join('; ')}.'}';
+  }
+}
+
+class ProjectTemplate {
+  ProjectTemplate({required this.id, required this.name, required this.csv});
+  final String id, name, csv;
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'csv': csv};
+  factory ProjectTemplate.fromJson(Map<String, dynamic> j) => ProjectTemplate(id: j['id'] as String, name: j['name'] as String, csv: j['csv'] as String);
+}
 
 /// Thrown for operations the rules forbid (too deep, cycle, duplicate name).
 class RuleException implements Exception {
@@ -34,8 +71,12 @@ class QuickAddPlan {
     this.unknownProject,
     this.unknownSection,
     this.unknownLabels = const [],
+    this.assigneeId,
   });
   final QuickAddResult parsed;
+
+  /// Who `+name` resolved to in a shared project (a user id), or null.
+  final String? assigneeId;
   final String projectId;
   final String? sectionId;
   final List<String> labelIds;
@@ -76,6 +117,35 @@ class TaskFields {
   final int priority;
 }
 
+/// A project this person shares with others, with its members and their role in it.
+class SharedProject {
+  SharedProject({required this.projectId, required this.ownerId, required this.role, required this.members});
+  final String projectId;
+  final String ownerId;
+  final ShareRole role;
+  final List<ShareMember> members;
+
+  factory SharedProject.fromRow(SharedProjectRow r) {
+    final members = <ShareMember>[];
+    try {
+      for (final j in jsonDecode(r.membersJson) as List) {
+        final m = ShareMember.fromJson(j);
+        if (m != null) members.add(m);
+      }
+    } catch (_) {}
+    return SharedProject(projectId: r.projectId, ownerId: r.ownerId, role: ShareRole.parse(r.myRole) ?? ShareRole.viewer, members: members);
+  }
+
+  ShareMember? member(String userId) {
+    for (final m in members) {
+      if (m.userId == userId) return m;
+    }
+    return null;
+  }
+
+  String? nameOf(String userId) => member(userId)?.name;
+}
+
 /// What completing a task did, so the UI can offer an exact Undo.
 class CompletionOutcome {
   const CompletionOutcome({
@@ -112,12 +182,116 @@ class Repo {
   String newId() => _uuid.v4();
   DateTime get now => _clock();
 
+  /// This person's user id on the sync server, once signed in (null on a device that is not paired).
+  /// It is what marks their comments and assignments in shared projects.
+  String? me;
+
+  Future<void> loadMe() async => me = await getSetting('sync.userid');
+
+  Future<void> setMe(String? id) async {
+    me = id;
+    if (id == null) {
+      await (db.delete(db.settings)..where((x) => x.key.equals('sync.userid'))).go();
+    } else {
+      await setSetting('sync.userid', id);
+    }
+  }
+
+  // ===========================================================================
+  // Shared projects: roles, members (R6)
+  // ===========================================================================
+
+  /// My role in a shared project, or null if the project is not shared.
+  Future<ShareRole?> myRole(String projectId) async {
+    final r = await (db.select(db.sharedProjects)..where((x) => x.projectId.equals(projectId))).getSingleOrNull();
+    return r == null ? null : ShareRole.parse(r.myRole);
+  }
+
+  Future<void> _requireEdit(String? projectId) async {
+    if (projectId == null) return;
+    final role = await myRole(projectId);
+    if (role != null && !role.canEditTasks) throw RuleException('You can only look at this shared project: your role is "${role.label}".');
+  }
+
+  Future<void> _requireEditTask(String taskId) async {
+    final t = await getTask(taskId);
+    if (t != null) await _requireEdit(t.projectId);
+  }
+
+  Future<void> _requireAdmin(String? projectId) async {
+    if (projectId == null) return;
+    final role = await myRole(projectId);
+    if (role != null && !role.canEditProject) throw RuleException('Only an admin can change the shared project itself or its sections.');
+  }
+
+  /// Every shared project with its members, live.
+  Stream<List<SharedProject>> watchSharedProjects() => db.select(db.sharedProjects).watch().map((rows) => [for (final r in rows) SharedProject.fromRow(r)]);
+
+  Future<SharedProject?> sharedProject(String projectId) async {
+    final r = await (db.select(db.sharedProjects)..where((x) => x.projectId.equals(projectId))).getSingleOrNull();
+    return r == null ? null : SharedProject.fromRow(r);
+  }
+
+  /// Replaces the stored list of shared projects with what the server just said.
+  Future<void> saveShares(List<ShareInfo> infos) => db.saveShares(infos);
+
+  /// This device is no longer paired: projects stop being shared as far as this phone is concerned.
+  Future<void> forgetShares() => db.delete(db.sharedProjects).go();
+
+  /// Gives a task to a member of its shared project, or to nobody (null).
+  Future<void> assignTask(String taskId, String? userId) async {
+    final t = await getTask(taskId);
+    if (t == null) return;
+    await _requireEdit(t.projectId);
+    if (userId != null) {
+      final shared = await sharedProject(t.projectId);
+      if (shared == null || shared.member(userId) == null) throw RuleException('That person is not in this project.');
+    }
+    await (db.update(db.tasks)..where((x) => x.id.equals(taskId))).write(TasksCompanion(
+      assigneeId: Value(userId),
+      assignedBy: Value(userId == null ? null : me),
+      updatedAt: Value(now),
+    ));
+  }
+
+  /// Reactions on a task's comments, as (comment id, reaction rows).
+  Stream<List<Reaction>> watchTaskReactions(String taskId) {
+    final q = db.select(db.reactions).join([
+      innerJoin(db.comments, db.comments.id.equalsExp(db.reactions.commentId)),
+    ])
+      ..where(db.comments.taskId.equals(taskId))
+      ..orderBy([OrderingTerm.asc(db.reactions.createdAt)]);
+    return q.watch().map((rows) => [for (final r in rows) r.readTable(db.reactions)]);
+  }
+
+  /// Adds my [emoji] to a comment, or takes it back if it is already there.
+  Future<void> toggleReaction(String commentId, String emoji) async {
+    final who = me;
+    if (who == null) throw RuleException('Reactions need a sync server: set up sync first.');
+    if (!reactionEmoji.contains(emoji)) throw RuleException('Pick one of the offered emoji.');
+    final comment = await (db.select(db.comments)..where((c) => c.id.equals(commentId))).getSingleOrNull();
+    if (comment == null) return;
+    await _requireEditTask(comment.taskId);
+    final id = '$commentId:$who:$emoji';
+    final existing = await (db.select(db.reactions)..where((r) => r.id.equals(id))).getSingleOrNull();
+    if (existing != null) {
+      await (db.delete(db.reactions)..where((r) => r.id.equals(id))).go();
+    } else {
+      await db.into(db.reactions).insert(ReactionsCompanion.insert(id: id, commentId: commentId, userId: who, emoji: emoji, createdAt: now));
+    }
+  }
+
   // ===========================================================================
   // Streams for the UI
   // ===========================================================================
 
   SimpleSelectStatement<$TasksTable, Task> _openTasks() => db.select(db.tasks)
     ..where((t) => t.deletedAt.isNull() & t.completedAt.isNull());
+
+  /// In a shared project, Today and Upcoming show what is mine or nobody's, not what is someone else's.
+  static final _mineOrUnassigned = CustomExpression<bool>(
+    "assignee_id IS NULL OR assignee_id = COALESCE((SELECT value FROM settings WHERE key = 'sync.userid'), '')",
+  );
 
   Stream<List<Task>> watchProjectTasks(String projectId, {bool includeCompleted = false}) => (db.select(db.tasks)
         ..where((t) => t.deletedAt.isNull() & t.projectId.equals(projectId) & (includeCompleted ? const Constant(true) : t.completedAt.isNull()))
@@ -126,7 +300,7 @@ class Repo {
 
   /// Overdue and due-today tasks (FR-V1).
   Stream<List<Task>> watchToday(String today) => (_openTasks()
-        ..where((t) => t.dueDate.isNotNull() & t.dueDate.isSmallerOrEqualValue(today))
+        ..where((t) => t.dueDate.isNotNull() & t.dueDate.isSmallerOrEqualValue(today) & _mineOrUnassigned)
         ..orderBy([
           (t) => OrderingTerm.asc(t.dueDate),
           (t) => OrderingTerm(expression: t.dueTime, nulls: NullsOrder.last),
@@ -137,7 +311,7 @@ class Repo {
 
   /// Every open task that has a date, soonest first; the UI groups by day.
   Stream<List<Task>> watchScheduled() => (_openTasks()
-        ..where((t) => t.dueDate.isNotNull())
+        ..where((t) => t.dueDate.isNotNull() & _mineOrUnassigned)
         ..orderBy([
           (t) => OrderingTerm.asc(t.dueDate),
           (t) => OrderingTerm(expression: t.dueTime, nulls: NullsOrder.last),
@@ -283,6 +457,7 @@ class Repo {
     String description = '',
     List<String> labelIds = const [],
     List<ReminderSpec> reminders = const [],
+    String? assigneeId,
   }) async {
     _checkWhen(dueDate: dueDate, dueTime: dueTime, recurrence: recurrence, deadline: deadline);
     _checkDuration(durationMinutes);
@@ -300,6 +475,11 @@ class Repo {
       project = parent.projectId;
       section = parent.sectionId;
     }
+    await _requireEdit(project);
+    if (assigneeId != null) {
+      final shared = await sharedProject(project);
+      if (shared == null || shared.member(assigneeId) == null) throw RuleException('That person is not in this project.');
+    }
     final id = newId();
     final stamp = now;
     await db.transaction(() async {
@@ -316,6 +496,8 @@ class Repo {
             recurrence: Value(recurrence),
             deadline: Value(deadline),
             durationMinutes: Value(durationMinutes),
+            assigneeId: Value(assigneeId),
+            assignedBy: Value(assigneeId == null ? null : me),
             sortOrder: Value(await _nextTaskOrder(project, parentId)),
             createdAt: stamp,
             updatedAt: stamp,
@@ -355,7 +537,7 @@ class Repo {
 
   /// Resolves a parsed Quick Add line against what exists (FR-Q2, FR-Q5).
   Future<QuickAddPlan> planQuickAdd(String input, {String defaultProjectId = inboxId, bool parseDates = true, int weekStart = 1}) async {
-    final parsed = parseQuickAdd(input, now, parseDates: parseDates, weekStart: weekStart);
+    var parsed = parseQuickAdd(input, now, parseDates: parseDates, weekStart: weekStart);
     var projectId = defaultProjectId;
     String? unknownProject;
     if (parsed.projectName != null) {
@@ -367,6 +549,13 @@ class Repo {
       } else {
         unknownProject = parsed.projectName;
       }
+    }
+    // In a shared project, "+name" means a member of it.
+    String? assigneeId;
+    final shared = unknownProject == null ? await sharedProject(projectId) : null;
+    if (shared != null) {
+      parsed = parseQuickAdd(input, now, parseDates: parseDates, weekStart: weekStart, memberNames: [for (final m in shared.members) m.name]);
+      if (parsed.assigneeName != null) assigneeId = shared.members.firstWhere((m) => m.name == parsed.assigneeName).userId;
     }
     String? sectionId;
     String? unknownSection;
@@ -396,6 +585,7 @@ class Repo {
     return QuickAddPlan(
       parsed: parsed, projectId: projectId, sectionId: sectionId, labelIds: labelIds,
       unknownProject: unknownProject, unknownSection: unknownSection, unknownLabels: unknownLabels,
+      assigneeId: assigneeId,
     );
   }
 
@@ -435,6 +625,7 @@ class Repo {
       deadline: f.deadline,
       labelIds: labelIds,
       reminders: f.reminders,
+      assigneeId: plan.assigneeId,
     );
   }
 
@@ -450,6 +641,7 @@ class Repo {
     Value<int?> durationMinutes = const Value.absent(),
     List<String>? labelIds,
   }) async {
+    await _requireEditTask(id);
     if (title != null && title.trim().isEmpty) throw RuleException('A task needs a title');
     if (durationMinutes.present) _checkDuration(durationMinutes.value);
     if (dueDate.present || dueTime.present || recurrence.present || deadline.present) {
@@ -507,6 +699,7 @@ class Repo {
 
   /// Completes or reopens a task. Returns the ids changed, so the UI can undo.
   Future<List<String>> setCompleted(String id, bool done, {bool withSubtasks = false}) async {
+    await _requireEditTask(id);
     final changed = <String>[];
     await db.transaction(() async {
       final stamp = now;
@@ -544,6 +737,8 @@ class Repo {
   /// Moves a task, with all its sub-tasks, to another project, section or
   /// parent (FR-T5). Throws [RuleException] for loops and over-deep nesting.
   Future<void> moveTask(String id, {required String projectId, String? sectionId, String? parentId}) async {
+    await _requireEditTask(id);
+    await _requireEdit(projectId);
     final task = await getTask(id);
     if (task == null) return;
     final subtree = await _descendants(id);
@@ -601,6 +796,7 @@ class Repo {
   /// Moves a task to the trash with its sub-tasks. Returns the ids so the
   /// UI can offer Undo (FR-T8).
   Future<List<String>> deleteTask(String id) async {
+    await _requireEditTask(id);
     final ids = <String>[];
     await db.transaction(() async {
       final stamp = now;
@@ -638,6 +834,8 @@ class Repo {
       final ids = [id, ...(await _descendants(id)).map((t) => t.id)];
       for (final x in ids) {
         await (db.delete(db.taskLabels)..where((l) => l.taskId.equals(x))).go();
+        final commentIds = [for (final c in await (db.select(db.comments)..where((c) => c.taskId.equals(x))).get()) c.id];
+        await (db.delete(db.attachments)..where((a) => a.commentId.isIn(commentIds))).go();
         await (db.delete(db.comments)..where((c) => c.taskId.equals(x))).go();
         await (db.delete(db.reminders)..where((r) => r.taskId.equals(x))).go();
         await (db.delete(db.completions)..where((c) => c.taskId.equals(x))).go();
@@ -647,7 +845,10 @@ class Repo {
   }
 
   /// Permanently removes anything that has been in the trash for 30 days.
-  Future<void> purgeOldTrash() async {
+  Future<void> purgeOldTrash() => db.withoutCapture(_purgeOldTrash);
+
+  Future<void> _purgeOldTrash() async {
+    // Not synced: every device purges its own copies of things deleted long ago.
     final cutoff = now.subtract(const Duration(days: trashDays));
     final oldTasks = await (db.select(db.tasks)
           ..where((t) => t.deletedAt.isNotNull() & t.deletedAt.isSmallerThanValue(cutoff)))
@@ -718,6 +919,7 @@ class Repo {
   /// next date, its finished sub-tasks reopen, and the completion is logged
   /// (FR-R7). Every completion is logged, which is what the daily goal counts.
   Future<CompletionOutcome> completeTask(String id, {bool withSubtasks = false}) async {
+    await _requireEditTask(id);
     var outcome = const CompletionOutcome(changedIds: []);
     await db.transaction(() async {
       final stamp = now;
@@ -990,6 +1192,414 @@ class Repo {
   }
 
   // ===========================================================================
+  // Attachments (R5: FR-C2, C4, C6)
+  // ===========================================================================
+
+  /// Files attached to a task's comments, oldest first.
+  Stream<List<Attachment>> watchTaskAttachments(String taskId) {
+    final q = db.select(db.attachments).join([
+      innerJoin(db.comments, db.comments.id.equalsExp(db.attachments.commentId)),
+    ])
+      ..where(db.comments.taskId.equals(taskId) & db.attachments.deletedAt.isNull() & db.comments.deletedAt.isNull())
+      ..orderBy([OrderingTerm.asc(db.attachments.createdAt)]);
+    return q.watch().map((rows) => [for (final r in rows) r.readTable(db.attachments)]);
+  }
+
+  Future<List<Attachment>> liveAttachments() =>
+      (db.select(db.attachments)..where((a) => a.deletedAt.isNull())).get();
+
+  Future<Attachment?> getAttachment(String id) =>
+      (db.select(db.attachments)..where((a) => a.id.equals(id))).getSingleOrNull();
+
+  /// Adds a comment holding one file. The comment text is the file name unless [body] is given.
+  Future<(String, String)> addAttachmentComment(
+    String taskId, {
+    required String fileName,
+    required String mimeType,
+    required int sizeBytes,
+    required String hash,
+    String? body,
+  }) async {
+    if (sizeBytes > maxAttachmentBytes) throw RuleException('Files are limited to ${maxAttachmentBytes ~/ (1024 * 1024)} MB');
+    late String commentId, attachmentId;
+    await db.transaction(() async {
+      commentId = await addComment(taskId, (body == null || body.trim().isEmpty) ? fileName : body);
+      attachmentId = newId();
+      final stamp = now;
+      await db.into(db.attachments).insert(AttachmentsCompanion.insert(
+            id: attachmentId, commentId: commentId, fileName: fileName, mimeType: Value(mimeType),
+            sizeBytes: Value(sizeBytes), hash: hash, createdAt: stamp, updatedAt: stamp));
+    });
+    return (commentId, attachmentId);
+  }
+
+  Future<void> deleteAttachment(String id) async {
+    final a = await getAttachment(id);
+    if (a == null) return;
+    await db.transaction(() async {
+      await (db.update(db.attachments)..where((x) => x.id.equals(id)))
+          .write(AttachmentsCompanion(deletedAt: Value(now), updatedAt: Value(now)));
+      // A comment that only held this file goes with it.
+      final others = await (db.select(db.attachments)..where((x) => x.commentId.equals(a.commentId) & x.deletedAt.isNull())).get();
+      final comment = await (db.select(db.comments)..where((c) => c.id.equals(a.commentId))).getSingleOrNull();
+      if (others.isEmpty && comment != null && comment.body == a.fileName) await _deleteComment(a.commentId);
+    });
+  }
+
+  Future<List<Attachment>> attachmentsToUpload() =>
+      (db.select(db.attachments)..where((a) => a.deletedAt.isNull() & a.uploaded.equals(false))).get();
+
+  Future<void> markUploaded(String id) => db.withoutCapture(() => (db.update(db.attachments)..where((a) => a.id.equals(id)))
+      .write(const AttachmentsCompanion(uploaded: Value(true))));
+
+  // ===========================================================================
+  // CSV and text import and export, templates (R5: FR-X4..X7)
+  // ===========================================================================
+
+  /// A project's open tasks as Todoist-style CSV. With [template] there are
+  /// no dates, so it can be copied as a fresh start.
+  Future<String> exportProjectCsv(String projectId, {bool template = false}) async {
+    final tasks = await (db.select(db.tasks)
+          ..where((t) => t.projectId.equals(projectId) & t.deletedAt.isNull() & t.completedAt.isNull())
+          ..orderBy([(t) => OrderingTerm.asc(t.sortOrder), (t) => OrderingTerm.asc(t.createdAt)]))
+        .get();
+    final sections = await (db.select(db.sections)
+          ..where((s) => s.projectId.equals(projectId) & s.deletedAt.isNull())
+          ..orderBy([(s) => OrderingTerm.asc(s.sortOrder)]))
+        .get();
+    final labels = {for (final l in await db.select(db.labels).get()) l.id: l.name};
+    final links = await db.select(db.taskLabels).get();
+    final comments = await (db.select(db.comments)
+          ..where((c) => c.deletedAt.isNull())
+          ..orderBy([(c) => OrderingTerm.asc(c.createdAt)]))
+        .get();
+    final notes = await (db.select(db.projectComments)
+          ..where((c) => c.projectId.equals(projectId) & c.deletedAt.isNull())
+          ..orderBy([(c) => OrderingTerm.asc(c.createdAt)]))
+        .get();
+
+    final ids = {for (final t in tasks) t.id};
+    final byParent = <String?, List<Task>>{};
+    for (final t in tasks) {
+      final parent = t.parentId != null && ids.contains(t.parentId) ? t.parentId : null;
+      byParent.putIfAbsent(parent, () => []).add(t);
+    }
+
+    void addTree(Task t, int indent, List<ExportTask> into) {
+      into.add(ExportTask(
+        title: t.title,
+        description: t.description,
+        priority: t.priority,
+        indent: indent,
+        dueDate: t.dueDate,
+        dueTime: t.dueTime,
+        recurrence: t.recurrence,
+        labels: [for (final l in links.where((l) => l.taskId == t.id)) ?labels[l.labelId]],
+        comments: [for (final c in comments.where((c) => c.taskId == t.id)) c.body],
+      ));
+      for (final k in byParent[t.id] ?? const <Task>[]) {
+        addTree(k, indent + 1, into);
+      }
+    }
+
+    // Tasks with no (known) section come first, then each section in order.
+    final knownSections = {for (final s in sections) s.id};
+    final looseTasks = <ExportTask>[];
+    for (final t in byParent[null] ?? const <Task>[]) {
+      if (t.sectionId == null || !knownSections.contains(t.sectionId)) addTree(t, 1, looseTasks);
+    }
+    final out = <ExportSection>[];
+    if (looseTasks.isNotEmpty || sections.isEmpty) out.add(ExportSection(null, looseTasks));
+    for (final sec in sections) {
+      final into = <ExportTask>[];
+      for (final t in byParent[null] ?? const <Task>[]) {
+        if (t.sectionId == sec.id) addTree(t, 1, into);
+      }
+      out.add(ExportSection(sec.name, into));
+    }
+    return writeTodoistCsv(out, template: template, projectNotes: [for (final n in notes) n.body]);
+  }
+
+  /// Creates the sections, tasks, sub-tasks, labels and comments of [report]
+  /// inside [projectId]. Dates it cannot read are left out and counted.
+  Future<ImportResult> importItems(ImportReport report, {required String projectId, DateTime? today, int weekStart = 1}) async {
+    final result = ImportResult();
+    final when = today ?? now;
+    await db.transaction(() async {
+      final stack = <int, String>{}; // indent -> task id
+      String? sectionId;
+      String? lastTask;
+      final existing = await (db.select(db.sections)..where((s) => s.projectId.equals(projectId) & s.deletedAt.isNull())).get();
+      final sectionIds = {for (final s in existing) s.name.toLowerCase(): s.id};
+      for (final item in report.items) {
+        switch (item.kind) {
+          case 'section':
+            final key = item.content.trim().toLowerCase();
+            if (!sectionIds.containsKey(key)) {
+              sectionIds[key] = await createSection(projectId, item.content);
+              result.sections++;
+            }
+            sectionId = sectionIds[key];
+            stack.clear();
+            lastTask = null;
+          case 'task':
+            final title = item.content.length > 500 ? item.content.substring(0, 500) : item.content;
+            String? dueDate, dueTime, recurrence;
+            if (item.date != null) {
+              final w = parseImportedWhen(item.date!, when, weekStart: weekStart);
+              if (w == null) {
+                result.unreadableDates++;
+              } else if (w.recurrence != null && isReadableRepeat(w.recurrence!, when)) {
+                recurrence = w.recurrence;
+                dueDate = w.dueDate;
+                dueTime = w.dueTime;
+              } else {
+                dueDate = w.dueDate;
+                dueTime = dueDate == null ? null : w.dueTime;
+              }
+            }
+            final parent = item.indent > 1 ? stack[item.indent - 1] : null;
+            final labelIds = [for (final l in item.labels) await createLabel(l)];
+            final id = await addTask(
+              title: title,
+              projectId: projectId,
+              sectionId: parent == null ? sectionId : null,
+              parentId: parent,
+              priority: item.priority,
+              description: item.description,
+              dueDate: dueDate,
+              dueTime: dueTime,
+              recurrence: recurrence,
+              labelIds: labelIds,
+            );
+            stack[item.indent] = id;
+            stack.removeWhere((k, _) => k > item.indent);
+            lastTask = id;
+            result.tasks++;
+            if (item.done) await setCompleted(id, true);
+          case 'note':
+            if (lastTask != null) {
+              await addComment(lastTask, item.content);
+            } else {
+              await addProjectComment(projectId, item.content);
+            }
+            result.comments++;
+        }
+      }
+    });
+    result.skipped = report.skipped;
+    return result;
+  }
+
+  /// Imports [report] as a new project called [name]; returns its id.
+  Future<(String, ImportResult)> importAsNewProject(String name, ImportReport report, {int weekStart = 1}) async {
+    final id = await createProject(name: name.trim().isEmpty ? 'Imported' : name.trim());
+    return (id, await importItems(report, projectId: id, weekStart: weekStart));
+  }
+
+  // --- the personal template gallery (FR-X6) ---------------------------------------
+
+  /// Saved templates, newest first. A template is the CSV of a project without dates.
+  Future<List<ProjectTemplate>> templates() async {
+    final raw = await getSetting('templates');
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      return [for (final j in jsonDecode(raw) as List) ProjectTemplate.fromJson(j as Map<String, dynamic>)];
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<void> _saveTemplates(List<ProjectTemplate> t) => setSetting('templates', jsonEncode([for (final x in t) x.toJson()]));
+
+  Future<void> saveTemplate(String name, String projectId) async {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) throw RuleException('A template needs a name');
+    final csv = await exportProjectCsv(projectId, template: true);
+    final all = await templates();
+    await _saveTemplates([ProjectTemplate(id: newId(), name: trimmed, csv: csv), ...all.where((t) => t.name.toLowerCase() != trimmed.toLowerCase())]);
+  }
+
+  Future<void> deleteTemplate(String id) async => _saveTemplates([for (final t in await templates()) if (t.id != id) t]);
+
+  /// Makes a new project from a saved template.
+  Future<String> useTemplate(String id, String projectName) async {
+    final t = (await templates()).firstWhere((x) => x.id == id, orElse: () => throw RuleException('That template no longer exists'));
+    return (await importAsNewProject(projectName, parseTodoistCsv(t.csv))).$1;
+  }
+
+  // ===========================================================================
+  // Activity log (R5: FR-K6..K8)
+  // ===========================================================================
+
+  /// The newest [limit] events, optionally for one project and some event kinds.
+  Stream<List<ActivityEntry>> watchActivity({String? projectId, Set<String>? events, int limit = 200}) {
+    final q = db.select(db.activity)
+      ..orderBy([(a) => OrderingTerm.desc(a.atMs), (a) => OrderingTerm.desc(CustomExpression<int>('rowid'))])
+      ..limit(limit);
+    q.where((a) {
+      Expression<bool> w = const Constant(true);
+      if (projectId != null) w = w & a.projectId.equals(projectId);
+      if (events != null && events.isNotEmpty) w = w & a.event.isIn(events);
+      return w;
+    });
+    return q.watch();
+  }
+
+  static const _undoableFields = {'title', 'description', 'priority', 'due_date', 'due_time', 'recurrence', 'deadline'};
+
+  /// Whether [e] can still be undone: the thing it did to the task or
+  /// project is still in place (nobody has changed it since).
+  Future<bool> canUndo(ActivityEntry e) async {
+    if (e.entityType == 'task') {
+      final t = await getTask(e.entityId);
+      if (t == null) return false;
+      switch (e.event) {
+        case 'add':
+          return t.deletedAt == null;
+        case 'restore':
+          return t.deletedAt == null;
+        case 'delete':
+          return t.deletedAt != null;
+        case 'complete':
+          if (t.completedAt != null) return true;
+          return t.recurrence != null && t.deletedAt == null &&
+              await (db.select(db.completions)..where((c) => c.taskId.equals(t.id))).get().then((r) => r.isNotEmpty);
+        case 'uncomplete':
+          return t.completedAt == null && t.deletedAt == null;
+        case 'edit':
+          return _undoableFields.contains(e.field) && _taskField(t, e.field!) == e.newValue;
+        case 'move':
+          return t.deletedAt == null && _taskField(t, e.field!) == e.newValue;
+      }
+      return false;
+    }
+    final p = await getProject(e.entityId);
+    if (p == null) return false;
+    switch (e.event) {
+      case 'delete':
+        return p.deletedAt != null;
+      case 'edit':
+        return e.field == 'name' && p.name == e.newValue;
+    }
+    return false;
+  }
+
+  String? _taskField(Task t, String field) => switch (field) {
+        'title' => t.title,
+        'description' => t.description,
+        'priority' => '${t.priority}',
+        'due_date' => t.dueDate,
+        'due_time' => t.dueTime,
+        'recurrence' => t.recurrence,
+        'deadline' => t.deadline,
+        'project_id' => t.projectId,
+        'section_id' => t.sectionId,
+        'parent_id' => t.parentId,
+        _ => null,
+      };
+
+  /// Reverses what [e] recorded. Throws [RuleException] if it can no longer be undone.
+  Future<void> undoActivity(ActivityEntry e) async {
+    if (!await canUndo(e)) throw RuleException('That can no longer be undone');
+    if (e.entityType == 'project') {
+      if (e.event == 'delete') {
+        await restoreProject(e.entityId);
+      } else {
+        await updateProject(e.entityId, name: e.oldValue);
+      }
+      return;
+    }
+    final id = e.entityId;
+    switch (e.event) {
+      case 'add':
+      case 'restore':
+        await deleteTask(id);
+      case 'delete':
+        await restoreTasks([id]);
+      case 'uncomplete':
+        await completeTask(id);
+      case 'complete':
+        final t = (await getTask(id))!;
+        if (t.completedAt != null) {
+          await reopenTask(id);
+        } else {
+          // A repeating task moved to its next date: put the date back and drop the completion.
+          final last = await (db.select(db.completions)
+                ..where((c) => c.taskId.equals(id))
+                ..orderBy([(c) => OrderingTerm.desc(c.completedAt)])
+                ..limit(1))
+              .getSingle();
+          await db.transaction(() async {
+            await (db.update(db.tasks)..where((x) => x.id.equals(id)))
+                .write(TasksCompanion(dueDate: Value(last.dueDate), dueTime: Value(last.dueTime), updatedAt: Value(now)));
+            await (db.delete(db.completions)..where((c) => c.id.equals(last.id))).go();
+          });
+        }
+      case 'edit':
+        switch (e.field) {
+          case 'title':
+            await updateTask(id, title: e.oldValue ?? '');
+          case 'description':
+            await updateTask(id, description: e.oldValue ?? '');
+          case 'priority':
+            await updateTask(id, priority: int.tryParse(e.oldValue ?? '') ?? 4);
+          case 'due_date':
+            await updateTask(id, dueDate: Value(e.oldValue));
+          case 'due_time':
+            await updateTask(id, dueTime: Value(e.oldValue));
+          case 'recurrence':
+            await updateTask(id, recurrence: Value(e.oldValue));
+          case 'deadline':
+            await updateTask(id, deadline: Value(e.oldValue));
+        }
+      case 'move':
+        final t = (await getTask(id))!;
+        switch (e.field) {
+          case 'project_id':
+            await moveTask(id, projectId: e.oldValue ?? inboxId);
+          case 'section_id':
+            await moveTask(id, projectId: t.projectId, sectionId: e.oldValue, parentId: t.parentId);
+          case 'parent_id':
+            if (e.oldValue == null) {
+              await promoteToTopLevel(id);
+            } else {
+              await moveTask(id, projectId: t.projectId, parentId: e.oldValue);
+            }
+        }
+    }
+  }
+
+  // ===========================================================================
+  // Productivity (R5: FR-K1..K5)
+  // ===========================================================================
+
+  /// Goals, streaks, Karma and chart numbers, recomputed whenever a
+  /// completion or a task changes.
+  Stream<Progress> watchProgress(Goals goals) {
+    final query = db.select(db.completions).join([
+      leftOuterJoin(db.tasks, db.tasks.id.equalsExp(db.completions.taskId)),
+    ]);
+    final overdue = db.select(db.tasks)
+      ..where((t) => t.completedAt.isNull() & t.deletedAt.isNull() & t.dueDate.isNotNull());
+    return combineLatest2(query.watch(), overdue.watch(), (List<TypedResult> rows, List<Task> open) {
+      return Progress(
+        completions: [
+          for (final r in rows)
+            CompletionFact(
+              completedAt: r.readTable(db.completions).completedAt,
+              dueDate: r.readTable(db.completions).dueDate,
+              priority: r.readTableOrNull(db.tasks)?.priority ?? 4,
+            ),
+        ],
+        open: [for (final t in open) OpenFact(dueDate: t.dueDate)],
+        goals: goals,
+        today: now,
+      );
+    });
+  }
+
+  // ===========================================================================
   // Filters, view options, bulk actions, drag and drop (R3)
   // ===========================================================================
 
@@ -1206,6 +1816,7 @@ class Repo {
   }
 
   Future<void> updateProject(String id, {String? name, int? color, bool? isFavorite, bool? isArchived}) async {
+    if (name != null || color != null) await _requireAdmin(id);
     if (name != null && name.trim().isEmpty) throw RuleException('A project needs a name');
     await (db.update(db.projects)..where((p) => p.id.equals(id))).write(ProjectsCompanion(
       name: name == null ? const Value.absent() : Value(name.trim()),
@@ -1259,6 +1870,7 @@ class Repo {
   /// with it when [deleteTasks] is true; sub-projects are lifted one level.
   /// Returns the task ids that were trashed, for Undo.
   Future<List<String>> deleteProject(String id, {required bool deleteTasks}) async {
+    await _requireAdmin(id);
     if (id == inboxId) throw RuleException('The Inbox cannot be deleted');
     final trashed = <String>[];
     await db.transaction(() async {
@@ -1345,6 +1957,7 @@ class Repo {
   // ===========================================================================
 
   Future<String> createSection(String projectId, String name) async {
+    await _requireAdmin(projectId);
     final trimmed = name.trim();
     if (trimmed.isEmpty) throw RuleException('A section needs a name');
     final id = newId();
@@ -1362,7 +1975,16 @@ class Repo {
     return id;
   }
 
-  Future<void> updateSection(String id, {String? name, bool? isCollapsed, bool? isArchived}) =>
+  Future<void> updateSection(String id, {String? name, bool? isCollapsed, bool? isArchived}) async {
+    // Collapsing a section is a personal view setting; renaming or archiving it is the project's.
+    if (name != null || isArchived != null) {
+      final sec = await (db.select(db.sections)..where((x) => x.id.equals(id))).getSingleOrNull();
+      await _requireAdmin(sec?.projectId);
+    }
+    await _updateSection(id, name: name, isCollapsed: isCollapsed, isArchived: isArchived);
+  }
+
+  Future<void> _updateSection(String id, {String? name, bool? isCollapsed, bool? isArchived}) =>
       (db.update(db.sections)..where((s) => s.id.equals(id))).write(SectionsCompanion(
         name: name == null ? const Value.absent() : Value(name.trim()),
         isCollapsed: isCollapsed == null ? const Value.absent() : Value(isCollapsed),
@@ -1381,6 +2003,8 @@ class Repo {
 
   /// Deleting a section keeps its tasks: they move out of the section.
   Future<void> deleteSection(String id) async {
+    final sec = await (db.select(db.sections)..where((x) => x.id.equals(id))).getSingleOrNull();
+    await _requireAdmin(sec?.projectId);
     await db.transaction(() async {
       final stamp = now;
       await (db.update(db.tasks)..where((t) => t.sectionId.equals(id)))
@@ -1457,20 +2081,39 @@ class Repo {
   // ===========================================================================
 
   Future<String> addComment(String taskId, String body) async {
+    await _requireEditTask(taskId);
     final trimmed = body.trim();
     if (trimmed.isEmpty) throw RuleException('A comment cannot be empty');
     final id = newId();
     final stamp = now;
     await db.into(db.comments).insert(
-        CommentsCompanion.insert(id: id, taskId: taskId, body: trimmed, createdAt: stamp, updatedAt: stamp));
+        CommentsCompanion.insert(id: id, taskId: taskId, body: trimmed, authorId: Value(me), createdAt: stamp, updatedAt: stamp));
     return id;
   }
 
-  Future<void> editComment(String id, String body) =>
+  Future<void> editComment(String id, String body) async {
+    final c = await (db.select(db.comments)..where((x) => x.id.equals(id))).getSingleOrNull();
+    if (c != null) await _requireEditTask(c.taskId);
+    await _editComment(id, body);
+  }
+
+  Future<void> _editComment(String id, String body) =>
       (db.update(db.comments)..where((c) => c.id.equals(id)))
           .write(CommentsCompanion(body: Value(body.trim()), updatedAt: Value(now)));
 
-  Future<void> deleteComment(String id) =>
+  Future<void> deleteComment(String id) async {
+    final c = await (db.select(db.comments)..where((x) => x.id.equals(id))).getSingleOrNull();
+    if (c != null) await _requireEditTask(c.taskId);
+    await _deleteCommentAndFiles(id);
+  }
+
+  Future<void> _deleteCommentAndFiles(String id) => db.transaction(() async {
+        await (db.update(db.attachments)..where((a) => a.commentId.equals(id)))
+            .write(AttachmentsCompanion(deletedAt: Value(now), updatedAt: Value(now)));
+        await _deleteComment(id);
+      });
+
+  Future<void> _deleteComment(String id) =>
       (db.update(db.comments)..where((c) => c.id.equals(id)))
           .write(CommentsCompanion(deletedAt: Value(now), updatedAt: Value(now)));
 
@@ -1556,13 +2199,15 @@ class Repo {
             sortOrder: f.sortOrder, viewOptions: f.viewOptions,
           ),
       ],
-      settings: {for (final s in settings) s.key: s.value},
+      settings: {for (final s in settings) if (!_deviceOnlySetting(s.key)) s.key: s.value},
     );
   }
 
   /// Replaces all data with [b] in one transaction. If anything fails the
   /// existing data is untouched.
-  Future<void> replaceAll(Bundle b) async {
+  Future<void> replaceAll(Bundle b) => db.withoutLog(() => _replaceAll(b));
+
+  Future<void> _replaceAll(Bundle b) async {
     await db.transaction(() async {
       final stamp = now;
       await db.delete(db.taskLabels).go();
@@ -1575,7 +2220,7 @@ class Repo {
       await db.delete(db.sections).go();
       await db.delete(db.labels).go();
       await db.delete(db.projects).go();
-      await db.delete(db.settings).go();
+      await (db.delete(db.settings)..where((s) => s.key.like('sync.%').not())).go();
       for (final p in b.projects) {
         await db.into(db.projects).insert(ProjectsCompanion.insert(
               id: p.id, name: p.name, color: p.color, parentId: Value(p.parentId),
@@ -1630,9 +2275,29 @@ class Repo {
             id: c.id, projectId: c.projectId, body: c.body, createdAt: c.createdAt, updatedAt: stamp));
       }
       for (final e in b.settings.entries) {
-        await db.into(db.settings).insert(SettingsCompanion.insert(key: e.key, value: e.value));
+        if (_deviceOnlySetting(e.key)) continue;
+        await db.into(db.settings).insert(SettingsCompanion.insert(key: e.key, value: e.value), mode: InsertMode.insertOrReplace);
       }
       await db.ensureInbox();
     });
   }
+
+  /// Settings that describe this device's own pairing, never copied by a backup.
+  static bool _deviceOnlySetting(String key) => key.startsWith('sync.');
+
+  /// Removes every task, project, label and setting on this device (FR-U6).
+  /// Nothing is queued for the server: unpair first if the server copy should
+  /// stay, or delete the server data first if it should go too.
+  Future<void> deleteEverything() => db.withoutLog(() => db.withoutCapture(() => db.transaction(() async {
+        for (final table in <TableInfo<Table, dynamic>>[
+          db.taskLabels, db.comments, db.reminders, db.completions, db.projectComments, db.filters,
+          db.attachments, db.tasks, db.sections, db.labels, db.projects, db.activity, db.settings,
+        ]) {
+          await db.delete(table).go();
+        }
+        await db.customStatement('DELETE FROM outbox');
+        await db.customStatement('DELETE FROM field_clock');
+        await db.ensureInbox();
+        await db.customStatement('DELETE FROM outbox');
+      })));
 }
