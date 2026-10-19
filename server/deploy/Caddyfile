@@ -1,4 +1,4 @@
-{$TASKFLOW_DOMAIN} {
+http://{$TASKFLOW_DOMAIN}, https://{$TASKFLOW_DOMAIN} {
 	encode zstd gzip
 
 	header {
