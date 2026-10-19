@@ -892,7 +892,10 @@ class Repo {
 
   Future<void> reorderTasks(List<String> orderedIds) async {
     await db.transaction(() async {
+      final current = {for (final t in await (db.select(db.tasks)..where((t) => t.id.isIn(orderedIds))).get()) t.id: t.sortOrder};
       for (var i = 0; i < orderedIds.length; i++) {
+        if (current[orderedIds[i]] == i) continue; // unchanged: no edit to sync
+        await _requireEditTask(orderedIds[i]);
         await (db.update(db.tasks)..where((t) => t.id.equals(orderedIds[i])))
             .write(TasksCompanion(sortOrder: Value(i), updatedAt: Value(now)));
       }
@@ -1701,7 +1704,9 @@ class Repo {
       case Grouping.none:
         break;
       case Grouping.section:
-        await moveTask(taskId, projectId: task.projectId, sectionId: key.value, parentId: task.parentId);
+        if (task.sectionId != key.value) {
+          await moveTask(taskId, projectId: task.projectId, sectionId: key.value, parentId: task.parentId);
+        }
       case Grouping.project:
         if (key.value != null && key.value != task.projectId) {
           await moveTask(taskId, projectId: key.value!);

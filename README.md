@@ -27,6 +27,7 @@ The requirements are in the [TaskFlow 2.0 SRS](https://claude.ai/code/artifact/7
 - Every project and filter can be shown as a **list, board or calendar**, grouped (section, date, priority, label, project) and sorted (manual, name, date, priority, added), with options saved per project.
 - Board: drag cards between columns (this changes the section, priority, date, label or project) and reorder inside a column. Calendar: month or week, drag a task onto a day to reschedule it.
 - Upcoming has a week strip; drag a task onto a day to reschedule it.
+- Drag to move and reorder: in a list, grab the grip at the end of a task and drop it on another task (it goes before it), on a section heading (top of that section) or in the space under a section (end of it); in a board, long-press a card and drop it on a column. The list and the board scroll by themselves when you hold a task near their edge. On a wide window, drop a task on a project in the sidebar to move it there (Undo is offered). Reordering needs the Manual sort.
 - Long-press tasks to select several, then complete, reschedule, change priority, move, label or delete them together.
 - Search looks in titles, descriptions, comments, projects, sections and labels, understands filters, remembers recent searches, and can include completed tasks.
 - Task duration; a permanent sidebar on wide windows; an in-app help page.

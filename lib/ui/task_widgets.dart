@@ -5,6 +5,7 @@ import 'package:taskflow_core/reminder.dart' show isOverdue;
 import '../data/database.dart';
 import 'catalog.dart';
 import 'common.dart';
+import 'drag_scroll.dart';
 import 'selection.dart';
 import 'task_detail.dart';
 import 'task_tree.dart';
@@ -67,6 +68,7 @@ class TaskTile extends StatelessWidget {
     this.showProject = true,
     this.onTap,
     this.draggable = false,
+    this.dragHandle = false,
     this.showDetails = true,
   });
 
@@ -80,6 +82,10 @@ class TaskTile extends StatelessWidget {
   /// Long-press picks the task up to drop on a day or column (Upcoming, calendar).
   /// Otherwise long-press starts a multi-selection.
   final bool draggable;
+
+  /// Show a grip at the end of the row: drag it to move the task to another section or to reorder it.
+  /// (Long-press stays for selecting several tasks.)
+  final bool dragHandle;
 
   Task get task => row.task;
 
@@ -193,24 +199,42 @@ class TaskTile extends StatelessWidget {
               ]),
             ),
           ),
+          if (dragHandle && !selecting)
+            Draggable<String>(
+              data: task.id,
+              feedback: _feedback(),
+              onDragStarted: () => TaskDrag.active.value = true,
+              onDragEnd: (_) => TaskDrag.active.value = false,
+              child: Semantics(
+                label: 'Drag to move or reorder',
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 10, 18, 10), // clear of the phone's edge-swipe "back" zone
+                  child: Icon(Icons.drag_indicator, size: 22, color: cs.outline),
+                ),
+              ),
+            ),
         ]),
       ),
     ));
     if (!draggable || selecting) return tile;
     return LongPressDraggable<String>(
       data: task.id,
-      feedback: Material(
+      feedback: _feedback(),
+      onDragStarted: () => TaskDrag.active.value = true,
+      onDragEnd: (_) => TaskDrag.active.value = false,
+      childWhenDragging: Opacity(opacity: 0.35, child: tile),
+      child: tile,
+    );
+  }
+
+  Widget _feedback() => Material(
         elevation: 6,
         borderRadius: BorderRadius.circular(8),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 300),
           child: Padding(padding: const EdgeInsets.all(12), child: Text(task.title, maxLines: 2, overflow: TextOverflow.ellipsis)),
         ),
-      ),
-      childWhenDragging: Opacity(opacity: 0.35, child: tile),
-      child: tile,
-    );
-  }
+      );
 
   static String _iso(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
@@ -235,83 +259,149 @@ sealed class ListEntry {
 }
 
 class HeaderEntry extends ListEntry {
-  const HeaderEntry(this.title, {this.count, this.trailing, this.onTap, this.color});
+  const HeaderEntry(this.title, {this.count, this.trailing, this.onTap, this.color, this.zone, this.dropBefore});
   final String title;
   final int? count;
   final Widget? trailing;
   final VoidCallback? onTap;
   final Color? color;
+
+  /// What a task dropped on this heading joins (a section, a day...); it goes to the top, before [dropBefore].
+  final Object? zone;
+  final String? dropBefore;
 }
 
 class TaskEntry extends ListEntry {
-  const TaskEntry(this.row, {this.showProject = true, this.showDetails = true});
+  const TaskEntry(this.row, {this.showProject = true, this.showDetails = true, this.zone});
   final TreeRow row;
   final bool showProject;
   final bool showDetails;
+
+  /// The group this row belongs to; set to let tasks be dropped before it.
+  final Object? zone;
 }
+
+/// The end of a group: a task dropped here goes last in [zone].
+class SlotEntry extends ListEntry {
+  const SlotEntry(this.zone);
+  final Object zone;
+}
+
+/// Called when a task is dropped in a list: [zone] is what the drop target stood for, and the task goes
+/// before [beforeTaskId] (or last when that is null).
+typedef TaskDropHandler = Future<void> Function(String taskId, Object zone, String? beforeTaskId);
 
 class WidgetEntry extends ListEntry {
   const WidgetEntry(this.child);
   final Widget child;
 }
 
-class EntryList extends StatelessWidget {
+class EntryList extends StatefulWidget {
   const EntryList({
     super.key,
     required this.entries,
     this.emptyTitle = 'Nothing here',
     this.emptyBody = 'Tap + to add a task.',
     this.draggable = false,
+    this.onDropTask,
   });
   final List<ListEntry> entries;
 
   /// Make task rows long-press draggable (Upcoming) instead of selectable.
   final bool draggable;
+
+  /// When set, rows that carry a zone get a drag handle and headings, rows and group ends accept drops.
+  final TaskDropHandler? onDropTask;
   final String emptyTitle;
   final String emptyBody;
 
   @override
+  State<EntryList> createState() => _EntryListState();
+}
+
+class _EntryListState extends State<EntryList> {
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  Widget _dropLine(BuildContext context) => Container(height: 3, margin: const EdgeInsets.symmetric(horizontal: 12), color: Theme.of(context).colorScheme.primary);
+
+  @override
   Widget build(BuildContext context) {
+    final entries = widget.entries;
+    final onDrop = widget.onDropTask;
     final hasTasks = entries.any((e) => e is TaskEntry);
     if (!hasTasks && entries.every((e) => e is! WidgetEntry && e is! HeaderEntry)) {
-      return _Empty(title: emptyTitle, body: emptyBody);
+      return _Empty(title: widget.emptyTitle, body: widget.emptyBody);
     }
-    return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 96),
-      itemCount: entries.length + (hasTasks ? 0 : 1),
-      itemBuilder: (context, i) {
-        if (i >= entries.length) return _Empty(title: emptyTitle, body: emptyBody);
-        final e = entries[i];
-        switch (e) {
-          case HeaderEntry():
-            final cs = Theme.of(context).colorScheme;
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 8, 0),
-              child: Column(children: [
-                InkWell(
-                  onTap: e.onTap,
-                  child: Row(children: [
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Text.rich(TextSpan(children: [
-                          TextSpan(text: e.title, style: TextStyle(fontWeight: FontWeight.w700, color: e.color)),
-                          if (e.count != null) TextSpan(text: '  ${e.count}', style: TextStyle(color: cs.outline)),
-                        ])),
+    return DragEdgeScroll(
+      controller: _scroll,
+      child: ListView.builder(
+        controller: _scroll,
+        padding: const EdgeInsets.only(bottom: 96),
+        itemCount: entries.length + (hasTasks ? 0 : 1),
+        itemBuilder: (context, i) {
+          if (i >= entries.length) return _Empty(title: widget.emptyTitle, body: widget.emptyBody);
+          final e = entries[i];
+          switch (e) {
+            case HeaderEntry():
+              final cs = Theme.of(context).colorScheme;
+              final header = Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 8, 0),
+                child: Column(children: [
+                  InkWell(
+                    onTap: e.onTap,
+                    child: Row(children: [
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Text.rich(TextSpan(children: [
+                            TextSpan(text: e.title, style: TextStyle(fontWeight: FontWeight.w700, color: e.color)),
+                            if (e.count != null) TextSpan(text: '  ${e.count}', style: TextStyle(color: cs.outline)),
+                          ])),
+                        ),
                       ),
-                    ),
-                    ?e.trailing,
-                  ]),
+                      ?e.trailing,
+                    ]),
+                  ),
+                  const Divider(height: 1),
+                ]),
+              );
+              if (onDrop == null || e.zone == null) return header;
+              return DragTarget<String>(
+                onAcceptWithDetails: (d) => onDrop(d.data, e.zone!, e.dropBefore),
+                builder: (context, candidates, _) => Container(
+                  color: candidates.isNotEmpty ? cs.primaryContainer.withValues(alpha: 0.4) : null,
+                  child: header,
                 ),
-                const Divider(height: 1),
-              ]),
-            );
-          case TaskEntry():
-            return TaskTile(row: e.row, showProject: e.showProject, showDetails: e.showDetails, draggable: draggable);
-          case WidgetEntry():
-            return e.child;
-        }
-      },
+              );
+            case TaskEntry():
+              final canDrop = onDrop != null && e.zone != null && e.row.depth == 0;
+              final tile = TaskTile(row: e.row, showProject: e.showProject, showDetails: e.showDetails, draggable: widget.draggable, dragHandle: canDrop);
+              if (!canDrop) return tile;
+              return DragTarget<String>(
+                onWillAcceptWithDetails: (d) => d.data != e.row.task.id,
+                onAcceptWithDetails: (d) => onDrop(d.data, e.zone!, e.row.task.id),
+                builder: (context, candidates, _) => Column(children: [if (candidates.isNotEmpty) _dropLine(context), tile]),
+              );
+            case SlotEntry():
+              if (onDrop == null) return const SizedBox.shrink();
+              return DragTarget<String>(
+                onAcceptWithDetails: (d) => onDrop(d.data, e.zone, null),
+                builder: (context, candidates, _) => SizedBox(
+                  height: 28,
+                  child: candidates.isNotEmpty ? Align(alignment: Alignment.topCenter, child: _dropLine(context)) : null,
+                ),
+              );
+            case WidgetEntry():
+              return e.child;
+          }
+        },
+      ),
     );
   }
 }

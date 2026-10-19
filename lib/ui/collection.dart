@@ -6,6 +6,7 @@ import 'package:taskflow_core/view_options.dart';
 import '../data/database.dart';
 import 'catalog.dart';
 import 'common.dart';
+import 'drag_scroll.dart';
 import 'project_dialogs.dart';
 import 'quick_add_sheet.dart';
 import 'task_tree.dart';
@@ -92,16 +93,25 @@ class _ListLayout extends StatelessWidget {
     final repo = catalog.repo;
     final entries = <ListEntry>[];
     final isSectioned = owner.projectId != null && owner.group == Grouping.section;
+    final manual = owner.options.sort == SortBy.manual;
+    // The top-level tasks of each group in the order shown: what a drop is placed among.
+    final order = <GroupKey, List<String>>{};
 
     for (final g in groups) {
       final section = g.key.kind == Grouping.section ? catalog.section(g.key.value) : null;
       final hideHeader = g.key.kind == Grouping.none || (isSectioned && g.key.value == null);
+      final rows = manual || owner.options.showSubtasks ? flattenTasks(g.items) : [for (final t in g.items) _flat(t)];
+      final top = [for (final r in rows) if (r.depth == 0) r.task.id];
+      order[g.key] = top;
+      final zone = g.key.acceptsDrops ? g.key : null;
       var collapsed = false;
       if (!hideHeader) {
         collapsed = section?.isCollapsed ?? false;
         entries.add(HeaderEntry(
           g.title,
           count: g.items.length,
+          zone: zone,
+          dropBefore: top.isEmpty ? null : top.first,
           onTap: section == null ? null : () => repo.updateSection(section.id, isCollapsed: !section.isCollapsed),
           color: g.key == const GroupKey(Grouping.date, 'overdue') ? Theme.of(context).colorScheme.error : null,
           trailing: section == null
@@ -122,10 +132,25 @@ class _ListLayout extends StatelessWidget {
         ));
       }
       if (collapsed) continue;
-      final rows = owner.options.sort == SortBy.manual || owner.options.showSubtasks ? flattenTasks(g.items) : [for (final t in g.items) _flat(t)];
       for (final r in rows) {
-        entries.add(TaskEntry(r, showProject: owner.group != Grouping.project && owner.projectId == null, showDetails: owner.options.showDetails));
+        entries.add(TaskEntry(r, showProject: owner.group != Grouping.project && owner.projectId == null, showDetails: owner.options.showDetails, zone: zone));
       }
+      if (zone != null) entries.add(SlotEntry(zone));
+    }
+
+    // Dropping a task: it takes the value of the group it lands in (its section, day, priority...) and,
+    // when the list is in manual order, its place among that group's tasks.
+    Future<void> drop(String taskId, Object zone, String? beforeId) async {
+      final key = zone as GroupKey;
+      final already = groups.any((g) => g.key == key && g.items.any((t) => t.id == taskId));
+      if (already && !manual) {
+        showMessage(context, 'This list is sorted automatically. Choose Manual in View options to put tasks in your own order.');
+        return;
+      }
+      final ids = [...?order[key]]..remove(taskId);
+      final at = beforeId == null ? ids.length : ids.indexOf(beforeId);
+      ids.insert(at < 0 ? ids.length : at, taskId);
+      await guarded(context, () => repo.moveToGroup(taskId, key, orderedIdsInGroup: manual ? ids : null));
     }
     if (isSectioned) {
       entries.add(WidgetEntry(Padding(
@@ -144,7 +169,7 @@ class _ListLayout extends StatelessWidget {
         ),
       )));
     }
-    return EntryList(entries: entries, emptyTitle: owner.emptyTitle, emptyBody: owner.emptyBody);
+    return EntryList(entries: entries, emptyTitle: owner.emptyTitle, emptyBody: owner.emptyBody, onDropTask: drop);
   }
 }
 
@@ -152,17 +177,38 @@ class _ListLayout extends StatelessWidget {
 // Board
 // -----------------------------------------------------------------------------
 
-class _BoardLayout extends StatelessWidget {
+class _BoardLayout extends StatefulWidget {
   const _BoardLayout({required this.owner, required this.groups});
   final TaskCollection owner;
   final List<TaskGroup<Task>> groups;
+
+  @override
+  State<_BoardLayout> createState() => _BoardLayoutState();
+}
+
+class _BoardLayoutState extends State<_BoardLayout> {
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  TaskCollection get owner => widget.owner;
+  List<TaskGroup<Task>> get groups => widget.groups;
 
   @override
   Widget build(BuildContext context) {
     final catalog = AppScope.of(context);
     final repo = catalog.repo;
     final canAddSection = owner.projectId != null && owner.group == Grouping.section;
-    return ListView(
+    // Columns are wider than a phone: drag a card to the screen edge to bring the next column into view.
+    return DragEdgeScroll(
+      controller: _scroll,
+      axis: Axis.horizontal,
+      child: ListView(
+      controller: _scroll,
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 96),
       children: [
@@ -198,7 +244,7 @@ class _BoardLayout extends StatelessWidget {
             ),
           ),
       ],
-    );
+    ));
   }
 }
 
