@@ -1,4 +1,4 @@
-﻿# Signing keys and secrets: never commit
+# Signing keys and secrets: never commit
 *.p12
 *.jks
 *.keystore
@@ -30,3 +30,9 @@ server/data/
 # Web client: dependencies and build output (the build is embedded in server/lib/web_assets.dart)
 server/web/node_modules/
 server/web/dist/
+
+# Landing page binary downloads
+landing/downloads/*.msi
+landing/downloads/*.msix
+landing/downloads/*.apk
+landing/downloads/*.deb

@@ -45,7 +45,7 @@ class _Pairing extends StatefulWidget {
 }
 
 class _PairingState extends State<_Pairing> {
-  final _url = TextEditingController();
+  final _url = TextEditingController(text: 'https://todoz.polla.dev');
   final _code = TextEditingController();
   final _device = TextEditingController(
     text: Platform.isAndroid ? 'Android phone' : (Platform.isWindows ? 'Windows PC' : 'My device'),
@@ -96,7 +96,7 @@ class _PairingState extends State<_Pairing> {
         controller: _url,
         keyboardType: TextInputType.url,
         autocorrect: false,
-        decoration: const InputDecoration(labelText: 'Server address', hintText: 'sync.example.com'),
+        decoration: const InputDecoration(labelText: 'Server address', hintText: 'https://todoz.polla.dev'),
         onChanged: (_) => setState(() {}),
       ),
       const SizedBox(height: 12),

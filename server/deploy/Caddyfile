@@ -38,6 +38,23 @@ http://{$TASKFLOW_DOMAIN}, https://{$TASKFLOW_DOMAIN} {
 		reverse_proxy taskflow:8080
 	}
 
+	# The REST API: the web app at /app and your own scripts use it. Without this the landing page answers it
+	# (a GET gets the landing page back and a POST gets "405 Method Not Allowed").
+	handle /api/* {
+		request_body {
+			max_size 2MB
+		}
+		reverse_proxy taskflow:8080
+	}
+
+	# Incoming webhooks (/hooks/in/<id>)
+	handle /hooks/* {
+		request_body {
+			max_size 2MB
+		}
+		reverse_proxy taskflow:8080
+	}
+
 	handle /ical/* {
 		reverse_proxy taskflow:8080
 	}
