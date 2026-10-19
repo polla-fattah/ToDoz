@@ -60,6 +60,8 @@ Quick Add syntax: `Review paper tomorrow at 4pm p1 %reading #work /backlog {nov 
 
 Not yet built: home-screen widgets, location reminders, Windows notifications, workspaces and folders, attachments in the JSON backup, and hiding buttons a read-only member cannot use (the change is refused instead). The Google Calendar connection and voice notes have not been tried on a real account or phone, and the Todoist CSV layout was written from its documentation, not checked against a real export. Known simplifications in R3: manual order inside a filter is shared with the task's project order, and the built-in Today and Upcoming views are not yet implemented as filters. See section 7 of the SRS.
 
+**Web (online only):** the sync server also serves NoteDo for the web at `/app`, a React app: Inbox, Today, Upcoming, projects with a list and a **board** layout, labels and completed tasks; **drag and drop** to move tasks between sections, reorder them, or drop one on a project in the sidebar; Quick Add with a live preview of what it understood; a task panel that saves as you type (date picker, priority, labels, sub-tasks, comments); a command palette (Ctrl+K) and keyboard shortcuts. It needs a connection and keeps nothing in the browser except the sign-in. It is a separate client from the Flutter app (source in `server/web/`), served with a strict content-security policy. Not in the web version yet: attachments, reminders, sharing and filters.
+
 ## Layout
 
 | Path | What it holds |

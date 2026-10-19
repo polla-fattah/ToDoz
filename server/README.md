@@ -35,6 +35,8 @@ In the app: Settings, Sync, enter `https://sync.example.com` (or just the name),
 
 ## What else the server does
 
+- **NoteDo for the web** at `/app` (the server's root address goes there): a React page that works only online and reads and writes through the REST API, with nothing kept in the browser except the sign-in. Sign in with a one-time code from `invite <name>` (or the app); the code becomes an API token named "Web browser ..." that you can revoke in the app under Settings, Calendar and integrations, API access. It has lists and a board with drag and drop, Quick Add with a live preview, a task panel that saves as you type, a command palette (Ctrl+K) and keyboard shortcuts (Q add, / search, g then t/i/u/c to go to Today, Inbox, Upcoming, Completed). Turn it off with `serve --no-web`. The source is in `web/` (React, TypeScript, Vite); `python tool/embed_web.py` builds it and embeds the result in the server (`lib/web_assets.dart`, commit it), so the compiled server and the Docker image need no Node. A test fails if the embedded copy is out of date.
+
 - **Attachments** (`/v1/blobs`): content-addressed files, one copy per content, with a per-file limit and a per-person quota. They live in a `blobs` folder beside the database.
 - **REST API** (`/v1/...`) with personal API tokens (`tf_...`, created in the app under Settings, Calendar and integrations) for scripts and automations.
 - **Webhooks:** outgoing, signed with HMAC-SHA256, retried, and refused for private addresses unless you pass `--allow-private-webhooks`; one incoming signed webhook that creates tasks, with replay protection.
@@ -56,7 +58,18 @@ In the app: Settings, Sync, enter `https://sync.example.com` (or just the name),
 
 The nightly script keeps 14 copies of the database in `/var/backups/taskflow` (without Docker), plus the attachment files in `blobs/`. With Docker run `./deploy.sh backup`. Copy backups off the machine, ideally encrypted (for example with `age`). Restoring is copying a backup over the database file while the server is stopped.
 
-## Developing
+## Developing the web client
+
+```sh
+cd server/web
+npm install
+npm test            # unit tests of the drag-and-drop, date and task logic
+npm run typecheck
+npm run dev         # the page on its own port; API calls go to a server on 127.0.0.1:18099
+python ../tool/embed_web.py     # build and embed into the server before committing
+```
+
+## Developing the server
 
 ```sh
 dart pub get

@@ -427,6 +427,34 @@ class UserModel {
     return taskView(id);
   }
 
+  /// Puts the listed tasks in this order: their `order` becomes 0, 1, 2... in the sequence given (drag and drop in
+  /// a list or board). Only the tasks named change; give the tasks of one section (or one parent) together.
+  void reorderTasks(Object? ids) => _reorder('tasks', ids);
+
+  /// The same for sections of a project.
+  void reorderSections(Object? ids) => _reorder('sections', ids);
+
+  void _reorder(String tableName, Object? ids) {
+    if (ids is! List || ids.any((i) => i is! String) || ids.length > 1000) throw ModelError(400, 'Send {"ids": [...]}: at most 1000 ids, as text');
+    final list = ids.cast<String>();
+    if (list.toSet().length != list.length) throw ModelError(400, 'An id is listed twice');
+    final stamp = _nowSec;
+    final edits = <FieldEdit>[];
+    for (var i = 0; i < list.length; i++) {
+      final row = _row(tableName, list[i]);
+      if (!_live(row)) throw ModelError(404, 'Not found: ${list[i]}');
+      if ((row!['sort_order'] as int?) != i) {
+        edits
+          ..add(FieldEdit(tableName, list[i], 'sort_order', i))
+          ..add(FieldEdit(tableName, list[i], 'updated_at', stamp));
+      }
+    }
+    if (edits.isNotEmpty) {
+      store.applyEdits(userId, source, edits);
+      reload();
+    }
+  }
+
   Set<String> _descendants(String id) {
     final out = <String>{};
     final queue = [id];
@@ -617,6 +645,19 @@ class UserModel {
     return sections(projectId: project).firstWhere((s) => s['id'] == id);
   }
 
+  Map<String, Object?> updateSection(String id, Map<String, Object?> body) {
+    final s = _row('sections', id);
+    if (!_live(s)) throw ModelError(404, 'No such section');
+    if (body.containsKey('name')) {
+      final name = _name(body['name'], 'section');
+      if (name != s!['name']) {
+        store.applyEdits(userId, source, [FieldEdit('sections', id, 'name', name), FieldEdit('sections', id, 'updated_at', _nowSec)]);
+        reload();
+      }
+    }
+    return sections().firstWhere((x) => x['id'] == id);
+  }
+
   void deleteSection(String id) {
     if (!_live(_row('sections', id))) throw ModelError(404, 'No such section');
     final stamp = _nowSec;
@@ -679,21 +720,70 @@ class UserModel {
   // Quick Add, for the incoming webhook
   // ---------------------------------------------------------------------------
 
+  /// Where a parsed line puts the task: the project it names (else [defaultProject]) and, inside it, the section it
+  /// names. `known` says whether a typed name matched something.
+  ({String project, String? section, bool projectKnown, bool sectionKnown}) _place(QuickAddResult parsed, String defaultProject) {
+    var project = defaultProject;
+    var projectKnown = true;
+    if (parsed.projectName != null) {
+      projectKnown = false;
+      final typed = normaliseName(parsed.projectName!);
+      if (typed == normaliseName('Inbox')) {
+        project = inboxId;
+        projectKnown = true;
+      }
+      for (final e in table('projects').entries) {
+        if (_live(e.value) && normaliseName(e.value['name'] as String) == typed) {
+          project = e.key;
+          projectKnown = true;
+        }
+      }
+    }
+    String? section;
+    var sectionKnown = true;
+    if (parsed.sectionName != null) {
+      sectionKnown = false;
+      final typed = normaliseName(parsed.sectionName!);
+      for (final e in table('sections').entries) {
+        if (_live(e.value) && e.value['project_id'] == project && normaliseName(e.value['name'] as String) == typed) {
+          section = e.key;
+          sectionKnown = true;
+        }
+      }
+    }
+    return (project: project, section: section, projectKnown: projectKnown, sectionKnown: sectionKnown);
+  }
+
+  /// What a Quick Add line means, without saving anything: for the live preview while typing. [tokens] give the
+  /// position of each recognised word in [text] (kind, start, end) so it can be highlighted.
+  Map<String, Object?> quickAddPreview(String text, {String projectId = inboxId, DateTime? today}) {
+    final parsed = parseQuickAdd(text, today ?? now);
+    final place = _place(parsed, projectId);
+    String? name(String table, String? id) => id == null ? null : (id == inboxId ? 'Inbox' : this.table(table)[id]?['name'] as String?);
+    return {
+      'title': parsed.title.trim(),
+      'priority': parsed.priority,
+      'due': parsed.due == null ? null : {'date': formatDate(parsed.due!), 'time': parsed.dueTime == null ? null : formatTime(parsed.dueTime!), 'recurrence': parsed.recurrence?.text},
+      'deadline': parsed.deadline == null ? null : formatDate(parsed.deadline!),
+      'labels': parsed.labels,
+      'project': {'id': place.project, 'name': name('projects', place.project), 'typed': parsed.projectName, 'known': place.projectKnown},
+      'section': parsed.sectionName == null ? null : {'id': place.section, 'name': name('sections', place.section), 'typed': parsed.sectionName, 'known': place.sectionKnown},
+      'repeat_error': parsed.repeatError,
+      'tokens': [for (final t in parsed.tokens) {'kind': t.kind.name, 'start': t.start, 'end': t.end}],
+    };
+  }
+
   /// Makes a task from a Quick Add line (`Buy milk tomorrow p1 %errands`),
   /// in [projectId] unless the line names one. Dates are worked out as of
   /// [today], which the caller chooses (the server's own clock is UTC).
   Map<String, Object?> taskFromText(String text, {String projectId = inboxId, DateTime? today}) {
     final parsed = parseQuickAdd(text.trim(), today ?? now);
     if (parsed.title.isEmpty) throw ModelError(400, 'The text has no title');
-    String project = projectId;
-    if (parsed.projectName != null) {
-      for (final e in table('projects').entries) {
-        if (_live(e.value) && normaliseName(e.value['name'] as String) == normaliseName(parsed.projectName!)) project = e.key;
-      }
-    }
+    final place = _place(parsed, projectId);
     final body = <String, Object?>{
       'title': parsed.title,
-      'project_id': project,
+      'project_id': place.project,
+      if (place.section != null) 'section_id': place.section,
       if (parsed.priority != null) 'priority': parsed.priority,
       if (parsed.due != null) 'due_date': formatDate(parsed.due!),
       if (parsed.dueTime != null && parsed.due != null) 'due_time': formatTime(parsed.dueTime!),

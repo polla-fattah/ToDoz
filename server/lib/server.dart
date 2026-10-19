@@ -41,6 +41,7 @@ class ServeCommand extends Command<int> {
       ..addOption('google-client-id', help: 'Google OAuth client id (or GOOGLE_CLIENT_ID). Turns on the Google Calendar connection.')
       ..addOption('google-client-secret', help: 'Google OAuth client secret (or GOOGLE_CLIENT_SECRET).')
       ..addOption('public-url', help: 'This server\'s public address, such as https://sync.example.com (or TASKFLOW_PUBLIC_URL). Needed for Google sign-in to come back.')
+      ..addFlag('web', defaultsTo: true, help: 'Serve NoteDo for the web at /app (online only). Use --no-web to turn it off.')
       ..addFlag('allow-private-webhooks', help: 'Let webhooks call addresses on this server\'s own network. Off by default.')
       ..addFlag('trust-proxy', help: 'Read client addresses from X-Forwarded-For (only behind your own proxy).');
   }
@@ -80,7 +81,7 @@ class ServeCommand extends Command<int> {
     }
     final handler = buildApi(
       store,
-      config: ApiConfig(trustProxy: argResults!['trust-proxy'] as bool, allowPrivateWebhooks: allowPrivate),
+      config: ApiConfig(trustProxy: argResults!['trust-proxy'] as bool, allowPrivateWebhooks: allowPrivate, webClient: argResults!['web'] as bool),
       blobs: BlobStore(
         _blobDir(globalResults!['db'] as String, argResults!['blobs'] as String?)..createSync(recursive: true),
         maxBytes: int.parse(argResults!['max-file-mb'] as String) * 1024 * 1024,

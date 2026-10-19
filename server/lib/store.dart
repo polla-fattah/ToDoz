@@ -603,6 +603,50 @@ class Store {
   // ---------------------------------------------------------------------------
 
   /// Makes an API token. It is returned once; only its hash is kept.
+  /// The browser sign-in: swaps a one-time pairing code (the same kind a phone uses) for an API token named
+  /// [tokenName]. The code works once and expires like any other. When the person already has the most API tokens
+  /// allowed, the oldest browser sign-in is dropped to make room.
+  ({String token, String tokenId, String userId, String userName})? redeemInviteForApiToken(String code, String tokenName) {
+    final normalised = normalisePairingCode(code);
+    if (!isValidPairingCode(normalised)) return null;
+    final name = tokenName.trim().isEmpty ? 'Web browser' : tokenName.trim();
+    if (name.length > 60) return null;
+    db.execute('BEGIN IMMEDIATE');
+    try {
+      final rows = db.select(
+        'SELECT i.user_id, u.name FROM invites i JOIN users u ON u.id = i.user_id '
+        'WHERE i.code_hash = ? AND i.used_at IS NULL AND i.expires_at > ?',
+        [hash(normalised), _nowSec],
+      );
+      if (rows.isEmpty) {
+        db.execute('ROLLBACK');
+        return null;
+      }
+      final userId = rows.first['user_id'] as String;
+      final userName = rows.first['name'] as String;
+      final count = db.select('SELECT COUNT(*) AS n FROM api_tokens WHERE user_id = ? AND revoked_at IS NULL', [userId]).first['n'] as int;
+      if (count >= 20) {
+        db.execute(
+          "UPDATE api_tokens SET revoked_at = ? WHERE id = (SELECT id FROM api_tokens WHERE user_id = ? AND revoked_at IS NULL AND name LIKE 'Web browser%' ORDER BY created_at LIMIT 1)",
+          [_nowSec, userId],
+        );
+        if (db.updatedRows == 0) {
+          db.execute('ROLLBACK');
+          return null;
+        }
+      }
+      db.execute('UPDATE invites SET used_at = ? WHERE code_hash = ?', [_nowSec, hash(normalised)]);
+      final id = _randomId();
+      final token = 'tf_${_newToken()}';
+      db.execute('INSERT INTO api_tokens(id, user_id, name, token_hash, read_only, created_at) VALUES (?, ?, ?, ?, 0, ?)', [id, userId, name, hash(token), _nowSec]);
+      db.execute('COMMIT');
+      return (token: token, tokenId: id, userId: userId, userName: userName);
+    } catch (_) {
+      db.execute('ROLLBACK');
+      rethrow;
+    }
+  }
+
   ({String id, String token}) createApiToken(String userId, String name, {bool readOnly = false}) {
     final n = name.trim();
     if (n.isEmpty || n.length > 60) throw ArgumentError('A token name is 1 to 60 characters');

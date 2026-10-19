@@ -112,7 +112,11 @@ sudo bash server/deploy/update.sh      # update after git pull
 - **Lost phone:** Settings, Sync on another device lists devices; revoke the lost one, or run `./deploy.sh cli revoke Alice <id>`.
 - **Admin commands:** `./deploy.sh cli user list` shows people and how much each stores; `cli user delete <name> --yes` removes an account and its data.
 
-## 8. Check that it works
+## 8. NoteDo in the browser
+
+Open your server's address in any browser, `https://sync.example.com/app` (private mode: the `https://...ts.net/app` address). Sign in with a one-time code from `./deploy.sh invite <your name>`. It works only while you are online and shows and changes the same tasks as the apps (lists, a board with drag and drop, Quick Add, comments); it keeps nothing offline. Press Ctrl+K in it for search and commands. Sign out when you use someone else's computer. To switch the web page off entirely, add `--no-web` to the server's `serve` command.
+
+## 9. Check that it works
 
 ```sh
 ./deploy.sh status                 # both containers "running"
@@ -122,7 +126,7 @@ curl https://sync.example.com/health     # public: {"ok":true}   (private: curl 
 
 Then pair the phone and add a task; a second device paired to the same account should show it within about 30 seconds (usually a few seconds).
 
-## 9. Files in this folder
+## 10. Files in this folder
 
 | File | What it is |
 | --- | --- |

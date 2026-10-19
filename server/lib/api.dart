@@ -19,6 +19,7 @@ import 'hooks.dart';
 import 'ical.dart';
 import 'model.dart';
 import 'rest.dart';
+import 'web.dart';
 import 'limits.dart';
 import 'store.dart';
 
@@ -35,6 +36,7 @@ class ApiConfig {
     this.inboundPerMinute = 60,
     this.feedPerMinute = 30,
     this.allowPrivateWebhooks = false,
+    this.webClient = true,
   });
 
   /// Read the caller's address from X-Forwarded-For. Only turn on behind a
@@ -50,6 +52,9 @@ class ApiConfig {
 
   /// Let webhooks call addresses on the server's own network (off by default: see hooks.dart).
   final bool allowPrivateWebhooks;
+
+  /// Serve the web client at `/app` and allow signing in from a browser. Switch off with `--no-web`.
+  final bool webClient;
 }
 
 class _HttpError implements Exception {
@@ -157,6 +162,33 @@ Handler buildApi(
     locks.reset('pair:$ip');
     return _json(200, {'token': result.token, 'deviceId': result.deviceId, 'userName': result.userName, 'userId': result.userId});
   });
+
+  // --- the web client (online only): a page, and a sign-in that gives it an API token -----------
+
+  if (config.webClient) {
+    router.get('/', (Request r) => Response.found('/app'));
+    router.get('/app', (Request r) => webIndexResponse());
+    router.get('/app/', (Request r) => webIndexResponse());
+    router.get('/app/assets/<file>', (Request r, String file) => webAssetResponse(file));
+
+    router.post('/web/login', (Request r) async {
+      final ip = clientIp(r);
+      if (locks.isLocked('pair:$ip') ||
+          !limits.allow('pairip:$ip', limit: config.pairPerMinute, window: const Duration(minutes: 1))) {
+        throw _HttpError(429, 'locked', 'Too many attempts. Wait 15 minutes and try again.', headers: {'retry-after': '900'});
+      }
+      final body = await readJson(r);
+      if (body is! Map || body['code'] is! String) throw _HttpError(400, 'bad_request', 'Send {"code": "..."}');
+      final name = body['name'] is String ? body['name'] as String : 'Web browser';
+      final result = store.redeemInviteForApiToken(body['code'] as String, name.startsWith('Web browser') ? name : 'Web browser $name');
+      if (result == null) {
+        locks.recordFailure('pair:$ip');
+        throw _HttpError(401, 'bad_code', 'That code is wrong, already used, or has expired');
+      }
+      locks.reset('pair:$ip');
+      return _json(200, {'token': result.token, 'tokenId': result.tokenId, 'userName': result.userName});
+    });
+  }
 
   // --- sync ---------------------------------------------------------------------
 
@@ -597,8 +629,9 @@ Handler buildApi(
         return response.change(headers: {
           'strict-transport-security': 'max-age=31536000',
           'x-content-type-options': 'nosniff',
-          'cache-control': 'no-store',
-          'content-security-policy': "default-src 'none'",
+          // The web page brings its own policy and caching (its files are named by content); everything else gets the strictest.
+          if (!response.headers.containsKey('cache-control')) 'cache-control': 'no-store',
+          if (!response.headers.containsKey('content-security-policy')) 'content-security-policy': "default-src 'none'",
           'referrer-policy': 'no-referrer',
         });
       };

@@ -100,6 +100,12 @@ void registerRest(Router router, RestContext c) {
         return m.taskView(id);
       }));
 
+  /// Puts tasks in the order given (drag and drop). Must be registered before the `<id>` route below.
+  router.post('/api/v1/tasks/reorder', (Request r) => run(r, write: true, f: (m, b) {
+        m.reorderTasks(b['ids']);
+        return null;
+      }));
+
   router.post('/api/v1/tasks/<id>', (Request r, String id) => run(r, write: true, f: (m, b) => m.updateTask(id, b)));
 
   router.delete('/api/v1/tasks/<id>', (Request r, String id) => run(r, write: true, f: (m, _) {
@@ -110,6 +116,52 @@ void registerRest(Router router, RestContext c) {
   router.post('/api/v1/tasks/<id>/close', (Request r, String id) => run(r, write: true, f: (m, b) => m.closeTask(id, withSubtasks: b['with_subtasks'] == true)));
 
   router.post('/api/v1/tasks/<id>/reopen', (Request r, String id) => run(r, write: true, f: (m, _) => m.reopenTask(id)));
+
+  /// Makes a task from a Quick Add line, the way the apps do (`Buy milk tomorrow 5pm p1 #Home %errands`).
+  /// Body: `text`, optionally `project_id` (used when the line names no project) and `today`, the sender's local
+  /// date and time like `2026-10-19T14:30` (so "tomorrow" means the sender's tomorrow).
+  router.post('/api/v1/quick-add', (Request r) => run(r, write: true, okStatus: 201, f: (m, b) {
+        final text = b['text'];
+        if (text is! String || text.trim().isEmpty) throw ModelError(400, 'Send {"text": "Buy milk tomorrow p1"}');
+        if (text.length > 2000) throw ModelError(400, 'The text is too long');
+        final project = b['project_id'];
+        if (project != null && project is! String) throw ModelError(400, 'project_id must be text');
+        DateTime? today;
+        if (b['today'] != null) {
+          today = b['today'] is String ? DateTime.tryParse(b['today'] as String) : null;
+          if (today == null) throw ModelError(400, 'today must be a local date and time like 2026-10-19T14:30');
+          today = DateTime(today.year, today.month, today.day, today.hour, today.minute);
+        }
+        if (project != null && !m.projectExists(project as String)) throw ModelError(404, 'The project does not exist');
+        return m.taskFromText(text, projectId: (project as String?) ?? inboxId, today: today);
+      }));
+
+  /// What a Quick Add line means, without saving it (the web client's live preview). Same body as quick-add.
+  router.post('/api/v1/quick-add/parse', (Request r) => run(r, write: false, f: (m, b) {
+        final text = b['text'];
+        if (text is! String) throw ModelError(400, 'Send {"text": "..."}');
+        if (text.length > 2000) throw ModelError(400, 'The text is too long');
+        DateTime? today;
+        if (b['today'] != null) {
+          today = b['today'] is String ? DateTime.tryParse(b['today'] as String) : null;
+          if (today == null) throw ModelError(400, 'today must be a local date and time like 2026-10-19T14:30');
+          today = DateTime(today.year, today.month, today.day, today.hour, today.minute);
+        }
+        final project = b['project_id'];
+        if (project != null && (project is! String || !m.projectExists(project))) throw ModelError(404, 'The project does not exist');
+        return m.quickAddPreview(text, projectId: (project as String?) ?? inboxId, today: today);
+      }));
+
+  /// Signs out: the token used for this call stops working (the web client's "Sign out").
+  router.delete('/api/v1/session', (Request r) async {
+    try {
+      final auth = c.authenticate(r);
+      c.store.revokeApiToken(auth.userId, auth.tokenId);
+      return Response(204);
+    } on RestRefusal catch (e) {
+      return c.error(e.status, e.code, e.message).change(headers: e.headers);
+    }
+  });
 
   // --- projects, sections, labels ----------------------------------------------------
 
@@ -127,6 +179,11 @@ void registerRest(Router router, RestContext c) {
 
   router.get('/api/v1/sections', (Request r) => run(r, write: false, f: (m, _) => {'sections': m.sections(projectId: q(r, 'project_id'))}));
   router.post('/api/v1/sections', (Request r) => run(r, write: true, okStatus: 201, f: (m, b) => m.createSection(b)));
+  router.post('/api/v1/sections/reorder', (Request r) => run(r, write: true, f: (m, b) {
+        m.reorderSections(b['ids']);
+        return null;
+      }));
+  router.post('/api/v1/sections/<id>', (Request r, String id) => run(r, write: true, f: (m, b) => m.updateSection(id, b)));
   router.delete('/api/v1/sections/<id>', (Request r, String id) => run(r, write: true, f: (m, _) {
         m.deleteSection(id);
         return null;

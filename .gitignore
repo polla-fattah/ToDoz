@@ -26,3 +26,7 @@ server/data/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+
+# Web client: dependencies and build output (the build is embedded in server/lib/web_assets.dart)
+server/web/node_modules/
+server/web/dist/
