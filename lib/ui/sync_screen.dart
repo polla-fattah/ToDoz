@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:taskflow_core/sync.dart';
 
+import '../sync/background_sync.dart' show lastRunKey;
 import '../sync/sync_engine.dart';
 import '../sync/sync_service.dart';
 import '../sync/transport.dart';
@@ -86,7 +87,7 @@ class _PairingState extends State<_Pairing> {
       Text('Keep your devices in step', style: Theme.of(context).textTheme.titleLarge),
       const SizedBox(height: 8),
       const Text(
-        'Sync copies your tasks between your phone and computer through a TaskFlow server you run. '
+        'Sync copies your tasks between your phone and computer through a NoteDo server you run. '
         'The app works fully without it. To pair this device, ask the person who runs the server for a pairing code '
         '(on the server: taskflow_server invite <name>).',
       ),
@@ -144,6 +145,7 @@ class _Paired extends StatefulWidget {
 
 class _PairedState extends State<_Paired> {
   late Future<MeInfo> _me = _load();
+  late Future<String?> _lastBackground = widget.sync.repo.getSetting(lastRunKey);
 
   Future<MeInfo> _load() => widget.sync.loadMe();
 
@@ -236,11 +238,32 @@ class _PairedState extends State<_Paired> {
           label: const Text('Unpair'),
         ),
       ]),
+      if (s.scheduler != null) ...[
+        const SizedBox(height: 8),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Sync while the app is closed'),
+          subtitle: FutureBuilder<String?>(
+            future: _lastBackground,
+            builder: (context, snap) {
+              final at = int.tryParse(snap.data ?? '');
+              final last = at == null ? 'not yet' : _ago(DateTime.fromMillisecondsSinceEpoch(at));
+              return Text('About every 15 minutes when there is a connection, so changes from your other devices and notifications for shared projects arrive without opening NoteDo. Last time: $last.');
+            },
+          ),
+          value: s.backgroundSync,
+          onChanged: (on) async {
+            await s.setBackgroundSync(on);
+            if (mounted) setState(() => _lastBackground = s.repo.getSetting(lastRunKey));
+          },
+        ),
+      ],
       const SizedBox(height: 24),
       Row(children: [
         Expanded(child: Text('Your devices', style: Theme.of(context).textTheme.titleMedium)),
         IconButton(tooltip: 'Refresh', icon: const Icon(Icons.refresh), onPressed: () => setState(() {
           _me = _load();
+          _lastBackground = s.repo.getSetting(lastRunKey);
         })),
       ]),
       FutureBuilder<MeInfo>(

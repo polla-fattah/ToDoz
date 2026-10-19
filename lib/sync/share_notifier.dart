@@ -95,7 +95,7 @@ class ShareNotifier {
       await alerts.show(id: id++, title: i.title, body: i.body.length > 120 ? '${i.body.substring(0, 117)}...' : i.body, taskId: i.taskId);
     }
     if (fresh.length > maxAlerts) {
-      await alerts.show(id: id, title: '${fresh.length - maxAlerts} more updates in shared projects', body: 'Open TaskFlow to see them.');
+      await alerts.show(id: id, title: '${fresh.length - maxAlerts} more updates in shared projects', body: 'Open NoteDo to see them.');
     }
     return fresh.length;
   }

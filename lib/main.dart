@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/material.dart';
+import 'package:home_widget/home_widget.dart';
 
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -12,8 +13,10 @@ import 'data/repository.dart';
 import 'platform/attachment_store.dart';
 import 'platform/auto_backup.dart';
 import 'platform/notification_service.dart';
+import 'platform/today_widget.dart';
 import 'security/app_lock.dart';
 import 'security/secret_store.dart';
+import 'sync/background_sync.dart';
 import 'sync/blob_sync.dart';
 import 'sync/share_notifier.dart';
 import 'sync/secure_token_store.dart';
@@ -36,7 +39,14 @@ Future<void> main() async {
   await notifications.init();
   final docs = await getApplicationDocumentsDirectory();
   final attachments = AttachmentStore(repo, Directory(p.join(docs.path, 'TaskFlow', 'attachments')));
-  final sync = SyncService(repo, SecureTokenStore(), blobs: BlobSync(repo, attachments), notifier: notifications.supported ? ShareNotifier(repo, notifications) : null);
+  final sync = SyncService(
+    repo,
+    SecureTokenStore(),
+    blobs: BlobSync(repo, attachments),
+    notifier: notifications.supported ? ShareNotifier(repo, notifications) : null,
+    scheduler: WorkmanagerScheduler.supported ? WorkmanagerScheduler() : null,
+  );
+  ForegroundMark(repo).start(); // tells the job that runs while the app is closed that the app is open
   await sync.init();
   final lock = AppLock(SecureSecretStore(), biometric: DeviceBiometric());
   await lock.init();
@@ -48,6 +58,10 @@ Future<void> main() async {
     ..autoBackup = backup
     ..attachments = attachments;
   if (notifications.supported) NotificationSync(notifications, db);
+  if (TodayWidget.supported) {
+    await HomeWidget.registerInteractivityCallback(widgetBackgroundCallback);
+    TodayWidget(repo).start();
+  }
 
   runApp(TaskFlowApp(catalog: catalog, navigatorKey: navigatorKey));
   IntentRouter(catalog, navigatorKey).start();

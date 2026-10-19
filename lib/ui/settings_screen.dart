@@ -173,7 +173,7 @@ class SettingsScreen extends StatelessWidget {
         ListTile(
           leading: const Icon(Icons.download_outlined),
           title: const Text('Restore from backup'),
-          subtitle: const Text('Works with TaskFlow 2.0 backups and TaskFlow 1.0 backups.'),
+          subtitle: const Text('Works with NoteDo (TaskFlow 2.0) backups and TaskFlow 1.0 backups.'),
           onTap: () => _restore(context),
         ),
         const _Heading('Your data'),
@@ -193,7 +193,7 @@ class SettingsScreen extends StatelessWidget {
         ),
         const _Heading('About'),
         const ListTile(
-          title: Text('TaskFlow 2.0'),
+          title: Text('NoteDo'),
           subtitle: Text(
             'Your tasks are stored on this device. Export a backup before uninstalling or changing phones. '
             'No analytics or ads. Sync is optional and goes only to a server you run; family sharing arrives in a later release.',
@@ -261,10 +261,10 @@ class SettingsScreen extends StatelessWidget {
     final bytes = utf8.encode(bundle.toJsonString());
     try {
       final saved = await FilePicker.saveFile(
-        fileName: 'TaskFlow-backup-$today.json',
+        fileName: 'NoteDo-backup-$today.json',
         bytes: bytes,
         mimeType: 'application/json',
-        dialogTitle: 'Save TaskFlow backup',
+        dialogTitle: 'Save NoteDo backup',
       );
       if (context.mounted && saved != null) showMessage(context, 'Backup saved');
     } catch (_) {
@@ -276,7 +276,7 @@ class SettingsScreen extends StatelessWidget {
     final repo = AppScope.repoOf(context);
     final String raw;
     try {
-      final file = await FilePicker.pickFile(dialogTitle: 'Choose a TaskFlow backup');
+      final file = await FilePicker.pickFile(dialogTitle: 'Choose a NoteDo backup');
       if (file == null) return;
       if ((await file.length() ?? 0) > 50 * 1024 * 1024) throw const FormatException('too large');
       raw = utf8.decode(await file.readAsBytes());
@@ -297,7 +297,7 @@ class SettingsScreen extends StatelessWidget {
     final ok = await confirm(
       context,
       'Replace everything with this backup?',
-      '${bundle.sourceVersion == 1 ? 'TaskFlow 1.0 backup' : 'TaskFlow 2.0 backup'}\n'
+      '${bundle.sourceVersion == 1 ? 'TaskFlow 1.0 backup' : 'NoteDo backup'}\n'
       '${bundle.projects.length} projects, $open open tasks, $done completed, ${bundle.comments.length} comments.\n\n'
       'Your current data is saved to a safety copy first.',
       action: 'Restore',

@@ -190,7 +190,7 @@ class AppLock extends ChangeNotifier with WidgetsBindingObserver {
 
   Future<bool> unlockWithBiometric() async {
     if (!biometricEnabled || biometric == null) return false;
-    final ok = await biometric!.authenticate('Unlock TaskFlow');
+    final ok = await biometric!.authenticate('Unlock NoteDo');
     if (ok) {
       locked = false;
       notifyListeners();

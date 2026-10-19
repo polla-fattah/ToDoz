@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
-/// A file another app shared with TaskFlow, already copied into the app's cache.
+/// A file another app shared with NoteDo, already copied into the app's cache.
 class SharedFile {
   const SharedFile({required this.path, required this.name, required this.mime});
   final String path;
@@ -10,12 +10,12 @@ class SharedFile {
   final String mime;
 }
 
-/// What Android asked TaskFlow to do (see MainActivity.kt): handle shared
+/// What Android asked NoteDo to do (see MainActivity.kt): handle shared
 /// content, a launcher shortcut, or a command from another app.
 class IntentMessage {
   const IntentMessage(this.type, {this.text, this.subject, this.silent = false, this.files = const [], this.unreadable = 0});
 
-  /// `share`, `add`, `complete`, `today` or `search`.
+  /// `share`, `add`, `complete`, `open` (a task, by id in [text]), `today` or `search`.
   final String type;
   final String? text;
   final String? subject;

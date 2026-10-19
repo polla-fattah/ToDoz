@@ -6,4 +6,9 @@
     <string name="shortcut_today_long">Show today\'s tasks</string>
     <string name="shortcut_search">Search</string>
     <string name="shortcut_search_long">Search tasks</string>
+    <string name="widget_today">Today</string>
+    <string name="widget_add">Add task</string>
+    <string name="widget_complete">Complete task</string>
+    <string name="widget_empty">Nothing due today</string>
+    <string name="widget_description">Today\'s tasks: tap a circle to complete one, tap a task to open it.</string>
 </resources>

@@ -176,7 +176,7 @@ class _GoogleSectionState extends State<_GoogleSection> {
         builder: (ctx, set) => AlertDialog(
           title: const Text('Disconnect Google Calendar?'),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('TaskFlow stops updating your calendar and forgets its access to Google.'),
+            const Text('NoteDo stops updating your calendar and forgets its access to Google.'),
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
               value: deleteCalendar,
@@ -212,7 +212,7 @@ class _GoogleSectionState extends State<_GoogleSection> {
           const SizedBox(height: 4),
           const Text(
             'Tasks with a date appear as events in a calendar called "TaskFlow", and drag-and-drop of an event in Google moves the task. '
-            'Only that calendar is touched: TaskFlow cannot see or change your other calendars.',
+            'Only that calendar is touched: NoteDo cannot see or change your other calendars.',
           ),
           const SizedBox(height: 12),
           if (snap.hasError)
@@ -445,7 +445,7 @@ class _WebhooksSectionState extends State<_WebhooksSection> {
       await showSecret(
         context,
         title: 'Webhook added',
-        body: 'TaskFlow will POST JSON to that address when tasks are added, changed, completed or deleted. Each call is signed with this secret (HMAC-SHA256 of "timestamp.body" in the X-TaskFlow-Signature header). It is shown only now.',
+        body: 'NoteDo will POST JSON to that address when tasks are added, changed, completed or deleted. Each call is signed with this secret (HMAC-SHA256 of "timestamp.body" in the X-TaskFlow-Signature header). It is shown only now.',
         secret: secret,
       );
     } catch (e) {

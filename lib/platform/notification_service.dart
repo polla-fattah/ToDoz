@@ -149,7 +149,7 @@ class NotificationService implements NotificationControls, ShareAlerts {
     if (!at.isAfter(tz.TZDateTime.from(now, tz.local))) at = at.add(const Duration(days: 1));
     await _plugin.zonedSchedule(
       id: _digestId,
-      title: 'Your day in TaskFlow',
+      title: 'Your day in NoteDo',
       body: body,
       scheduledDate: at,
       notificationDetails: const NotificationDetails(

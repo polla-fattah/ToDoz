@@ -138,7 +138,7 @@ void main() {
     await tester.runAsync(() => lock.enable('2468'));
     lock.lockNow();
     await tester.pumpWidget(MaterialApp(home: LockGate(lock: lock, child: const Scaffold(body: Text('secret tasks')))));
-    expect(find.text('TaskFlow is locked'), findsOneWidget);
+    expect(find.text('NoteDo is locked'), findsOneWidget);
 
     Future<void> type(String pin) async {
       for (final d in pin.split('')) {
@@ -152,9 +152,9 @@ void main() {
 
     await type('1111');
     expect(find.text('Wrong PIN'), findsOneWidget);
-    expect(find.text('TaskFlow is locked'), findsOneWidget);
+    expect(find.text('NoteDo is locked'), findsOneWidget);
     await type('2468');
-    expect(find.text('TaskFlow is locked'), findsNothing);
+    expect(find.text('NoteDo is locked'), findsNothing);
     expect(find.text('secret tasks'), findsOneWidget);
     lock.dispose();
     await tester.pumpWidget(const SizedBox());

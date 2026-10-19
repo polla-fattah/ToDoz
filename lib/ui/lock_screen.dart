@@ -94,7 +94,7 @@ class _LockScreenState extends State<LockScreen> {
             child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
               Icon(Icons.lock_outline, size: 40, color: cs.primary),
               const SizedBox(height: 12),
-              Text('TaskFlow is locked', style: Theme.of(context).textTheme.titleLarge),
+              Text('NoteDo is locked', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 20),
               Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 for (var i = 0; i < (_pin.length < 4 ? 4 : _pin.length); i++)

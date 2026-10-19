@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_bg">#F5FFF8F6</color>
+    <color name="widget_text">#231918</color>
+    <color name="widget_dim">#6F5B58</color>
+    <color name="widget_accent">#8F4A44</color>
+    <!-- The icon has no background tile: only the mark. -->
+    <color name="ic_launcher_background">#00000000</color>
+</resources>

@@ -21,6 +21,7 @@ import java.util.concurrent.Executors
  *  - app-to-app intents (Tasker, Automate, Shortcuts): add or complete a task: FR-I7
  *      action com.taskflow.taskflow.ADD_TASK       extra text = a Quick Add line
  *      action com.taskflow.taskflow.COMPLETE_TASK  extra text = the task's title
+ *  - the home-screen widget: OPEN_TASK (extra id), NEW_TASK, TODAY
  */
 class MainActivity : FlutterFragmentActivity() {
     private var channel: MethodChannel? = null
@@ -92,6 +93,7 @@ class MainActivity : FlutterFragmentActivity() {
             "com.taskflow.taskflow.ADD_TASK" -> deliver(mapOf("type" to "add", "text" to intent.getStringExtra("text"), "silent" to true), launch)
             "com.taskflow.taskflow.COMPLETE_TASK" -> deliver(mapOf("type" to "complete", "text" to intent.getStringExtra("text")), launch)
             "com.taskflow.taskflow.NEW_TASK" -> deliver(mapOf("type" to "add", "text" to null, "silent" to false), launch)
+            "com.taskflow.taskflow.OPEN_TASK" -> deliver(mapOf("type" to "open", "text" to intent.getStringExtra("id")), launch)
             "com.taskflow.taskflow.TODAY" -> deliver(mapOf("type" to "today"), launch)
             "com.taskflow.taskflow.SEARCH" -> deliver(mapOf("type" to "search"), launch)
             else -> return

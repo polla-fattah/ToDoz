@@ -27,7 +27,7 @@ class TaskFlowApp extends StatelessWidget {
             final c = AppScope.of(context);
             return MaterialApp(
               navigatorKey: navigatorKey,
-              title: 'TaskFlow',
+              title: 'NoteDo',
               debugShowCheckedModeBanner: false,
               theme: _theme(Brightness.light),
               darkTheme: _theme(Brightness.dark),

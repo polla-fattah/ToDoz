@@ -1,4 +1,6 @@
-# TaskFlow 2.0
+# NoteDo
+
+(Formerly TaskFlow 2.0. The name you see is NoteDo; the code, the Android package id and the server keep the name `taskflow` so existing installs, data and updates keep working.)
 
 A personal, offline-first task manager modelled on Todoist (without AI), built with Flutter for Android and Windows.
 
@@ -38,7 +40,8 @@ The requirements are in the [TaskFlow 2.0 SRS](https://claude.ai/code/artifact/7
 - Works offline: changes queue and are sent when the server is reachable, shortly after each edit, every 30 seconds while the app is open, and when it returns to the foreground. Reset from server, unpair, sign out another device, and delete your data on the server are in the Sync screen.
 - Not end-to-end encrypted: whoever runs the server can read the tasks (stated in the app).
 - App lock (PIN and fingerprint), automatic backups to a folder, the Android share sheet ("Share to TaskFlow"), launcher shortcuts and an add-task / complete-task intent.
-- Not done: the Windows build (blocked on the C++ ATL libraries for the notification plugin) and syncing while the app is closed (today only while it is open).
+- **Syncing while the app is closed (Android):** about every 15 minutes, when there is a connection, a background job pulls what your other devices and people changed, sends what is waiting, shows the notifications for shared projects and rebuilds the reminders. Switch it off under Settings, Sync. Android decides the exact moment: battery saver, Doze and "battery optimisation" can delay it, and the shortest interval Android allows is 15 minutes, so this is not instant. The job does nothing while the app is open.
+- Not done: the Windows build (blocked on the C++ ATL libraries for the notification plugin).
 
 **R5 Productivity and integrations**
 - Productivity page: Karma, levels, streaks, a daily and weekly goal with days off, and charts. An activity log of everything changed, with Undo for most entries.
@@ -55,7 +58,7 @@ Quick Add syntax: `Review paper tomorrow at 4pm p1 %reading #work /backlog {nov 
 
 **Reminders run on Android only for now** and have not yet been tried on a real phone (see below).
 
-Not yet built: home-screen widgets, location reminders, Windows notifications, workspaces and folders, syncing while the app is closed, attachments in the JSON backup, and hiding buttons a read-only member cannot use (the change is refused instead). The Google Calendar connection and voice notes have not been tried on a real account or phone, and the Todoist CSV layout was written from its documentation, not checked against a real export. Known simplifications in R3: manual order inside a filter is shared with the task's project order, and the built-in Today and Upcoming views are not yet implemented as filters. See section 7 of the SRS.
+Not yet built: home-screen widgets, location reminders, Windows notifications, workspaces and folders, attachments in the JSON backup, and hiding buttons a read-only member cannot use (the change is refused instead). The Google Calendar connection and voice notes have not been tried on a real account or phone, and the Todoist CSV layout was written from its documentation, not checked against a real export. Known simplifications in R3: manual order inside a filter is shared with the task's project order, and the built-in Today and Upcoming views are not yet implemented as filters. See section 7 of the SRS.
 
 ## Layout
 
@@ -89,6 +92,10 @@ C:\tools\flutter\bin\dart run build_runner build
 ```
 
 Windows builds and plugins need **Developer Mode** (Settings, System, For developers) so Flutter can create symbolic links.
+
+## Icon
+
+The icon is the NoteDo mark (a note with a check and a pen). `tool/make_icons.py` builds every size (Android adaptive, legacy and themed icons, and the Windows `.ico`) from a transparent PNG: `python tool/make_icons.py path/to/logo.png`. Without a file it draws a stand-in mark.
 
 ## Signing
 

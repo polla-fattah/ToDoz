@@ -29,11 +29,19 @@ class MemoryTokenStore implements TokenStore {
   Future<void> clear() async => _token = null;
 }
 
+/// Schedules the sync that runs while the app is closed. The real one is WorkManager (Android);
+/// tests use a recorder.
+abstract class BackgroundScheduler {
+  Future<void> enable();
+  Future<void> disable();
+}
+
 enum SyncState { unpaired, idle, syncing, error, signedOut }
 
 /// Pairing, and keeping this device in step with the server. One per app.
 class SyncService extends ChangeNotifier with WidgetsBindingObserver {
-  SyncService(this.repo, this.tokens, {this.blobs, this.notifier, this.client, this.interval = const Duration(seconds: 30), this.debounce = const Duration(seconds: 2)});
+  SyncService(this.repo, this.tokens,
+      {this.blobs, this.notifier, this.client, this.scheduler, this.interval = const Duration(seconds: 30), this.debounce = const Duration(seconds: 2)});
 
   final Repo repo;
   AppDatabase get db => repo.db;
@@ -48,6 +56,12 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
   /// The last problem moving files, shown beside the sync status.
   String? blobError;
   final http.Client? client;
+
+  /// Runs a sync every so often while the app is closed; null where that is not available.
+  final BackgroundScheduler? scheduler;
+
+  /// Whether to sync while the app is closed (Settings, Sync). On unless switched off.
+  bool backgroundSync = true;
   final Duration interval;
   final Duration debounce;
 
@@ -77,8 +91,9 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
 
   ServerApi _api({String? token}) => ServerApi(serverUrl!, token: token ?? _token, client: client);
 
-  /// Loads the saved pairing (if any) and starts syncing in the background.
-  Future<void> init() async {
+  /// Loads the saved pairing (if any). With [background] (the app) it also starts syncing on a timer and after
+  /// edits; without it (the job that runs while the app is closed) nothing is started and the caller syncs once.
+  Future<void> init({bool background = true}) async {
     final url = await repo.getSetting('sync.url');
     final token = await tokens.read();
     if (url == null || token == null || Uri.tryParse(url) == null) {
@@ -92,10 +107,39 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
     final last = int.tryParse(await repo.getSetting('sync.last') ?? '');
     lastSyncAt = last == null ? null : DateTime.fromMillisecondsSinceEpoch(last);
     state = (await repo.getSetting('sync.signedout')) == '1' ? SyncState.signedOut : SyncState.idle;
+    backgroundSync = (await repo.getSetting(backgroundSyncKey)) != '0';
     await repo.loadMe();
+    if (!background) return;
     _startBackground();
     notifyListeners();
+    unawaited(_reconcileSchedule());
     if (state == SyncState.idle) unawaited(syncNow());
+  }
+
+  /// The setting that switches syncing while the app is closed off (`0`) or on.
+  static const backgroundSyncKey = 'sync.background';
+
+  /// Turns syncing while the app is closed on or off.
+  Future<void> setBackgroundSync(bool on) async {
+    backgroundSync = on;
+    await repo.setSetting(backgroundSyncKey, on ? '1' : '0');
+    notifyListeners();
+    await _reconcileSchedule();
+  }
+
+  /// Makes the scheduled job match the pairing and the setting.
+  Future<void> _reconcileSchedule() async {
+    final s = scheduler;
+    if (s == null) return;
+    try {
+      if (paired && state != SyncState.signedOut && backgroundSync) {
+        await s.enable();
+      } else {
+        await s.disable();
+      }
+    } catch (_) {
+      // The platform may not support it; the app still syncs while it is open.
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -125,6 +169,7 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
     await SyncEngine(db, _api()).enable();
     _set(() => state = SyncState.idle);
     _startBackground();
+    unawaited(_reconcileSchedule());
     await syncNow();
   }
 
@@ -145,6 +190,7 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
     lastError = null;
     pendingChanges = 0;
     _set(() => state = SyncState.unpaired);
+    await _reconcileSchedule();
   }
 
   // ---------------------------------------------------------------------------
@@ -201,6 +247,7 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
           state = SyncState.signedOut;
           lastError = e.message;
         });
+        unawaited(_reconcileSchedule());
       } else {
         _set(() {
           state = SyncState.error;
@@ -324,7 +371,12 @@ class SyncService extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) unawaited(syncNow());
+    if (state == AppLifecycleState.resumed) {
+      // The job that runs while the app is closed writes to the file from another isolate, which this
+      // one is not told about: make open screens read it again.
+      db.markTablesUpdated(db.allTables);
+      unawaited(syncNow());
+    }
   }
 
   @override

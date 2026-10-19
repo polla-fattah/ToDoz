@@ -10,6 +10,7 @@ import '../data/repository.dart';
 import '../platform/intents.dart';
 import 'catalog.dart';
 import 'quick_add_sheet.dart';
+import 'task_widgets.dart' show openTask;
 import 'views.dart' show SearchScreen;
 
 /// Carries out what Android asked for: share-sheet content, launcher
@@ -55,6 +56,8 @@ class IntentRouter {
           }
         case 'complete':
           await _complete(m.text);
+        case 'open':
+          if (m.text != null) openTask(context, m.text!);
         case 'share':
           await _share(context, m);
       }
