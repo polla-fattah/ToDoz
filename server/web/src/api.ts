@@ -33,7 +33,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
-    throw new ApiError('Cannot reach the server. NoteDo for the web needs a connection.', 0);
+    throw new ApiError('Cannot reach the server. ToDoz for the web needs a connection.', 0);
   }
   if (res.status === 401 && token) {
     unauthorizedHandler?.();

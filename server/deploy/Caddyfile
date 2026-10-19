@@ -11,6 +11,7 @@ http://{$TASKFLOW_DOMAIN}, https://{$TASKFLOW_DOMAIN} {
 	handle /downloads/* {
 		root * /var/www/landing
 		header Content-Disposition "attachment"
+		header Cache-Control "public, no-cache"
 		file_server
 	}
 

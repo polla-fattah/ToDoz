@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react';
 
-/** The NoteDo mark: a check on the brand gradient. */
+/** The ToDoz mark: a check on the brand gradient. */
 export function BrandMark() {
   return (
     <span className="brand-mark" aria-hidden="true">
