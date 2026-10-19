@@ -129,9 +129,47 @@ All operational tasks are managed via `./deploy.sh` inside `/opt/todoz/server/de
 | **Check Health** | `./deploy.sh status` | Inspect container status and health. |
 | **View Logs** | `./deploy.sh logs` | Stream live server logs. |
 | **Create Backup** | `./deploy.sh backup` | Writes a safe, consistent SQLite snapshot into `./backups/`. |
-| **Pull & Update** | `./deploy.sh update` | Pulls latest git changes and rebuilds containers. |
+| **Pull & Update** | `./deploy.sh update` | Pulls latest git changes, backs up, rebuilds and restarts the server, and reloads Caddy. |
+| **Reload Caddy** | `./deploy.sh reload` | Applies an edited `Caddyfile` without downtime (`update` does this too). |
 | **List Users** | `./deploy.sh cli user list` | Displays registered users and storage quotas. |
 | **Revoke Device** | `./deploy.sh cli revoke <user> <device_id>` | Signs out a compromised device immediately. |
+
+### Deploying a change (every time you change the code)
+
+**On your computer**
+
+1. If you changed anything under `server/web/` (the web app), rebuild and embed it, because the server image has no Node:
+   ```bash
+   cd server && python tool/embed_web.py     # builds the page and rewrites lib/web_assets.dart
+   ```
+   Commit `server/lib/web_assets.dart` too (a test fails when it is out of date).
+2. Run the tests you touched (`dart test` in `server/`, `flutter test` for the app), then commit and push:
+   ```bash
+   git add -A && git commit -m "what changed" && git push
+   ```
+
+**On the server**
+
+```bash
+cd /opt/todoz/server/deploy
+./deploy.sh update        # git pull, backup, rebuild, restart, reload Caddy; ends with "Updated."
+./deploy.sh status        # the containers should be "Up"
+```
+
+Then reload the page in the browser (Ctrl+F5). The Windows and Android apps are not part of this: they need their own new build (`flutter build windows` / `flutter build apk`) and install.
+
+| What changed | What to do on the server |
+| :--- | :--- |
+| Server code, the web app, `taskflow_core` | `./deploy.sh update` |
+| Only `Caddyfile` or the landing page (`landing/`) | `git pull` then `./deploy.sh reload` |
+| Only `.env` (domain, Google keys) | edit it, then `./deploy.sh update` (it restarts the server with the new values) |
+| Something looks wrong afterwards | Read `./deploy.sh logs`. To go back to an older version: `git checkout <older commit>`, then `docker compose --profile public up -d --build` (not `update`, which pulls). Your data is in a Docker volume and stays; `update` made a backup first in `backups/`. |
+
+Quick check that the routes work through Cloudflare and Caddy (should print `401`, not `405` or `200`):
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" -X POST https://todoz.example.com/api/v1/quick-add/parse -H "Content-Type: application/json" -d "{}"
+```
 
 ---
 
@@ -173,7 +211,6 @@ When an AI assistant is asked to update, inspect, or troubleshoot this deploymen
 3. **Web Asset Rebuilding:**
    * If modifying files in `server/web/src/`, re-bundle web assets before deployment:
      ```bash
-     cd server/web && npm run build
-     python tool/embed_web.py
+     cd server && python tool/embed_web.py    # builds the page (npm run build in server/web) and embeds it
      ```
    * The embedded assets live in `server/lib/web_assets.dart`.

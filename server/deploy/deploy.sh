@@ -4,7 +4,8 @@
 #   ./deploy.sh public sync.example.com    on the internet, HTTPS by Caddy (needs a DNS name, ports 80 and 443)
 #   ./deploy.sh private                    not on the internet: reach it only through Tailscale (see DEPLOY.md)
 #   ./deploy.sh invite Alice               create Alice if needed and print a one-time pairing code
-#   ./deploy.sh update                     pull the latest code and rebuild (do this at least monthly)
+#   ./deploy.sh update                     pull the latest code, rebuild, restart, and reload Caddy (at least monthly)
+#   ./deploy.sh reload                     reload Caddy after editing the Caddyfile (no downtime)
 #   ./deploy.sh backup                     write a consistent copy of the database to ./backups
 #   ./deploy.sh status | logs | stop
 #   ./deploy.sh cli <args...>              run any taskflow_server command, e.g. `cli user list`
@@ -86,8 +87,15 @@ MSG
     ./deploy.sh backup || true
     dc up -d --build
     wait_ready
+    # Caddy does not notice a changed Caddyfile by itself (private mode has no Caddy: nothing to do then).
+    dc exec -T caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null 2>&1 || true
     docker image prune -f >/dev/null
     echo "Updated."
+    ;;
+  reload)
+    # After editing the Caddyfile (or the landing page folder): apply it without downtime.
+    dc exec -T caddy caddy reload --config /etc/caddy/Caddyfile
+    echo "Caddy reloaded."
     ;;
   backup)
     mkdir -p backups
