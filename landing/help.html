@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ToDoz Documentation & User Guide — Self-Hosting, Sync & Features</title>
+  <meta name="description" content="Complete documentation and user guide for ToDoz: self-hosting your sync server, connecting devices, Google Calendar integration, Quick Add syntax, and smart filters.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2306b6d4'/%3E%3Cstop offset='1' stop-color='%238b5cf6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cpath d='M18 33l9 9 19-21' fill='none' stroke='white' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <style>
+    /* Docs & Help Custom Enhancements */
+    .docs-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 3rem;
+      max-width: 1400px;
+      margin: 2rem auto 6rem;
+      padding: 0 2rem;
+    }
+
+    @media (max-width: 1024px) {
+      .docs-layout {
+        grid-template-columns: 1fr;
+      }
+      .docs-sidebar {
+        display: none;
+      }
+    }
+
+    .docs-sidebar {
+      position: sticky;
+      top: 6rem;
+      height: calc(100vh - 8rem);
+      overflow-y: auto;
+      padding-right: 1rem;
+    }
+
+    .docs-nav-group {
+      margin-bottom: 2rem;
+    }
+
+    .docs-nav-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--accent-cyan);
+      margin-bottom: 0.8rem;
+    }
+
+    .docs-nav-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .docs-nav-link {
+      display: block;
+      padding: 0.45rem 0.75rem;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+      border-left: 2px solid transparent;
+    }
+
+    .docs-nav-link:hover, .docs-nav-link.active {
+      color: var(--text-primary);
+      background: var(--bg-surface);
+      border-left-color: var(--accent-cyan);
+    }
+
+    .docs-content {
+      min-width: 0;
+    }
+
+    .docs-section {
+      margin-bottom: 5rem;
+      scroll-margin-top: 6rem;
+    }
+
+    .docs-section-header {
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-glass);
+      padding-bottom: 1rem;
+    }
+
+    .docs-section-title {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .docs-section-desc {
+      font-size: 1.1rem;
+      color: var(--text-secondary);
+      margin-top: 0.5rem;
+      line-height: 1.6;
+    }
+
+    /* Tab switcher */
+    .tab-container {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin: 1.5rem 0;
+    }
+
+    .tab-header {
+      display: flex;
+      background: rgba(10, 13, 20, 0.6);
+      border-bottom: 1px solid var(--border-glass);
+    }
+
+    .tab-btn {
+      padding: 0.85rem 1.4rem;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      color: var(--accent-cyan);
+      border-bottom-color: var(--accent-cyan);
+      background: rgba(6, 182, 212, 0.05);
+    }
+
+    .tab-body {
+      padding: 1.5rem;
+    }
+
+    .tab-pane {
+      display: none;
+    }
+
+    .tab-pane.active {
+      display: block;
+    }
+
+    /* Syntax Tables */
+    .syntax-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+      font-size: 0.92rem;
+      background: var(--bg-surface);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--border-glass);
+    }
+
+    .syntax-table th, .syntax-table td {
+      padding: 0.9rem 1.2rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border-glass);
+    }
+
+    .syntax-table th {
+      background: rgba(10, 13, 20, 0.7);
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+    }
+
+    .syntax-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .syntax-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .code-tag {
+      font-family: var(--font-mono);
+      background: rgba(6, 182, 212, 0.12);
+      color: #38bdf8;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      display: inline-block;
+    }
+
+    /* Code Blocks */
+    .code-box {
+      position: relative;
+      background: #07090e;
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-md);
+      padding: 1.2rem 1.4rem;
+      margin: 1.2rem 0;
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      color: #e2e8f0;
+      overflow-x: auto;
+      line-height: 1.6;
+    }
+
+    .code-box pre {
+      margin: 0;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-glass);
+      color: var(--text-secondary);
+      padding: 0.35rem 0.75rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      background: var(--accent-cyan);
+      color: #000;
+    }
+
+    /* Callout Boxes */
+    .callout {
+      padding: 1.2rem 1.5rem;
+      border-radius: var(--radius-md);
+      margin: 1.5rem 0;
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      border: 1px solid transparent;
+    }
+
+    .callout-info {
+      background: rgba(6, 182, 212, 0.08);
+      border-color: rgba(6, 182, 212, 0.25);
+      color: #bae6fd;
+    }
+
+    .callout-success {
+      background: rgba(16, 185, 129, 0.08);
+      border-color: rgba(16, 185, 129, 0.25);
+      color: #a7f3d0;
+    }
+
+    .callout-warning {
+      background: rgba(245, 158, 11, 0.08);
+      border-color: rgba(245, 158, 11, 0.25);
+      color: #fde68a;
+    }
+
+    .callout-icon {
+      flex-shrink: 0;
+      font-size: 1.25rem;
+      line-height: 1;
+    }
+
+    /* Step Cards */
+    .step-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      gap: 1.25rem;
+      align-items: flex-start;
+    }
+
+    .step-num {
+      width: 36px;
+      height: 36px;
+      background: var(--gradient-brand);
+      border-radius: var(--radius-full);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.95rem;
+      flex-shrink: 0;
+    }
+
+    .step-body {
+      flex: 1;
+    }
+
+    .step-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 0.4rem;
+    }
+
+    .step-text {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <header class="navbar">
+    <a href="/" class="nav-brand">
+      <div class="brand-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <span>ToDoz</span>
+      <span class="brand-badge">Docs & Guides</span>
+    </a>
+
+    <ul class="nav-links">
+      <li><a href="/" class="nav-link">Home</a></li>
+      <li><a href="#quick-add" class="nav-link">Quick Add</a></li>
+      <li><a href="#filters" class="nav-link">Filters</a></li>
+      <li><a href="#self-hosting" class="nav-link">Self-Hosting</a></li>
+      <li><a href="#google-calendar" class="nav-link">Google Calendar</a></li>
+    </ul>
+
+    <div class="nav-actions">
+      <a href="https://github.com/polla-fattah/ToDoz" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="padding: 0.65rem 1rem;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+        </svg>
+        GitHub
+      </a>
+      <a href="/app" class="btn btn-primary">
+        Open Web App
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
+        </svg>
+      </a>
+    </div>
+  </header>
+
+  <!-- Docs Layout -->
+  <div class="docs-layout">
+    
+    <!-- Sidebar -->
+    <aside class="docs-sidebar">
+      <div class="docs-nav-group">
+        <div class="docs-nav-title">Syntax & Features</div>
+        <ul class="docs-nav-list">
+          <li><a href="#quick-add" class="docs-nav-link">Quick Add Syntax</a></li>
+          <li><a href="#repeats" class="docs-nav-link">Recurrence Engine</a></li>
+          <li><a href="#filters" class="docs-nav-link">Boolean Filters</a></li>
+          <li><a href="#calendar-view" class="docs-nav-link">Calendar & Time-Grid</a></li>
+        </ul>
+      </div>
+
+      <div class="docs-nav-group">
+        <div class="docs-nav-title">Self-Hosting</div>
+        <ul class="docs-nav-list">
+          <li><a href="#self-hosting" class="docs-nav-link">Server Deployment</a></li>
+          <li><a href="#device-pairing" class="docs-nav-link">Device Pairing</a></li>
+          <li><a href="#server-cli" class="docs-nav-link">CLI User Management</a></li>
+        </ul>
+      </div>
+
+      <div class="docs-nav-group">
+        <div class="docs-nav-title">Integrations</div>
+        <ul class="docs-nav-list">
+          <li><a href="#google-calendar" class="docs-nav-link">Google Calendar Sync</a></li>
+          <li><a href="#ical-feed" class="docs-nav-link">Live iCal Feed</a></li>
+          <li><a href="#webhooks-api" class="docs-nav-link">REST API & Webhooks</a></li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="docs-content">
+
+      <!-- Hero Header -->
+      <div style="margin-bottom: 3.5rem;">
+        <span class="hero-pill" style="margin-bottom: 1rem;">Complete Documentation</span>
+        <h1 style="font-size: 2.8rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 1rem;">
+          ToDoz User Guide & <span class="text-gradient">Self-Hosting Manual</span>
+        </h1>
+        <p style="font-size: 1.15rem; color: var(--text-secondary); max-width: 800px; line-height: 1.7;">
+          Everything you need to master ToDoz: deterministic natural-language parsing, Boolean filter queries, deploying your own sovereign sync server, and connecting Google Calendar.
+        </p>
+      </div>
+
+      <!-- Quick Add Section -->
+      <section id="quick-add" class="docs-section">
+        <div class="docs-section-header">
+          <h2 class="docs-section-title">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-cyan);"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+            Quick Add Syntax
+          </h2>
+          <p class="docs-section-desc">
+            Type natural one-line commands. ToDoz deterministically tokenizes recognized keywords in under 5ms, highlights them in real-time, and strips them cleanly from the final title.
+          </p>
+        </div>
+
+        <div class="callout callout-info">
+          <div class="callout-icon">💡</div>
+          <div>
+            <strong>Zero AI Latency:</strong> Unlike cloud tools that send your text to an LLM, ToDoz parses dates, repeats, priorities, and projects with a compiled deterministic lexer right on your device.
+          </div>
+        </div>
+
+        <table class="syntax-table">
+          <thead>
+            <tr>
+              <th style="width: 35%;">Keyword / Pattern</th>
+              <th>Parsed Meaning</th>
+              <th style="width: 30%;">Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="code-tag">tomorrow</span>, <span class="code-tag">next week</span></td>
+              <td>Relative calendar date target</td>
+              <td><code>Submit report tomorrow</code></td>
+            </tr>
+            <tr>
+              <td><span class="code-tag">mon</span>, <span class="code-tag">next fri</span></td>
+              <td>Closest target weekday or next week's weekday</td>
+              <td><code>Team sync next fri</code></td>
+            </tr>
+            <tr>
+              <td><span class="code-tag">at 4pm</span>, <span class="code-tag">16:30</span>, <span class="code-tag">noon</span></td>
+              <td>Exact schedule time of day</td>
+              <td><code>Doctor appointment at 16:30</code></td>
+            </tr>
+            <tr>
+              <td><span class="code-tag">45m</span>, <span class="code-tag">1.5h</span>, <span class="code-tag">2h</span></td>
+              <td>Task duration (drawn as a block in time-grid)</td>
+              <td><code>Deep work 2h at 9am</code></td>
+            </tr>
+            <tr>
+              <td><span class="code-tag">p1</span>, <span class="code-tag">p2</span>, <span class="code-tag">p3</span>, <span class="code-tag">p4</span></td>
+              <td>Priority level (p1 is urgent / red)</td>
+              <td><code>Fix database leak p1</code></td>
+            </tr>
+            <tr>
+              <td><span class="code-tag">#Project</span>, <span class="code-tag">#"Two words"</span></td>
+              <td>Destination project folder</td>
+              <td><code>Grade thesis #Teaching</code></td>
+            </tr>
+            <tr>
+              <td><span class="code-tag">/Section</span></td>
+              <td>Specific section inside the project</td>
+              <td><code>Update notes #AI /Paper</code></td>
+            </tr>
+            <tr>
+              <td><span class="code-tag">%label</span> or <span class="code-tag">@label</span></td>
+              <td>Attach one or multiple tags/labels</td>
+              <td><code>Review pull request %Code</code></td>
+            </tr>
+            <tr>
+              <td><span class="code-tag">{oct 25}</span></td>
+              <td>Hard deadline (independent of planned due date)</td>
+              <td><code>Grant application {nov 15}</code></td>
+            </tr>
+            <tr>
+              <td><span class="code-tag">!30m before</span>, <span class="code-tag">!14:00</span></td>
+              <td>Exact notification reminder</td>
+              <td><code>Catch flight !2h before</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Recurrence Section -->
+      <section id="repeats" class="docs-section">
+        <div class="docs-section-header">
+          <h2 class="docs-section-title">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-purple);"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
+            Mathematical Recurrence Engine
+          </h2>
+          <p class="docs-section-desc">
+            ToDoz supports standard schedules, multi-day recurring intervals, and completion-based rolling cycles.
+          </p>
+        </div>
+
+        <table class="syntax-table">
+          <thead>
+            <tr>
+              <th style="width: 35%;">Recurrence Command</th>
+              <th>Behavior & Scheduling Rule</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="code-tag">every day</span>, <span class="code-tag">every weekday</span></td>
+              <td>Scheduled daily or Monday through Friday.</td>
+            </tr>
+            <tr>
+              <td><span class="code-tag">every other week</span></td>
+              <td>Interval repetition (also: <code>every 3 days</code>, <code>every quarter</code>).</td>
+            </tr>
+            <tr>
+              <td><span class="code-tag">every mon, wed, fri at 9am</span></td>
+              <td>Multi-day repeating time slots.</td>
+            </tr>
+            <tr>
+              <td><span class="code-tag">every 1st wed</span>, <span class="code-tag">every last fri</span></td>
+              <td>Nth weekday of each month.</td>
+            </tr>
+            <tr>
+              <td><span class="code-tag">every last workday</span></td>
+              <td>Smart business-day calendar scheduling (excludes weekends).</td>
+            </tr>
+            <tr>
+              <td><span class="code-tag">every! 3 days</span> or <span class="code-tag">after 10 days</span></td>
+              <td>
+                <strong>Completion-Relative Recurrence:</strong> Next due date is calculated strictly from the day you complete it, never piling up overdue backlog.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="code-tag">every day until dec 31</span></td>
+              <td>Bounded recurrence with fixed expiration date.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Filters Section -->
+      <section id="filters" class="docs-section">
+        <div class="docs-section-header">
+          <h2 class="docs-section-title">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-indigo);"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+            Boolean Filters & Smart Views
+          </h2>
+          <p class="docs-section-desc">
+            Create high-powered custom views using Boolean operators: <code>&</code> (AND), <code>|</code> (OR), <code>!</code> (NOT), and parentheses.
+          </p>
+        </div>
+
+        <div class="code-box">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre><code># Priority Work for Today or Overdue
+(today | overdue) & #Research & p1
+
+# High Priority Tasks Not in Inbox
+!#inbox & (p1 | p2) & !subtask
+
+# Multi-List Split View (Comma separated)
+p1 & overdue, p4 & today, #Personal & 7 days</code></pre>
+        </div>
+
+        <table class="syntax-table">
+          <thead>
+            <tr>
+              <th style="width: 25%;">Filter Term</th>
+              <th>Description</th>
+              <th style="width: 35%;">Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="code-tag">today</span>, <span class="code-tag">overdue</span></td>
+              <td>Tasks due today or past their scheduled time</td>
+              <td><code>today & p1</code></td>
+            </tr>
+            <tr>
+              <td><span class="code-tag">7 days</span></td>
+              <td>Tasks scheduled in the next 7 days + overdue</td>
+              <td><code>7 days & #Teaching</code></td>
+            </tr>
+            <tr>
+              <td><span class="code-tag">##Project</span></td>
+              <td>Matches project AND all its nested sub-projects</td>
+              <td><code>##SmartGate & overdue</code></td>
+            </tr>
+            <tr>
+              <td><span class="code-tag">%label*</span></td>
+              <td>Wildcard tag search</td>
+              <td><code>%dev* & !completed</code></td>
+            </tr>
+            <tr>
+              <td><span class="code-tag">due before: fri</span></td>
+              <td>Date range boundaries (also <code>due after:</code>)</td>
+              <td><code>due before: next monday</code></td>
+            </tr>
+            <tr>
+              <td><span class="code-tag">search: keyword</span></td>
+              <td>Full-text search in title, notes, and labels</td>
+              <td><code>search: dataset & p1</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Calendar & Views Section -->
+      <section id="calendar-view" class="docs-section">
+        <div class="docs-section-header">
+          <h2 class="docs-section-title">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-blue);"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            Calendar Views & Time-Grid
+          </h2>
+          <p class="docs-section-desc">
+            ToDoz features a responsive Google Calendar–style time grid rendered in four intuitive modes: Day, 3 Days, Week, and Month.
+          </p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; margin: 1.5rem 0;">
+          <div class="card" style="padding: 1.5rem;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--accent-cyan);">🖱️ Drag & Drop Scheduling</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary);">
+              Drag any task block to another hour or another day. On touch screens, long-press to pick up and drop.
+            </p>
+          </div>
+          <div class="card" style="padding: 1.5rem;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--accent-purple);">↔️ Bottom-Edge Duration</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary);">
+              Grab the bottom border of any task block and drag downward to expand duration in 15-minute increments.
+            </p>
+          </div>
+          <div class="card" style="padding: 1.5rem;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--accent-emerald);">⌨️ Hotkey Navigation</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary);">
+              Press <kbd>D</kbd> for Day, <kbd>3</kbd> for 3 Days, <kbd>W</kbd> for Week, <kbd>M</kbd> for Month, and <kbd>G</kbd> then <kbd>C</kbd> to open Calendar.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Self-Hosting Section -->
+      <section id="self-hosting" class="docs-section">
+        <div class="docs-section-header">
+          <h2 class="docs-section-title">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-emerald);"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+            Self-Hosting Your Sync Server
+          </h2>
+          <p class="docs-section-desc">
+            Deploy your private ToDoz sync hub in minutes. Self-healing with Docker Compose, automated TLS certificates via Caddy, and zero data telemetry.
+          </p>
+        </div>
+
+        <div class="tab-container">
+          <div class="tab-header">
+            <button class="tab-btn active" onclick="switchTab(this, 'tab-docker')">🐳 Docker Compose (Recommended)</button>
+            <button class="tab-btn" onclick="switchTab(this, 'tab-baremetal')">🐧 Bare-Metal Ubuntu / Debian</button>
+          </div>
+          <div class="tab-body">
+            
+            <!-- Docker Tab -->
+            <div id="tab-docker" class="tab-pane active">
+              <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                The easiest production setup. Caddy reverse-proxies the backend, terminates SSL, serves the web app at <code>/app</code>, and serves binary downloads.
+              </p>
+
+              <div class="step-card">
+                <div class="step-num">1</div>
+                <div class="step-body">
+                  <div class="step-title">Clone Repository & Configure Environment</div>
+                  <div class="step-text">Point your domain (e.g. <code>todoz.yourdomain.com</code>) to your server's IP address.</div>
+                  <div class="code-box">
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    <pre><code>git clone https://github.com/polla-fattah/ToDoz.git /opt/todoz
+cd /opt/todoz/server/deploy
+
+# Create your environment file
+cat << 'EOF' > .env
+TASKFLOW_DOMAIN=todoz.yourdomain.com
+TASKFLOW_PUBLIC_URL=https://todoz.yourdomain.com
+EOF</code></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-card">
+                <div class="step-num">2</div>
+                <div class="step-body">
+                  <div class="step-title">Launch with Docker Compose</div>
+                  <div class="step-text">Starts the backend sync container and Caddy reverse proxy with auto-restart on boot.</div>
+                  <div class="code-box">
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    <pre><code>docker compose --profile public up -d --build</code></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-card">
+                <div class="step-num">3</div>
+                <div class="step-body">
+                  <div class="step-title">Create User & Generate Device Invite Code</div>
+                  <div class="step-text">Run the embedded CLI tool inside the running container:</div>
+                  <div class="code-box">
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    <pre><code># Add your username
+docker compose exec taskflow taskflow_server user add "YourName"
+
+# Generate a 10-minute pairing code for your phone, PC, or browser
+docker compose exec taskflow taskflow_server invite "YourName"</code></pre>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Bare-Metal Tab -->
+            <div id="tab-baremetal" class="tab-pane">
+              <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                For servers running Debian or Ubuntu with native systemd:
+              </p>
+              <div class="code-box">
+                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                <pre><code># Run automated installer
+sudo TASKFLOW_DOMAIN=todoz.yourdomain.com bash server/deploy/install.sh
+
+# Add user and invite
+TF="sudo -u taskflow TASKFLOW_DB=/var/lib/taskflow/taskflow.sqlite /opt/taskflow/bin/taskflow_server"
+$TF user add "YourName"
+$TF invite "YourName"</code></pre>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- Device Pairing Section -->
+      <section id="device-pairing" class="docs-section">
+        <div class="docs-section-header">
+          <h2 class="docs-section-title">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-cyan);"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+            Connecting Apps to Your Server
+          </h2>
+          <p class="docs-section-desc">
+            Pair Windows Desktop, Android, and Web Browser clients with zero password leakage.
+          </p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">A</div>
+          <div class="step-body">
+            <div class="step-title">Windows & Android App Pairing</div>
+            <div class="step-text">
+              1. Open <strong>ToDoz</strong> on your device.<br>
+              2. Go to <strong>Settings</strong> $\rightarrow$ <strong>Sync</strong>.<br>
+              3. Enter your server URL (default: <code>https://todoz.polla.dev</code> or your own self-hosted URL).<br>
+              4. Enter the one-time code (e.g. <code>ABCD-2345</code>) generated by <code>invite &lt;name&gt;</code>.<br>
+              5. Enter a device name (e.g. <em>"Laptop"</em> or <em>"Pixel Phone"</em>).<br>
+              6. Tap <strong>Connect</strong>. The server returns a cryptographic token and syncs all tasks immediately.
+            </div>
+          </div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">B</div>
+          <div class="step-body">
+            <div class="step-title">Web Browser Pairing</div>
+            <div class="step-text">
+              1. Navigate to <code>https://yourdomain.com/app</code> (or <a href="/app" style="color: var(--accent-cyan); text-decoration: underline;">todoz.polla.dev/app</a>).<br>
+              2. Enter the one-time code from the server admin or generated in your ToDoz app under <strong>Settings $\rightarrow$ Sync</strong>.<br>
+              3. The web app instantly signs in and caches nothing locally for maximum privacy.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Google Calendar Sync Section -->
+      <section id="google-calendar" class="docs-section">
+        <div class="docs-section-header">
+          <h2 class="docs-section-title">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-amber);"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
+            Google Calendar Sync Guide
+          </h2>
+          <p class="docs-section-desc">
+            Keep your schedule synchronized with Google Calendar across all your personal devices.
+          </p>
+        </div>
+
+        <div class="tab-container">
+          <div class="tab-header">
+            <button class="tab-btn active" onclick="switchTab(this, 'tab-ical')">⚡ Method 1: Instant iCal Feed (Fastest — 30 sec)</button>
+            <button class="tab-btn" onclick="switchTab(this, 'tab-oauth')">🔄 Method 2: Two-Way Google OAuth Sync</button>
+          </div>
+          <div class="tab-body">
+            
+            <!-- iCal Feed Tab -->
+            <div id="tab-ical" class="tab-pane active">
+              <div class="callout callout-success">
+                <div class="callout-icon">✅</div>
+                <div>
+                  <strong>No Google Cloud setup required!</strong> Works immediately with any calendar app (Google Calendar, Apple Calendar, Outlook).
+                </div>
+              </div>
+
+              <div class="step-card">
+                <div class="step-num">1</div>
+                <div class="step-body">
+                  <div class="step-title">Generate your private iCal Feed URL</div>
+                  <div class="step-text">
+                    In the ToDoz app (or web at <code>/app</code>), open <strong>Settings</strong> $\rightarrow$ <strong>Calendar and integrations</strong> $\rightarrow$ <strong>Calendar feed (iCal)</strong>. Turn it on and copy your unique address:
+                  </div>
+                  <div class="code-box">
+                    <pre><code>https://todoz.polla.dev/ical/&lt;your-private-token&gt;.ics</code></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-card">
+                <div class="step-num">2</div>
+                <div class="step-body">
+                  <div class="step-title">Subscribe in Google Calendar</div>
+                  <div class="step-text">
+                    1. Open <a href="https://calendar.google.com" target="_blank" rel="noopener noreferrer" style="color: var(--accent-cyan); text-decoration: underline;">Google Calendar</a> in your web browser.<br>
+                    2. In the left sidebar, click the <strong>$+$</strong> sign next to <strong>"Other calendars"</strong>.<br>
+                    3. Select <strong>"From URL"</strong>.<br>
+                    4. Paste your <code>https://todoz.polla.dev/ical/...ics</code> URL and click <strong>Add calendar</strong>.<br>
+                    5. Google will now automatically display all your ToDoz tasks with dates and durations.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- OAuth Tab -->
+            <div id="tab-oauth" class="tab-pane">
+              <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+                Enables two-way synchronization: tasks added in ToDoz appear in a dedicated "ToDoz" calendar in Google, and events modified in Google update your tasks.
+              </p>
+
+              <div class="step-card">
+                <div class="step-num">1</div>
+                <div class="step-body">
+                  <div class="step-title">Create Google Cloud OAuth Credentials</div>
+                  <div class="step-text">
+                    1. Go to <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer" style="color: var(--accent-cyan); text-decoration: underline;">Google Cloud Console</a> and create a project named <strong>ToDoz</strong>.<br>
+                    2. Navigate to <strong>APIs & Services $\rightarrow$ Library</strong>, search for <strong>Google Calendar API</strong> and click <strong>Enable</strong>.<br>
+                    3. Under <strong>OAuth consent screen</strong>, select <strong>External</strong>, set app name to <code>ToDoz</code>, and add your Google account under <strong>Test Users</strong>.<br>
+                    4. Go to <strong>Credentials $\rightarrow$ Create Credentials $\rightarrow$ OAuth client ID</strong>.<br>
+                    5. Select <strong>Web application</strong>.<br>
+                    6. Under <strong>Authorized redirect URIs</strong>, add exactly:
+                  </div>
+                  <div class="code-box">
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    <pre><code>https://todoz.polla.dev/google/callback</code></pre>
+                  </div>
+                  <div class="step-text">
+                    <em>(Or replace with your self-hosted domain: <code>https://&lt;your-domain&gt;/google/callback</code>)</em>.
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-card">
+                <div class="step-num">2</div>
+                <div class="step-body">
+                  <div class="step-title">Configure Credentials in Server .env</div>
+                  <div class="step-text">On your server, edit <code>/opt/todoz/server/deploy/.env</code>:</div>
+                  <div class="code-box">
+                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                    <pre><code>TASKFLOW_PUBLIC_URL=https://todoz.polla.dev
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-client-secret</code></pre>
+                  </div>
+                  <div class="step-text">Restart the container to activate the Google API service:</div>
+                  <div class="code-box">
+                    <pre><code>cd /opt/todoz/server/deploy && docker compose up -d</code></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="step-card">
+                <div class="step-num">3</div>
+                <div class="step-body">
+                  <div class="step-title">Connect in the ToDoz App</div>
+                  <div class="step-text">
+                    Open the app $\rightarrow$ <strong>Settings</strong> $\rightarrow$ <strong>Calendar and integrations</strong> $\rightarrow$ <strong>Google Calendar</strong> $\rightarrow$ tap <strong>Connect</strong>.<br>
+                    Sign in with your Google account. A dedicated <em>ToDoz</em> calendar will be created automatically in your Google account!
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- REST API & Webhooks -->
+      <section id="webhooks-api" class="docs-section">
+        <div class="docs-section-header">
+          <h2 class="docs-section-title">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-rose);"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+            REST API & Inbound Webhooks
+          </h2>
+          <p class="docs-section-desc">
+            Integrate ToDoz with external automation tools (cURL, Python scripts, Raycast, GitHub Actions, Home Assistant).
+          </p>
+        </div>
+
+        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+          Generate an API token in <strong>Settings $\rightarrow$ Calendar and integrations $\rightarrow$ API access</strong>, then send authenticated REST requests:
+        </p>
+
+        <div class="code-box">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre><code># Create a task via Quick Add syntax over REST API
+curl -X POST https://todoz.polla.dev/api/quick-add \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"line": "Submit publication revisions tomorrow 4pm p1 #Research"}'</code></pre>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-bottom">
+      <p>© 2026 ToDoz Project. Designed by <a href="https://polla.dev" target="_blank" rel="noopener noreferrer" style="color: var(--accent-cyan); font-weight: 600;">Dr. Polla Abdulhamid Fattah</a>. Sovereign, Offline-First, and Open Source under MIT.</p>
+    </div>
+  </footer>
+
+  <script>
+    // Tab switching
+    function switchTab(btn, paneId) {
+      const container = btn.closest('.tab-container');
+      container.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      container.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      container.querySelector('#' + paneId).classList.add('active');
+    }
+
+    // Code copy helper
+    function copyCode(btn) {
+      const pre = btn.nextElementSibling;
+      const text = pre.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = btn.innerText;
+        btn.innerText = 'Copied!';
+        setTimeout(() => { btn.innerText = orig; }, 2000);
+      });
+    }
+
+    // Active link highlighting on scroll
+    window.addEventListener('scroll', () => {
+      const sections = document.querySelectorAll('.docs-section');
+      const links = document.querySelectorAll('.docs-nav-link');
+      let current = '';
+      sections.forEach(sec => {
+        const top = sec.offsetTop - 120;
+        if (window.pageYOffset >= top) {
+          current = sec.getAttribute('id');
+        }
+      });
+      links.forEach(l => {
+        l.classList.remove('active');
+        if (l.getAttribute('href') === '#' + current) {
+          l.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

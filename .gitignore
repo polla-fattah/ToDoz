@@ -1,31 +1,57 @@
-# Signing keys and secrets: never commit
+# Signing keys, certificates and secrets: never commit
 *.p12
 *.jks
 *.keystore
+*.key
+*.pem
+*.crt
+*.cert
 key.properties
 .env
+.env.*
+!.env.example
 
-# Build output
+# Build output and binaries
 build/
 *.apk
+*.aab
+*.msi
+*.msix
+*.deb
+*.rpm
+*.exe
+*.dll
+*.so
+*.dylib
 .dart_tool/
 .gradle/
 local.properties
 .idea/
 *.iml
+*.vscode/
 
 # Flutter generated
 .flutter-plugins
 .flutter-plugins-dependencies
 .packages
 
-# Server deployment: local state and backups
+# Server deployment: local state, databases and backups
 server/deploy/.mode
 server/deploy/backups/
 server/data/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+*.log
+
+# Archives & temporary artifacts
+*.tar
+*.tar.gz
+*.zip
+*.7z
+*.cab
+*.tmp
+*.bak
 
 # Web client: dependencies and build output (the build is embedded in server/lib/web_assets.dart)
 server/web/node_modules/
@@ -36,3 +62,8 @@ landing/downloads/*.msi
 landing/downloads/*.msix
 landing/downloads/*.apk
 landing/downloads/*.deb
+
+# OS and Editor metadata
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:taskflow_core/filter.dart';
 
-/// The Quick Add, repeat and filter syntax in one place (FR-U5).
+/// The Quick Add, repeat, filter, calendar sync and self-hosting syntax in one place (FR-U5).
 class HelpScreen extends StatelessWidget {
   const HelpScreen({super.key});
 
@@ -24,11 +25,19 @@ class HelpScreen extends StatelessWidget {
           ]),
         );
 
+    Widget sectionTitle(String title, IconData icon) => Padding(
+          padding: const EdgeInsets.only(top: 28, bottom: 4),
+          child: Row(children: [
+            Icon(icon, size: 22, color: cs.primary),
+            const SizedBox(width: 8),
+            Text(title, style: Theme.of(context).textTheme.titleLarge),
+          ]),
+        );
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Help')),
+      appBar: AppBar(title: const Text('Help & Documentation')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
-        Text('Quick Add', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 4),
+        sectionTitle('Quick Add', Icons.bolt),
         const Text('Type one line; recognised words are highlighted and removed from the title.'),
         heading('Dates and times'),
         row('tomorrow, next week', 'Dates. "next week" is the start of next week.'),
@@ -52,9 +61,8 @@ class HelpScreen extends StatelessWidget {
         row('#project  #"Two words"', 'A project. Then /section for a section.'),
         row('{march 30}', 'A deadline, separate from the due date.'),
         row('!30 min before, !14:00', 'A reminder.'),
-        const SizedBox(height: 32),
-        Text('Filters', style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 4),
+
+        sectionTitle('Filters', Icons.filter_list),
         const Text('Save a query as its own view (Browse, Filters). Combine conditions with operators.'),
         heading('Operators'),
         row('today & p1', 'and'),
@@ -85,9 +93,57 @@ class HelpScreen extends StatelessWidget {
         row('view all', 'Every open task.'),
         heading('Examples'),
         for (final (q, what) in filterExamples) row(q, what),
-        const SizedBox(height: 32),
-        Text('Filters do not show completed tasks and cannot search comments; use the search screen for comments.', style: TextStyle(color: cs.outline)),
+
+        sectionTitle('Google Calendar Sync', Icons.calendar_month),
+        const Text('Synchronise your dated tasks with Google Calendar in two ways:'),
+        heading('Method 1: Live iCal Feed (Instant)'),
+        const Text('1. Go to Settings > Calendar and integrations > Calendar feed (iCal).\n'
+            '2. Turn it on and copy your private link (https://todoz.polla.dev/ical/...ics).\n'
+            '3. Open Google Calendar on the web > Other calendars (+) > From URL.\n'
+            '4. Paste the URL and click Add calendar. All your dated tasks show up on phone and web.'),
+        heading('Method 2: Two-Way Google OAuth Sync'),
+        const Text('1. In your self-hosted server, configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in server/deploy/.env.\n'
+            '2. Set redirect URI in Google Cloud Console to https://yourdomain.com/google/callback.\n'
+            '3. In ToDoz: Settings > Calendar and integrations > Google Calendar > Connect.\n'
+            '4. A dedicated "ToDoz" calendar is created in your Google account and syncs changes two-way.'),
+
+        sectionTitle('Self-Hosting Your Server', Icons.dns),
+        const Text('ToDoz is sovereign and offline-first. To host your own synchronization server:'),
+        heading('Docker Setup'),
+        SelectableText(
+          'git clone https://github.com/polla-fattah/ToDoz.git /opt/todoz\n'
+          'cd /opt/todoz/server/deploy\n'
+          '# Set TASKFLOW_DOMAIN=yourdomain.com in .env\n'
+          'docker compose --profile public up -d --build\n\n'
+          '# Add a user and generate a 1-time pairing code:\n'
+          'docker compose exec taskflow taskflow_server user add "YourName"\n'
+          'docker compose exec taskflow taskflow_server invite "YourName"',
+          style: mono,
+        ),
+        const SizedBox(height: 12),
+        const Text('Then in ToDoz: Settings > Sync > enter your server address and the 1-time code.'),
+
+        const SizedBox(height: 28),
+        Card(
+          color: cs.surfaceContainerHighest,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Online User Guide & Community', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 4),
+              const Text('Read full tutorials, deployment architecture, and updates on the official website:'),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.open_in_new, size: 16),
+                label: const Text('Open Online Manual (todoz.polla.dev/help)'),
+                onPressed: () => launchUrl(Uri.parse('https://todoz.polla.dev/help'), mode: LaunchMode.externalApplication),
+              ),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 24),
       ]),
     );
   }
 }
+
