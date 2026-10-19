@@ -26,6 +26,16 @@ export function useDebounced<T>(value: T, ms: number): T {
   return v;
 }
 
+/** The current time, refreshed every [ms]. */
+export function useNow(ms: number): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(new Date()), ms);
+    return () => window.clearInterval(t);
+  }, [ms]);
+  return now;
+}
+
 /** Makes a textarea as tall as its text. */
 export function useAutosize(value: string) {
   const ref = useRef<HTMLTextAreaElement>(null);

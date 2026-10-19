@@ -18,6 +18,9 @@ Future<void> showQuickAdd(
   String defaultProjectId = inboxId,
   String? defaultSectionId,
   String? defaultDue,
+
+  /// With [defaultDue]: the time of day (HH:MM), for a task added from a spot on the calendar.
+  String? defaultTime,
   String? initialText,
 }) {
   return showModalBottomSheet<void>(
@@ -30,6 +33,7 @@ Future<void> showQuickAdd(
       defaultProjectId: defaultProjectId,
       defaultSectionId: defaultSectionId,
       defaultDue: defaultDue,
+      defaultTime: defaultTime,
       initialText: initialText,
     ),
   );
@@ -83,6 +87,7 @@ class QuickAddSheet extends StatefulWidget {
     required this.defaultProjectId,
     this.defaultSectionId,
     this.defaultDue,
+    this.defaultTime,
     this.initialText,
   });
 
@@ -90,6 +95,7 @@ class QuickAddSheet extends StatefulWidget {
   final String defaultProjectId;
   final String? defaultSectionId;
   final String? defaultDue;
+  final String? defaultTime;
 
   /// Text to start with, for content shared from another app.
   final String? initialText;
@@ -140,10 +146,19 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
   // The values that will be saved, combining the text and the owner's choices.
   String? get _effectiveRepeat => _repeat.present ? _repeat.value : _parsed.recurrence?.text;
 
-  String? get _effectiveTime {
+  /// The time the owner typed or picked, if any.
+  String? get _typedTime {
     if (_time.present) return _time.value;
     final t = _parsed.dueTime;
     return t == null ? null : formatTime(t);
+  }
+
+  String? get _effectiveTime {
+    final typed = _typedTime;
+    if (typed != null || _time.present) return typed;
+    // Added from a spot on the calendar: that time, unless a date of their own was typed or picked.
+    final usesDefaultDay = widget.defaultDue != null && !_date.present && _parsed.due == null && _effectiveRepeat == null;
+    return usesDefaultDay ? widget.defaultTime : null;
   }
 
   String? get _effectiveDate {
@@ -158,7 +173,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
         // fall through to the default
       }
     }
-    if (_effectiveTime != null) return formatDate(dateOnly(_text.now)); // a time alone means today
+    if (_typedTime != null) return widget.defaultDue ?? formatDate(dateOnly(_text.now)); // a time alone means today (or the day being added to)
     return widget.defaultDue;
   }
 

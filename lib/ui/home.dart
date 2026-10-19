@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:taskflow_core/backup.dart' show inboxId;
 import 'browse_screen.dart';
+import 'calendar_view.dart';
 import 'catalog.dart';
 import 'sidebar.dart';
 import 'views.dart';
@@ -57,6 +58,7 @@ class _HomeShellState extends State<HomeShell> {
     (Icons.inbox_outlined, Icons.inbox, 'Inbox'),
     (Icons.today_outlined, Icons.today, 'Today'),
     (Icons.calendar_month_outlined, Icons.calendar_month, 'Upcoming'),
+    (Icons.calendar_view_week_outlined, Icons.calendar_view_week, 'Calendar'),
     (Icons.grid_view_outlined, Icons.grid_view, 'Browse'),
   ];
 
@@ -86,6 +88,7 @@ class _HomeShellState extends State<HomeShell> {
       ProjectScreen(projectId: inboxId, isTab: true),
       TodayScreen(),
       UpcomingScreen(),
+      CalendarScreen(),
       BrowseScreen(),
     ]);
     return Scaffold(

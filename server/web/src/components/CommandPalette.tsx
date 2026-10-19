@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarDays, CalendarRange, CircleCheckBig, CornerDownLeft, Hash, Inbox, LogOut, Moon, Plus, Search, Tag } from 'lucide-react';
+import { CalendarClock, CalendarDays, CalendarRange, CircleCheckBig, CornerDownLeft, Hash, Inbox, LogOut, Moon, Plus, Search, Tag } from 'lucide-react';
 import { dueText } from '../lib/dates';
 import { projectColour } from '../lib/tasks';
 import { useAuth } from '../state/auth';
@@ -40,6 +40,7 @@ export function CommandPalette({ onClose, onAddTask, onOpenTask }: { onClose: ()
       { id: 'inbox', group: 'Go to', label: 'Inbox', icon: <Inbox size={16} />, run: go('/inbox') },
       { id: 'today', group: 'Go to', label: 'Today', icon: <CalendarDays size={16} />, run: go('/today') },
       { id: 'upcoming', group: 'Go to', label: 'Upcoming', icon: <CalendarRange size={16} />, run: go('/upcoming') },
+      { id: 'calendar', group: 'Go to', label: 'Calendar', icon: <CalendarClock size={16} />, run: go('/calendar') },
       { id: 'completed', group: 'Go to', label: 'Completed', icon: <CircleCheckBig size={16} />, run: go('/completed') },
       ...projects.filter((p) => !p.is_inbox).map<Item>((p) => ({ id: `p${p.id}`, group: 'Projects', label: p.name, icon: <Hash size={16} color={projectColour(p)} />, run: go(`/project/${p.id}`) })),
       ...labels.map<Item>((l) => ({ id: `l${l.id}`, group: 'Labels', label: l.name, icon: <Tag size={16} />, run: go(`/label/${l.id}`) })),

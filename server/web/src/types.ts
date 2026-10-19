@@ -82,6 +82,7 @@ export interface TaskPatch {
   due_time?: string | null;
   recurrence?: string | null;
   labels?: string[];
+  duration_minutes?: number | null;
 }
 
 export interface QuickToken {

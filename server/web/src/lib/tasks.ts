@@ -16,6 +16,7 @@ export function applyPatch(task: Task, patch: TaskPatch): Task {
   if (patch.description !== undefined) next.description = patch.description;
   if (patch.priority !== undefined) next.priority = patch.priority;
   if (patch.labels !== undefined) next.labels = patch.labels;
+  if ('duration_minutes' in patch) next.duration_minutes = patch.duration_minutes ?? null;
   if ('due_date' in patch || 'due_time' in patch || 'recurrence' in patch) {
     const date = 'due_date' in patch ? (patch.due_date ?? null) : (task.due?.date ?? null);
     const due: Due | null = date
@@ -74,6 +75,41 @@ export const projectColour = (project: Pick<Project, 'color'> | undefined): stri
   if (typeof c === 'number') return `#${(c & 0xffffff).toString(16).padStart(6, '0')}`;
   if (typeof c === 'string' && c.startsWith('#')) return c;
   return '#8b8da3';
+};
+
+/** Google Calendar's event colours: Tomato, Flamingo, Tangerine, Banana, Sage, Basil, Peacock, Blueberry, Lavender, Grape, Graphite. */
+const EVENT_COLOURS = ['#d50000', '#e67c73', '#f4511e', '#f6bf26', '#33b679', '#0b8043', '#039be5', '#3f51b5', '#7986cb', '#8e24aa', '#616161'];
+
+/** The Google event colour closest to a project's colour, so the calendar is drawn in Google's palette. */
+export const eventColour = (hex: string): string => {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return EVENT_COLOURS[6];
+  const rgb = (h: string) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  const [r, g, b] = rgb(hex);
+  let best = EVENT_COLOURS[0];
+  let bestDistance = Infinity;
+  for (const e of EVENT_COLOURS) {
+    const [er, eg, eb] = rgb(e);
+    const d = (er - r) ** 2 + (eg - g) ** 2 + (eb - b) ** 2;
+    if (d < bestDistance) {
+      best = e;
+      bestDistance = d;
+    }
+  }
+  return best;
+};
+
+/** Text that stays readable on a filled colour (white on dark colours, near-black on light ones). */
+export const onColour = (hex: string): string => {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return '#ffffff';
+  const n = parseInt(m[1], 16);
+  const lin = (v: number) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance = 0.2126 * lin((n >> 16) & 255) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
+  return luminance > 0.4 ? '#202124' : '#ffffff';
 };
 
 /** True when a task is due today or earlier. */

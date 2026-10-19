@@ -23,6 +23,8 @@ export interface AddOptions {
   sectionId?: string | null;
   /** When the line names no date, make it due on this day (adding from the Today page or under a day). */
   dueDate?: string;
+  /** With [dueDate]: the time of day (HH:MM), when adding from a spot on the calendar. */
+  dueTime?: string;
 }
 
 export interface DataApi extends Snapshot {
@@ -133,7 +135,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         const made = await write(async () => {
           let t = await api.quickAdd(text, { projectId: options.projectId, today: localNow() });
           if (options.sectionId && t.project_id === options.projectId && !t.section_id) t = await api.updateTask(t.id, { section_id: options.sectionId });
-          if (options.dueDate && !t.due) t = await api.updateTask(t.id, { due_date: options.dueDate });
+          if (options.dueDate && !t.due) t = await api.updateTask(t.id, { due_date: options.dueDate, ...(options.dueTime ? { due_time: options.dueTime } : {}) });
+          else if (options.dueDate && options.dueTime && t.due && !t.due.time && t.due.date === options.dueDate) t = await api.updateTask(t.id, { due_time: options.dueTime });
           return t;
         });
         setTasks((all) => [...all.filter((t) => t.id !== made.id), made]);

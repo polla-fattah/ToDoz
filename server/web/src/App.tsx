@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './state/auth';
 import { DataProvider } from './state/data';
 import { PrefsProvider } from './state/prefs';
 import { ToastProvider } from './state/toast';
+import { CalendarView } from './views/CalendarView';
 import { CompletedView, LabelView, TodayView, UpcomingView } from './views/SimpleViews';
 import { ProjectView } from './views/ProjectView';
 
@@ -18,6 +19,7 @@ function Signed() {
             <Route path="inbox" element={<ProjectView inbox />} />
             <Route path="today" element={<TodayView />} />
             <Route path="upcoming" element={<UpcomingView />} />
+            <Route path="calendar" element={<CalendarView />} />
             <Route path="completed" element={<CompletedView />} />
             <Route path="project/:id" element={<ProjectView />} />
             <Route path="label/:id" element={<LabelView />} />

@@ -37,8 +37,11 @@ class Screen extends StatefulWidget {
     this.automaticallyImplyLeading = true,
     this.subtitle,
     this.selectable = true,
+    this.background,
   });
 
+  /// A colour for the page and its app bar (the calendar uses its own).
+  final Color? background;
   final String title;
   final String? subtitle;
   final Widget body;
@@ -76,6 +79,7 @@ class _ScreenState extends State<Screen> {
                 if (!didPop) _selection.clear();
               },
               child: Scaffold(
+                backgroundColor: widget.background,
                 appBar: selecting
                     ? AppBar(
                         leading: IconButton(tooltip: 'Cancel selection', icon: const Icon(Icons.close), onPressed: _selection.clear),
@@ -83,6 +87,8 @@ class _ScreenState extends State<Screen> {
                         actions: selectionActions(context, _selection),
                       )
                     : AppBar(
+                        backgroundColor: widget.background,
+                        surfaceTintColor: widget.background == null ? null : Colors.transparent,
                         automaticallyImplyLeading: widget.automaticallyImplyLeading,
                         title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(widget.title),

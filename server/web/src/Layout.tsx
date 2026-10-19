@@ -19,7 +19,7 @@ import { QuickAdd } from './components/QuickAdd';
 import { Sidebar } from './components/Sidebar';
 import { DragPreview } from './components/TaskRow';
 import { TaskPanel } from './components/TaskPanel';
-import { useData } from './state/data';
+import { useData, type AddOptions } from './state/data';
 import { UiContext, type DragHandlers, type UiApi } from './state/ui';
 import { todayIso } from './lib/dates';
 import { isTyping, useKeydown } from './ui/hooks';
@@ -35,7 +35,7 @@ export function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [openId, setOpenId] = useState<string | null>(null);
-  const [quick, setQuick] = useState(false);
+  const [quick, setQuick] = useState<(AddOptions & { label?: string }) | null>(null);
   const [palette, setPalette] = useState(false);
   const [sidebar, setSidebar] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -52,7 +52,7 @@ export function Layout() {
   const ui = useMemo<UiApi>(
     () => ({
       openTask: (id) => setOpenId(id),
-      openQuickAdd: () => setQuick(true),
+      openQuickAdd: (options) => setQuick(options ?? {}),
       openPalette: () => setPalette(true),
       toggleSidebar: () => setSidebar((v) => !v),
       dragHandlers: handlers,
@@ -61,7 +61,7 @@ export function Layout() {
   );
 
   const closeTask = useCallback(() => setOpenId(null), []);
-  const anyModal = quick || palette;
+  const anyModal = !!quick || palette;
   useKeydown((e) => {
     const typing = isTyping(e.target);
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
@@ -71,7 +71,7 @@ export function Layout() {
     }
     if (e.key === 'Escape') {
       if (anyModal) {
-        setQuick(false);
+        setQuick(null);
         setPalette(false);
       } else if (openId) setOpenId(null);
       else if (sidebar) setSidebar(false);
@@ -80,14 +80,14 @@ export function Layout() {
     if (typing || e.ctrlKey || e.metaKey || e.altKey || anyModal) return;
     if (e.key === 'q' || e.key === 'a') {
       e.preventDefault();
-      setQuick(true);
+      setQuick({});
     } else if (e.key === '/') {
       e.preventDefault();
       setPalette(true);
     } else if (e.key === 'g') {
       goKey.current = Date.now();
     } else if (Date.now() - goKey.current < 1200) {
-      const to = { i: '/inbox', t: '/today', u: '/upcoming', c: '/completed' }[e.key];
+      const to = { i: '/inbox', t: '/today', u: '/upcoming', c: '/calendar', d: '/completed' }[e.key];
       if (to) {
         goKey.current = 0;
         navigate(to);
@@ -151,21 +151,22 @@ export function Layout() {
       {openId && <TaskPanel key={openId} id={openId} onClose={closeTask} />}
 
       {quick && (
-        <div className="modal-wrap" onMouseDown={(e) => e.target === e.currentTarget && setQuick(false)}>
+        <div className="modal-wrap" onMouseDown={(e) => e.target === e.currentTarget && setQuick(null)}>
           <div className="modal" role="dialog" aria-label="Add task">
             <QuickAdd
               {...addDefaults}
               dueDate={location.pathname === '/today' ? todayIso() : undefined}
+              {...quick}
               autoFocus
-              onDone={() => setQuick(false)}
-              onCancel={() => setQuick(false)}
-              destination={addDefaults.projectId ? data.projectById(addDefaults.projectId)?.name : 'Inbox'}
+              onDone={() => setQuick(null)}
+              onCancel={() => setQuick(null)}
+              destination={quick.label ?? (addDefaults.projectId ? data.projectById(addDefaults.projectId)?.name : 'Inbox')}
             />
           </div>
         </div>
       )}
 
-      {palette && <CommandPalette onClose={() => setPalette(false)} onAddTask={() => setQuick(true)} onOpenTask={(id) => setOpenId(id)} />}
+      {palette && <CommandPalette onClose={() => setPalette(false)} onAddTask={() => setQuick({})} onOpenTask={(id) => setOpenId(id)} />}
     </UiContext.Provider>
   );
 }

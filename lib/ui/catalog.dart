@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:taskflow_core/time_grid.dart' show CalendarMode;
 import 'package:taskflow_core/backup.dart' show inboxId;
 import 'package:taskflow_core/date_parser.dart' show dateOnly, formatDate, parseClock;
 import 'package:taskflow_core/progress.dart' show Goals;
@@ -50,6 +51,7 @@ class Catalog extends ChangeNotifier {
           })),
       repo.watchSetting('use24h').listen((v) => _set(() => use24h = v != 'false')),
       repo.watchSetting('weekStart').listen((v) => _set(() => weekStart = (int.tryParse(v ?? '') ?? 1).clamp(1, 7))),
+      repo.watchSetting('calendarMode').listen((v) => _set(() => calendarMode = CalendarMode.values.where((m) => m.name == v).firstOrNull ?? CalendarMode.threeDays)),
       repo.watchSetting('autoReminder').listen((v) => _set(() => autoReminderMinutes = v == 'off' ? null : (int.tryParse(v ?? '') ?? 30))),
       repo.watchSetting('digestTime').listen((v) => _set(() => digestMinutes = v == null || v == 'off' ? null : parseClock(v))),
     ];
@@ -149,6 +151,11 @@ class Catalog extends ChangeNotifier {
   /// 24-hour clock (FR-D5). The first day of the week, 1 = Monday ... 7 = Sunday.
   bool use24h = true;
   int weekStart = 1;
+
+  /// The Calendar view last used (Day, 3 days, Week on wide windows, Month).
+  CalendarMode calendarMode = CalendarMode.threeDays;
+
+  Future<void> setCalendarMode(CalendarMode mode) => repo.setSetting('calendarMode', mode.name);
 
   /// Minutes before a due time for the automatic reminder; null = off (FR-N1).
   int? autoReminderMinutes = 30;

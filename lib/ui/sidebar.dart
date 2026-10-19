@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:taskflow_core/backup.dart' show inboxId;
 import 'browse_screen.dart';
+import 'calendar_view.dart';
 import 'catalog.dart';
 import 'common.dart';
 import 'filter_editor.dart';
@@ -86,6 +87,7 @@ class Sidebar extends StatelessWidget {
         item('inbox', Icons.inbox_outlined, 'Inbox', (_) => const ProjectScreen(projectId: inboxId, isTab: true), dropProjectId: inboxId),
         item('today', Icons.today_outlined, 'Today', (_) => const TodayScreen()),
         item('upcoming', Icons.calendar_month_outlined, 'Upcoming', (_) => const UpcomingScreen()),
+        item('calendar', Icons.calendar_view_week_outlined, 'Calendar', (_) => const CalendarScreen()),
         item('search', Icons.search, 'Search', (_) => const SearchScreen()),
         if (favProjects.isNotEmpty || favLabels.isNotEmpty || favFilters.isNotEmpty) ...[
           heading('Favorites'),

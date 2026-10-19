@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useDroppable } from '@dnd-kit/core';
-import { CalendarDays, CalendarRange, CircleCheckBig, Inbox, LogOut, Monitor, Moon, Plus, Search, Sun, Tag } from 'lucide-react';
+import { CalendarClock, CalendarDays, CalendarRange, CircleCheckBig, Inbox, LogOut, Monitor, Moon, Plus, Search, Sun, Tag } from 'lucide-react';
 import { todayIso } from '../lib/dates';
 import { projectColour } from '../lib/tasks';
 import { useAuth } from '../state/auth';
@@ -70,7 +70,7 @@ export function Sidebar({ open }: { open: boolean }) {
         <BrandMark />
         NoteDo
       </div>
-      <button className="add-btn" onClick={openQuickAdd}>
+      <button className="add-btn" onClick={() => openQuickAdd()}>
         <Plus size={18} strokeWidth={2.5} /> Add task <kbd>Q</kbd>
       </button>
       <button className="nav-item" onClick={openPalette}>
@@ -84,6 +84,9 @@ export function Sidebar({ open }: { open: boolean }) {
         </NavLink>
         <NavLink to="/upcoming" className={link}>
           <CalendarRange size={17} /> Upcoming
+        </NavLink>
+        <NavLink to="/calendar" className={link}>
+          <CalendarClock size={17} /> Calendar
         </NavLink>
         <NavLink to="/completed" className={link}>
           <CircleCheckBig size={17} /> Completed
