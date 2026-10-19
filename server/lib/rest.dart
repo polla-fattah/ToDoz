@@ -7,6 +7,7 @@ import 'dart:async';
 
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
+import 'package:taskflow_core/date_parser.dart' show parseIsoDate;
 
 import 'model.dart';
 import 'store.dart';
@@ -94,6 +95,16 @@ void registerRest(Router router, RestContext c) {
       }));
 
   router.post('/api/v1/tasks', (Request r) => run(r, write: true, okStatus: 201, f: (m, b) => m.createTask(b)));
+
+  /// The later days of repeating tasks in a range, for the calendar: `from` and `to` (dates), and optionally `today`
+  /// (the caller's date; days up to it are left out). Must be registered before the `<id>` route below.
+  router.get('/api/v1/tasks/occurrences', (Request r) => run(r, write: false, f: (m, _) {
+        final from = q(r, 'from'), to = q(r, 'to');
+        if (from == null || to == null) throw ModelError(400, 'Send from and to, like ?from=2026-10-19&to=2026-10-25');
+        final today = q(r, 'today') == null ? DateTime.now() : parseIsoDate(q(r, 'today')!);
+        if (today == null) throw ModelError(400, 'today must be a date like 2026-10-19');
+        return {'occurrences': m.repeatOccurrences(from: from, to: to, today: today)};
+      }));
 
   router.get('/api/v1/tasks/<id>', (Request r, String id) => run(r, write: false, f: (m, _) {
         if (!m.taskExists(id)) throw ModelError(404, 'No such task');

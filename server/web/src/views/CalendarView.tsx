@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { api } from '../api';
 import { useSearchParams } from 'react-router-dom';
 import { ChevronDown, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { MonthGrid } from '../components/MonthGrid';
@@ -10,7 +11,7 @@ import { useData } from '../state/data';
 import { usePrefs } from '../state/prefs';
 import { useUi } from '../state/ui';
 import { isTyping, useKeydown } from '../ui/hooks';
-import type { Task } from '../types';
+import type { RepeatCopy, Task } from '../types';
 
 const LABELS: Record<CalendarMode, string> = { day: 'Day', three: '3 days', week: 'Week', month: 'Month' };
 const KEYS: Record<CalendarMode, string> = { day: 'D', three: '3', week: 'W', month: 'M' };
@@ -104,6 +105,34 @@ export function CalendarView({ tasksOverride, title }: { tasksOverride?: Task[];
   const days = useMemo(() => daysOf(mode, anchor, weekStart), [mode, anchor, weekStart]);
   const tasks = tasksOverride ?? all;
 
+  // The later days of repeating tasks come from the server (it knows every repeat rule), asked again when the shown
+  // days change or a repeating task is added, moved or edited.
+  const [repeats, setRepeats] = useState<RepeatCopy[]>([]);
+  const repeating = useMemo(() => tasks.filter((t) => t.due?.recurrence), [tasks]);
+  const signature = repeating.map((t) => `${t.id}|${t.due?.date}|${t.due?.time}|${t.due?.recurrence}`).join(';');
+  const from = days[0];
+  const to = days[days.length - 1];
+  useEffect(() => {
+    if (!repeating.length) {
+      setRepeats([]);
+      return;
+    }
+    let cancelled = false;
+    api
+      .occurrences(from, to, todayIso())
+      .then((list) => {
+        if (cancelled) return;
+        const byId = new Map(repeating.map((t) => [t.id, t]));
+        setRepeats(list.flatMap((o) => (byId.has(o.task_id) ? [{ task: byId.get(o.task_id)!, day: o.date }] : [])));
+      })
+      .catch(() => !cancelled && setRepeats([]));
+    return () => {
+      cancelled = true;
+    };
+    // `signature` stands for the repeating tasks
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [from, to, signature]);
+
   const go = (date: string) => setParams((p) => { const n = new URLSearchParams(p); if (date === today) n.delete('date'); else n.set('date', date); return n; }, { replace: true });
   const step = (dir: 1 | -1) => go(shiftAnchor(mode, anchor, dir));
   const pickDay = (d: string) => {
@@ -156,9 +185,9 @@ export function CalendarView({ tasksOverride, title }: { tasksOverride?: Task[];
           <Skeleton />
         </div>
       ) : mode === 'month' ? (
-        <MonthGrid days={days} month={month} tasks={tasks} onPickDay={pickDay} />
+        <MonthGrid days={days} month={month} tasks={tasks} repeats={repeats} onPickDay={pickDay} />
       ) : (
-        <TimeGrid days={days} tasks={tasks} onPickDay={pickDay} />
+        <TimeGrid days={days} tasks={tasks} repeats={repeats} onPickDay={pickDay} />
       )}
     </div>
   );

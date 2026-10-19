@@ -8,6 +8,12 @@ export interface Due {
   recurrence: string | null;
 }
 
+/** A later day of a repeating task: shown faded on the calendar (the task itself sits on its next date). */
+export interface RepeatCopy {
+  task: Task;
+  day: string;
+}
+
 export interface Task {
   id: string;
   title: string;

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Check } from 'lucide-react';
+import { Check, Repeat } from 'lucide-react';
 import { clock, dayLabel, parseIso, todayIso } from '../lib/dates';
 import { dropAt, formatMinutes, layoutDay, minutesOf, blockSpan, resizeDuration, MIN_BLOCK } from '../lib/timegrid';
 import { eventColour, onColour, projectColour } from '../lib/tasks';
@@ -7,10 +7,13 @@ import { useData } from '../state/data';
 import { usePrefs } from '../state/prefs';
 import { useUi } from '../state/ui';
 import { useNow } from '../ui/hooks';
-import type { Task } from '../types';
+import type { RepeatCopy, Task } from '../types';
 
 const HOUR = 56; // pixels per hour
 const PX = HOUR / 60;
+
+/** Ids of the faded copies of repeating tasks in the layout (they are not the task itself). */
+const REPEAT = 'repeat:';
 
 interface Drag {
   kind: 'move' | 'resize';
@@ -36,7 +39,7 @@ function zoneLabel(now: Date): string {
  * change the length, click to open); tasks with a date but no time sit in the all-day row; click an empty spot to
  * add a task there. The rules (overlap, snapping, what a drop means) are in lib/timegrid.ts.
  */
-export function TimeGrid({ days, tasks, onPickDay }: { days: string[]; tasks: Task[]; onPickDay: (day: string) => void }) {
+export function TimeGrid({ days, tasks, repeats, onPickDay }: { days: string[]; tasks: Task[]; repeats: RepeatCopy[]; onPickDay: (day: string) => void }) {
   const { updateTask, completeTask, completing, projectById } = useData();
   const { openTask, openQuickAdd } = useUi();
   const { use24h } = usePrefs();
@@ -50,17 +53,20 @@ export function TimeGrid({ days, tasks, onPickDay }: { days: string[]; tasks: Ta
   const byId = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
 
   const perDay = useMemo(() => {
-    const map = new Map<string, { allDay: Task[]; placed: ReturnType<typeof layoutDay> }>();
+    const map = new Map<string, { allDay: Task[]; repeatAllDay: Task[]; placed: ReturnType<typeof layoutDay> }>();
     for (const d of days) {
       const mine = tasks.filter((t) => t.due?.date === d);
+      const copies = repeats.filter((r) => r.day === d).map((r) => r.task);
       const timed = mine.filter((t) => minutesOf(t.due?.time) != null);
+      const timedCopies = copies.filter((t) => minutesOf(t.due?.time) != null);
       map.set(d, {
         allDay: mine.filter((t) => minutesOf(t.due?.time) == null),
-        placed: layoutDay(timed.map((t) => ({ id: t.id, ...spanOf(t) }))),
+        repeatAllDay: copies.filter((t) => minutesOf(t.due?.time) == null),
+        placed: layoutDay([...timed.map((t) => ({ id: t.id, ...spanOf(t) })), ...timedCopies.map((t) => ({ id: REPEAT + t.id, ...spanOf(t) }))]),
       });
     }
     return map;
-  }, [days, tasks]);
+  }, [days, tasks, repeats]);
 
   // Start at the current time (when today is shown), otherwise at the morning.
   const first = days[0];
@@ -111,15 +117,39 @@ export function TimeGrid({ days, tasks, onPickDay }: { days: string[]; tasks: Ta
     const grab = kind === 'move' && rect && hasTime ? e.clientY - rect.top : 0;
     let active = false;
     let timer: number | undefined;
+    let raf = 0;
+    let px = startX;
+    let py = startY;
+
+    // Held near the top or bottom of the hours, the grid scrolls by itself (faster the closer to the edge), so a task
+    // can be taken to a time that is off the screen. The band above the hours is the all-day row: no scrolling there.
+    const edge = 56;
+    const scrollNearEdge = () => {
+      const el = scroller.current;
+      if (el && active) {
+        const r = el.getBoundingClientRect();
+        let speed = 0;
+        if (py >= r.top && py < r.top + edge) speed = -(1 - (py - r.top) / edge) * 14;
+        if (py > r.bottom - edge) speed = (1 - Math.min(1, Math.max(0, (r.bottom - py) / edge))) * 14;
+        if (speed) {
+          const before = el.scrollTop;
+          el.scrollTop += speed;
+          if (el.scrollTop !== before) setDragBoth({ kind, id: task.id, ...target(px, py, grab, kind, span.start) });
+        }
+      }
+      raf = window.requestAnimationFrame(scrollNearEdge);
+    };
 
     const begun = () => {
       active = true;
       document.body.classList.add('is-dragging');
       setDragBoth({ kind, id: task.id, day: task.due!.date, minutes: kind === 'move' ? span.start : span.end, allDay: !hasTime });
+      raf = window.requestAnimationFrame(scrollNearEdge);
     };
     const stopTouchScroll = (ev: TouchEvent) => active && ev.cancelable && ev.preventDefault();
     const cleanup = () => {
       window.clearTimeout(timer);
+      window.cancelAnimationFrame(raf);
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', cancel);
@@ -131,6 +161,8 @@ export function TimeGrid({ days, tasks, onPickDay }: { days: string[]; tasks: Ta
       setDragBoth(null);
     };
     const move = (ev: PointerEvent) => {
+      px = ev.clientX;
+      py = ev.clientY;
       if (!active) {
         if (Math.hypot(ev.clientX - startX, ev.clientY - startY) < (touch ? 9 : 4)) return;
         if (touch) return cancel(); // the finger is scrolling, not dragging
@@ -230,6 +262,12 @@ export function TimeGrid({ days, tasks, onPickDay }: { days: string[]; tasks: Ta
                 <span>{t.title}</span>
               </div>
             ))}
+            {perDay.get(d)!.repeatAllDay.map((t) => (
+              <div key={`repeat-${t.id}`} className="chip-task repeat" style={colours(t)} onClick={() => openTask(t.id)} title="Repeats: a later day of this task">
+                <Repeat size={12} />
+                <span>{t.title}</span>
+              </div>
+            ))}
           </div>
         ))}
       </div>
@@ -257,9 +295,40 @@ export function TimeGrid({ days, tasks, onPickDay }: { days: string[]; tasks: Ta
                 onClick={(e) => addAt(d, e)}
               >
                 {perDay.get(d)!.placed.map((p) => {
-                  const t = byId.get(p.id)!;
+                  const copy = p.id.startsWith(REPEAT);
+                  const t = byId.get(copy ? p.id.slice(REPEAT.length) : p.id)!;
                   const tall = (p.end - p.start) * PX;
-                  const isDrag = drag?.id === t.id;
+                  const isDrag = drag?.id === t.id && !copy;
+                  if (copy) {
+                    return (
+                      <div
+                        key={p.id}
+                        className={`block repeat ${tall < 34 ? 'tight' : ''}`}
+                        title="Repeats: a later day of this task"
+                        style={{
+                          top: p.start * PX,
+                          height: tall - 2,
+                          left: `calc(${(p.column / p.columns) * 100}% + 2px)`,
+                          width: `calc(${100 / p.columns}% - 4px)`,
+                          ...colours(t),
+                        }}
+                        onClick={() => openTask(t.id)}
+                      >
+                        <Repeat size={12} className="repeat-mark" />
+                        <div className="block-text">
+                          <div className="block-title">
+                            {t.title}
+                            {tall < 34 && <span className="block-start">, {clock(formatMinutes(p.start), use24h)}</span>}
+                          </div>
+                          {tall >= 44 && (
+                            <div className="block-time">
+                              {clock(formatMinutes(p.start), use24h)} – {clock(formatMinutes(Math.min(p.end, 1439)), use24h)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  }
                   return (
                     <div
                       key={p.id}

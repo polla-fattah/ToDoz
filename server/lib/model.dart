@@ -122,6 +122,32 @@ class UserModel {
     return out;
   }
 
+  /// The later days of repeating open tasks between [from] and [to] (dates like 2026-10-19), for a calendar: each is
+  /// `{task_id, date}`. A task's own date and any day up to [today] are left out; hourly repeats and the ones counted
+  /// from completion (`every!`, `after`) have none.
+  List<Map<String, Object?>> repeatOccurrences({required String from, required String to, required DateTime today}) {
+    final first = parseIsoDate(from), last = parseIsoDate(to);
+    if (first == null || last == null) throw ModelError(400, 'from and to must be dates like 2026-10-19');
+    if (last.difference(first).inDays > 400) throw ModelError(400, 'Ask for at most 400 days at a time');
+    final out = <Map<String, Object?>>[];
+    for (final t in tasks()) {
+      final due = t['due'] as Map<String, Object?>?;
+      final rec = due?['recurrence'] as String?;
+      if (due == null || rec == null) continue;
+      final Recurrence r;
+      try {
+        r = parseRecurrence(rec, now);
+      } on RecurrenceException {
+        continue;
+      }
+      for (final d in occurrencesBetween(r, due: parseIsoDate(due['date'] as String)!, to: last)) {
+        if (d.isBefore(first) || !d.isAfter(dateOnly(today))) continue;
+        out.add({'task_id': t['id'], 'date': formatDate(d)});
+      }
+    }
+    return out;
+  }
+
   bool taskExists(String id) => _live(_row('tasks', id));
   bool projectExists(String id) => id == inboxId || _live(_row('projects', id));
 

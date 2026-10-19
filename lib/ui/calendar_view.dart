@@ -73,6 +73,7 @@ class _CalendarViewState extends State<CalendarView> {
     }
 
     final pal = CalendarPalette.of(context);
+    final repeats = repeatCopies(widget.tasks, days, catalog.repo.now);
     final compact = width < 600;
     final thisYear = catalog.repo.now.year;
     final pillShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: pal.line));
@@ -121,8 +122,8 @@ class _CalendarViewState extends State<CalendarView> {
       Padding(padding: EdgeInsets.fromLTRB(compact ? 8 : 16, 8, compact ? 8 : 16, 4), child: controls),
       Expanded(
         child: mode == CalendarMode.month
-            ? MonthGrid(days: days, month: parseIsoDate(_anchor)!.month, tasks: widget.tasks, onPickDay: pick, onSwipe: step)
-            : TimeGrid(key: ValueKey('${mode.name}-${days.first}'), days: days, tasks: widget.tasks, onPickDay: pick, onSwipe: step),
+            ? MonthGrid(days: days, month: parseIsoDate(_anchor)!.month, tasks: widget.tasks, repeats: repeats, onPickDay: pick, onSwipe: step)
+            : TimeGrid(key: ValueKey('${mode.name}-${days.first}'), days: days, tasks: widget.tasks, repeats: repeats, onPickDay: pick, onSwipe: step),
       ),
     ]);
   }

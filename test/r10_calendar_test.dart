@@ -256,6 +256,66 @@ void main() {
     await finish(tester);
   });
 
+  testWidgets('a repeating task also shows faded on its later days, with a repeat mark; the task itself stays on its date', (tester) async {
+    await start(tester, mode: CalendarMode.threeDays, seed: () async {
+      await repo.addTask(title: 'Gym', dueDate: monday, dueTime: '10:00', recurrence: 'every day');
+      await repo.addTask(title: 'Water plants', dueDate: monday, recurrence: 'every day');
+    });
+    await openCalendar(tester);
+    expect(find.textContaining('Gym'), findsNWidgets(3), reason: 'Monday itself, then Tuesday and Wednesday');
+    expect(find.text('Water plants'), findsNWidgets(3));
+    expect(find.byIcon(Icons.repeat), findsNWidgets(4), reason: 'the later days only: two blocks and two all-day chips');
+    await finish(tester);
+  });
+
+  testWidgets('a repeat that is counted from completion is not spread over the calendar', (tester) async {
+    await start(tester, mode: CalendarMode.threeDays, seed: () async {
+      await repo.addTask(title: 'Call mum', dueDate: monday, dueTime: '10:00', recurrence: 'every! 2 days');
+    });
+    await openCalendar(tester);
+    expect(find.textContaining('Call mum'), findsOneWidget);
+    expect(find.byIcon(Icons.repeat), findsNothing);
+    await finish(tester);
+  });
+
+  testWidgets('in the month a repeating task is on each of its later days', (tester) async {
+    await start(tester, size: const Size(1280, 800), mode: CalendarMode.month, seed: () async {
+      await repo.addTask(title: 'Stand-up', dueDate: monday, dueTime: '09:30', recurrence: 'every weekday');
+    });
+    await openCalendar(tester);
+    // Mon 19 itself, then Oct 20-23, 26-30 and Nov 2-6 (the grid ends on Saturday 7 November).
+    expect(find.text('Stand-up'), findsNWidgets(15));
+    await finish(tester);
+  });
+
+  testWidgets('holding a task near the bottom of the hours scrolls the grid, so it can be taken to a later time', (tester) async {
+    late String id;
+    await start(tester, mode: CalendarMode.day, seed: () async {
+      id = await repo.addTask(title: 'Design review', dueDate: monday, dueTime: '10:00', durationMinutes: 60);
+    });
+    await openCalendar(tester);
+    final scrollable = find.descendant(of: find.byType(SingleChildScrollView), matching: find.byType(Scrollable)).first;
+    final before = tester.state<ScrollableState>(scrollable).position.pixels;
+    final viewport = tester.getRect(find.byType(SingleChildScrollView));
+    final block = tester.getRect(find.byKey(ValueKey('block-$id')));
+    final g = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await g.down(block.center);
+    await tester.pump();
+    await g.moveBy(const Offset(0, 20));
+    await tester.pump();
+    await g.moveTo(Offset(block.center.dx, viewport.bottom - 8)); // into the bottom edge
+    for (var i = 0; i < 40; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    final after = tester.state<ScrollableState>(scrollable).position.pixels;
+    expect(after, greaterThan(before + 100), reason: 'the grid moved by itself while the task was held there');
+    await g.up();
+    await settle(tester);
+    final t = await task(tester, id);
+    expect(t.dueTime!.compareTo('12:00'), greaterThan(0), reason: 'dropped at a time that was off the screen when the drag began');
+    await finish(tester);
+  });
+
   testWidgets('a project can be shown as a calendar too, with the same views', (tester) async {
     late String project;
     await start(tester, seed: () async {

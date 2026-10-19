@@ -197,6 +197,35 @@ void main() {
     });
   });
 
+  group('the dates a repeat comes round again (for a calendar)', () {
+    List<String> dates(String phrase, String due, String to) =>
+        [for (final d in occurrencesBetween(parse(phrase), due: parseIsoDate(due)!, to: parseIsoDate(to)!)) formatDate(d)];
+
+    test('every mon, fri lists each one after the due date, up to the end', () {
+      expect(dates('every mon, fri', '2026-10-16', '2026-10-27'), ['2026-10-19', '2026-10-23', '2026-10-26']);
+    });
+    test('every day stops at the end date and never includes the due date itself', () {
+      expect(dates('every day', '2026-10-14', '2026-10-17'), ['2026-10-15', '2026-10-16', '2026-10-17']);
+    });
+    test('every other week keeps its rhythm', () {
+      expect(dates('every other week', '2026-10-14', '2026-11-30'), ['2026-10-28', '2026-11-11', '2026-11-25']);
+    });
+    test('a repeat with an until stops at it', () {
+      expect(dates('every day until oct 16', '2026-10-14', '2026-10-30'), ['2026-10-15', '2026-10-16']);
+    });
+    test('month days and the last workday', () {
+      expect(dates('every 2, 15', '2026-10-15', '2026-11-20'), ['2026-11-02', '2026-11-15']);
+      expect(dates('every last workday', '2026-10-30', '2026-12-31'), ['2026-11-30', '2026-12-31']);
+    });
+    test('hourly and counted-from-completion repeats give none (they depend on when each is done)', () {
+      expect(dates('every 12 hours', '2026-10-14', '2026-10-30'), isEmpty);
+      expect(dates('every! 2 days', '2026-10-14', '2026-10-30'), isEmpty);
+    });
+    test('a window before the due date gives none', () {
+      expect(dates('every day', '2026-10-14', '2026-10-10'), isEmpty);
+    });
+  });
+
   group('finding a repeat inside a line', () {
     String? span(String line) {
       final m = findRecurrence(line, now).match;

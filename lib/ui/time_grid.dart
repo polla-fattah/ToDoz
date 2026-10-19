@@ -119,10 +119,13 @@ class _DragSourceState extends State<_DragSource> {
 /// to change the length, tap to open); tasks with a date but no time sit in the all-day row; tap an empty spot to add
 /// a task there. The rules (overlap, snapping, what a drop means) are in taskflow_core/time_grid.dart.
 class TimeGrid extends StatefulWidget {
-  const TimeGrid({super.key, required this.days, required this.tasks, required this.onPickDay, required this.onSwipe});
+  const TimeGrid({super.key, required this.days, required this.tasks, this.repeats = const [], required this.onPickDay, required this.onSwipe});
 
   final List<String> days;
   final List<Task> tasks;
+
+  /// Later days of repeating tasks, shown faded (the task itself sits on its next date).
+  final List<RepeatCopy> repeats;
   final ValueChanged<String> onPickDay;
 
   /// Previous (-1) or next (1), from a horizontal swipe.
@@ -142,6 +145,11 @@ class _TimeGridState extends State<TimeGrid> {
   DateTime _now = DateTime(2000);
   double _grab = 0;
   bool _scrollLocked = false;
+  final _viewportKey = GlobalKey();
+  Timer? _edgeScroll;
+  Offset _pointer = Offset.zero;
+  Task? _dragTask;
+  bool _dragResize = false;
 
   @override
   void didChangeDependencies() {
@@ -160,6 +168,7 @@ class _TimeGridState extends State<TimeGrid> {
   @override
   void dispose() {
     _clock?.cancel();
+    _edgeScroll?.cancel();
     _scrollController?.dispose();
     _drag.dispose();
     super.dispose();
@@ -213,15 +222,43 @@ class _TimeGridState extends State<TimeGrid> {
     }
     setState(() => _scrollLocked = true);
     _drag.value = _Drag(id: task.id, resize: resize, day: task.dueDate!, minutes: resize ? span.end : span.start, allDay: task.dueTime == null && !resize);
+    _dragTask = task;
+    _dragResize = resize;
+    _pointer = global;
+    _edgeScroll?.cancel();
+    _edgeScroll = Timer.periodic(const Duration(milliseconds: 16), (_) => _scrollNearEdge());
+  }
+
+  /// While something is held near the top or bottom of the hours, the grid scrolls by itself (faster the closer to
+  /// the edge), so a task can be taken to a time that is off the screen.
+  void _scrollNearEdge() {
+    final task = _dragTask;
+    final box = _viewportKey.currentContext?.findRenderObject() as RenderBox?;
+    if (task == null || _drag.value == null || box == null || !box.attached || !_scroll.hasClients) return;
+    const edge = 56.0;
+    final top = box.localToGlobal(Offset.zero).dy;
+    final bottom = top + box.size.height;
+    var speed = 0.0;
+    // Above the hours is the all-day row (a place to drop), so only the top band itself scrolls upwards.
+    if (_pointer.dy >= top && _pointer.dy < top + edge) speed = -(1 - (_pointer.dy - top) / edge) * 14;
+    if (_pointer.dy > bottom - edge) speed = (1 - ((bottom - _pointer.dy) / edge).clamp(0.0, 1.0)) * 14;
+    if (speed == 0) return;
+    final to = (_scroll.offset + speed).clamp(_scroll.position.minScrollExtent, _scroll.position.maxScrollExtent).toDouble();
+    if (to == _scroll.offset) return;
+    _scroll.jumpTo(to);
+    _update(task, _pointer, resize: _dragResize); // the block under the finger is now a different time
   }
 
   void _update(Task task, Offset global, {required bool resize}) {
+    _pointer = global;
     final span = _spanOf(task);
     final next = _targetAt(global, task, resize: resize, startMinutes: span.start);
     if (next != null) _drag.value = next;
   }
 
   Future<void> _end(Task task) async {
+    _edgeScroll?.cancel();
+    _dragTask = null;
     final d = _drag.value;
     _drag.value = null;
     if (mounted) setState(() => _scrollLocked = false);
@@ -242,6 +279,8 @@ class _TimeGridState extends State<TimeGrid> {
   }
 
   void _cancel() {
+    _edgeScroll?.cancel();
+    _dragTask = null;
     _drag.value = null;
     if (mounted) setState(() => _scrollLocked = false);
   }
@@ -262,6 +301,10 @@ class _TimeGridState extends State<TimeGrid> {
     final byDay = <String, List<Task>>{for (final d in widget.days) d: []};
     for (final t in widget.tasks) {
       if (t.dueDate != null) byDay[t.dueDate]?.add(t);
+    }
+    final repeatsByDay = <String, List<Task>>{for (final d in widget.days) d: []};
+    for (final r in widget.repeats) {
+      repeatsByDay[r.day]?.add(r.task);
     }
 
     return ColoredBox(
@@ -312,6 +355,11 @@ class _TimeGridState extends State<TimeGrid> {
                                 child: _AllDayChip(task: t, dimmed: drag?.id == t.id),
                               ),
                             ),
+                          for (final t in repeatsByDay[d]!.where((t) => minutesOf(t.dueTime) == null))
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: GestureDetector(onTap: () => openTask(context, t.id), child: _AllDayChip(task: t, dimmed: false, repeat: true)),
+                            ),
                         ]),
                       ),
                     ),
@@ -323,6 +371,7 @@ class _TimeGridState extends State<TimeGrid> {
         // The hours.
         Expanded(
           child: SingleChildScrollView(
+            key: _viewportKey,
             controller: _scroll,
             physics: _scrollLocked ? const NeverScrollableScrollPhysics() : null,
             child: SizedBox(
@@ -347,6 +396,7 @@ class _TimeGridState extends State<TimeGrid> {
                       isToday: d == today,
                       nowMinutes: _now.hour * 60 + _now.minute,
                       tasks: byDay[d]!.where((t) => minutesOf(t.dueTime) != null).toList(),
+                      repeats: repeatsByDay[d]!.where((t) => minutesOf(t.dueTime) != null).toList(),
                       drag: _drag,
                       onAdd: (dy) => _addAt(d, dy),
                       onBegin: _begin,
@@ -405,9 +455,12 @@ class _DayHead extends StatelessWidget {
 }
 
 class _AllDayChip extends StatelessWidget {
-  const _AllDayChip({required this.task, required this.dimmed});
+  const _AllDayChip({required this.task, required this.dimmed, this.repeat = false});
   final Task task;
   final bool dimmed;
+
+  /// A later day of a repeating task: faded, with a repeat mark instead of a check.
+  final bool repeat;
 
   @override
   Widget build(BuildContext context) {
@@ -415,13 +468,13 @@ class _AllDayChip extends StatelessWidget {
     final c = CalendarPalette.eventColour(catalog.colorOf(task.projectId));
     final fg = CalendarPalette.onColour(c);
     return Opacity(
-      opacity: dimmed ? 0.35 : 1,
+      opacity: dimmed ? 0.35 : (repeat ? 0.55 : 1),
       child: Container(
         height: 22,
         padding: const EdgeInsets.fromLTRB(1, 0, 6, 0),
         decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(4)),
         child: Row(children: [
-          _MiniCheck(task: task, colour: fg),
+          if (repeat) Padding(padding: const EdgeInsets.all(3), child: Icon(Icons.repeat, size: 14, color: fg)) else _MiniCheck(task: task, colour: fg),
           const SizedBox(width: 2),
           Expanded(child: Text(task.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: fg))),
         ]),
@@ -453,6 +506,7 @@ class _DayColumn extends StatelessWidget {
     required this.isToday,
     required this.nowMinutes,
     required this.tasks,
+    required this.repeats,
     required this.drag,
     required this.onAdd,
     required this.onBegin,
@@ -467,6 +521,7 @@ class _DayColumn extends StatelessWidget {
   final bool isToday;
   final int nowMinutes;
   final List<Task> tasks;
+  final List<Task> repeats;
   final ValueNotifier<_Drag?> drag;
   final ValueChanged<double> onAdd;
   final void Function(Task task, Offset global, {required bool resize}) onBegin;
@@ -481,7 +536,8 @@ class _DayColumn extends StatelessWidget {
     final pal = CalendarPalette.of(context);
     final catalog = AppScope.of(context);
     final byId = {for (final t in tasks) t.id: t};
-    final placed = layoutDay([for (final t in tasks) GridItem(t.id, spanOf(t).start, spanOf(t).end)]);
+    final copyById = {for (final t in repeats) 'repeat:${t.id}': t};
+    final placed = layoutDay([for (final t in tasks) GridItem(t.id, spanOf(t).start, spanOf(t).end), for (final e in copyById.entries) GridItem(e.key, spanOf(e.value).start, spanOf(e.value).end)]);
 
     return LayoutBuilder(builder: (context, box) {
       final width = box.maxWidth;
@@ -499,7 +555,9 @@ class _DayColumn extends StatelessWidget {
             height: (p.end - p.start) * _px - 2,
             left: width * p.column / p.columns + 2,
             width: width / p.columns - 4,
-            child: _Block(
+            child: copyById.containsKey(p.id)
+                ? _RepeatBlock(task: copyById[p.id]!, height: (p.end - p.start) * _px, colour: CalendarPalette.eventColour(catalog.colorOf(copyById[p.id]!.projectId)))
+                : _Block(
               key: ValueKey('block-${p.id}'),
               task: byId[p.id]!,
               height: (p.end - p.start) * _px,
@@ -553,6 +611,45 @@ class _DayColumn extends StatelessWidget {
           ),
       ]);
     });
+  }
+}
+
+/// A later day of a repeating task: the same block, faded, with a repeat mark; it cannot be dragged (move the task
+/// itself), and a tap opens the task.
+class _RepeatBlock extends StatelessWidget {
+  const _RepeatBlock({required this.task, required this.height, required this.colour});
+  final Task task;
+  final double height;
+  final Color colour;
+
+  @override
+  Widget build(BuildContext context) {
+    final catalog = AppScope.of(context);
+    final fg = CalendarPalette.onColour(colour);
+    final span = blockSpan(minutesOf(task.dueTime) ?? 0, task.durationMinutes);
+    final tight = height < 34;
+    final start = formatTime(span.start, use24h: catalog.use24h);
+    return Opacity(
+      opacity: 0.55,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => openTask(context, task.id),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(5, tight ? 0 : 2, 6, tight ? 0 : 2),
+          decoration: BoxDecoration(color: colour, borderRadius: BorderRadius.circular(6), border: Border.all(color: CalendarPalette.of(context).surface)),
+          child: Row(crossAxisAlignment: tight ? CrossAxisAlignment.center : CrossAxisAlignment.start, children: [
+            Padding(padding: EdgeInsets.only(top: tight ? 0 : 2), child: Icon(Icons.repeat, size: 13, color: fg)),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: tight ? MainAxisAlignment.center : MainAxisAlignment.start, children: [
+                Text(tight ? '${task.title}, $start' : task.title, maxLines: tight ? 1 : 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, height: 1.25, color: fg)),
+                if (height >= 44) Text('$start – ${formatTime(span.end.clamp(0, minutesPerDay - 1), use24h: catalog.use24h)}', style: TextStyle(fontSize: 11, color: fg.withValues(alpha: 0.9))),
+              ]),
+            ),
+          ]),
+        ),
+      ),
+    );
   }
 }
 

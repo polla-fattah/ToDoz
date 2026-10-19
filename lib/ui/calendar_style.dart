@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:taskflow_core/date_parser.dart';
+import 'package:taskflow_core/recurrence.dart';
+
+import '../data/database.dart';
 
 /// The colours the calendar is drawn in: Google Calendar's blue for today, thin grey lines, solid event colours, a red
 /// "now" line. Light and dark, the same on every device (the web client uses the same values in calendar.css).
@@ -85,6 +89,36 @@ class CalendarPalette {
 
   /// Text that stays readable on a filled event colour: white on dark colours, near-black on light ones.
   static Color onColour(Color c) => c.computeLuminance() > 0.4 ? const Color(0xFF202124) : Colors.white;
+}
+
+/// A day on which a repeating task comes round again. It is shown faded (the task itself sits on its next date);
+/// tapping it opens the task.
+class RepeatCopy {
+  const RepeatCopy(this.task, this.day);
+  final Task task;
+  final String day;
+}
+
+/// The copies of repeating [tasks] that fall on the shown [days], after today and after each task's own date.
+List<RepeatCopy> repeatCopies(List<Task> tasks, List<String> days, DateTime now) {
+  final first = days.first;
+  final last = parseIsoDate(days.last)!;
+  final today = formatDate(dateOnly(now));
+  final out = <RepeatCopy>[];
+  for (final t in tasks) {
+    if (t.recurrence == null || t.dueDate == null) continue;
+    final Recurrence r;
+    try {
+      r = parseRecurrence(t.recurrence!, now);
+    } on RecurrenceException {
+      continue;
+    }
+    for (final d in occurrencesBetween(r, due: parseIsoDate(t.dueDate!)!, to: last)) {
+      final day = formatDate(d);
+      if (day.compareTo(first) >= 0 && day.compareTo(today) > 0) out.add(RepeatCopy(t, day));
+    }
+  }
+  return out;
 }
 
 /// The time zone the grid is drawn in, as Google's grid shows it (GMT+3, GMT+5:30).

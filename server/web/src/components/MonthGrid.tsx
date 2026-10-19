@@ -5,13 +5,14 @@ import { minutesOf } from '../lib/timegrid';
 import { useData } from '../state/data';
 import { usePrefs } from '../state/prefs';
 import { useUi } from '../state/ui';
-import type { Task } from '../types';
+import { Repeat } from 'lucide-react';
+import type { RepeatCopy, Task } from '../types';
 
 const MAX_CHIPS = 3;
 const chipColours = (c: string) => ({ ['--c' as string]: c, ['--fg' as string]: onColour(c) });
 
 /** A month as six weeks. Tasks are chips in their day; drag one onto another day to move it (its time stays). */
-export function MonthGrid({ days, month, tasks, onPickDay }: { days: string[]; month: number; tasks: Task[]; onPickDay: (day: string) => void }) {
+export function MonthGrid({ days, month, tasks, repeats, onPickDay }: { days: string[]; month: number; tasks: Task[]; repeats: RepeatCopy[]; onPickDay: (day: string) => void }) {
   const { updateTask, projectById } = useData();
   const { openTask, openQuickAdd } = useUi();
   const { use24h } = usePrefs();
@@ -20,14 +21,15 @@ export function MonthGrid({ days, month, tasks, onPickDay }: { days: string[]; m
   const dragRef = useRef<typeof drag>(null);
 
   const byDay = useMemo(() => {
-    const map = new Map<string, Task[]>();
+    const map = new Map<string, { task: Task; repeat: boolean }[]>();
     for (const t of tasks) {
       if (!t.due) continue;
-      map.set(t.due.date, [...(map.get(t.due.date) ?? []), t]);
+      map.set(t.due.date, [...(map.get(t.due.date) ?? []), { task: t, repeat: false }]);
     }
-    for (const list of map.values()) list.sort((a, b) => (a.due!.time ?? '').localeCompare(b.due!.time ?? '') || a.priority - b.priority);
+    for (const r of repeats) map.set(r.day, [...(map.get(r.day) ?? []), { task: r.task, repeat: true }]);
+    for (const list of map.values()) list.sort((a, b) => (a.task.due!.time ?? '').localeCompare(b.task.due!.time ?? '') || a.task.priority - b.task.priority);
     return map;
-  }, [tasks]);
+  }, [tasks, repeats]);
 
   const set = (d: typeof drag) => {
     dragRef.current = d;
@@ -110,15 +112,17 @@ export function MonthGrid({ days, month, tasks, onPickDay }: { days: string[]; m
               <button className="month-num" onClick={() => onPickDay(d)} aria-label={`Show ${d}`}>
                 {date.getDate() === 1 ? date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : date.getDate()}
               </button>
-              {shown.map((t) => (
+              {shown.map(({ task: t, repeat }) => (
                 <div
-                  key={t.id}
-                  className={`month-chip ${minutesOf(t.due?.time) != null ? 'timed' : 'filled'} ${drag?.id === t.id ? 'dragging' : ''}`}
+                  key={`${repeat ? 'repeat-' : ''}${t.id}`}
+                  className={`month-chip ${minutesOf(t.due?.time) != null ? 'timed' : 'filled'} ${repeat ? 'repeat' : ''} ${!repeat && drag?.id === t.id ? 'dragging' : ''}`}
                   style={chipColours(eventColour(projectColour(projectById(t.project_id))))}
-                  onPointerDown={(e) => begin(e, t)}
-                  title={t.title}
+                  onPointerDown={repeat ? undefined : (e) => begin(e, t)}
+                  onClick={repeat ? () => openTask(t.id) : undefined}
+                  title={repeat ? `${t.title} (repeats)` : t.title}
                 >
                   {minutesOf(t.due?.time) != null && <i className="dot" />}
+                  {repeat && <Repeat size={11} />}
                   {t.due?.time && minutesOf(t.due.time) != null && <span className="t">{clock(t.due.time, use24h)}</span>}
                   <span className="title">{t.title}</span>
                 </div>

@@ -403,4 +403,39 @@ void main() {
       expect((await call('POST', '/api/v1/quick-add/parse', token: t, body: {'text': 'x', 'project_id': 'nope'})).status, 404);
     });
   });
+
+  group('the later days of repeating tasks (for the calendar)', () {
+    late String t;
+    setUp(() async => t = await signIn(alice));
+
+    Future<List<String>> days(String id, String from, String to, {String today = '2026-10-19'}) async {
+      final r = await call('GET', '/api/v1/tasks/occurrences?from=$from&to=$to&today=$today', token: t);
+      expect(r.status, 200);
+      return [for (final o in r.json['occurrences'] as List) if ((o as Map)['task_id'] == id) o['date'] as String];
+    }
+
+    test('lists each day after the task\'s own date (and after today) that falls in the range', () async {
+      final id = (await call('POST', '/api/v1/tasks', token: t, body: {'title': 'Gym', 'due_date': '2026-10-19', 'due_time': '18:00', 'recurrence': 'every mon, fri'})).json['id'] as String;
+      expect(await days(id, '2026-10-19', '2026-10-30'), ['2026-10-23', '2026-10-26', '2026-10-30']);
+      expect(await days(id, '2026-10-24', '2026-10-27'), ['2026-10-26'], reason: 'only what falls in the range');
+    });
+
+    test('leaves out a task that does not repeat, hourly repeats and ones counted from completion', () async {
+      final once = (await call('POST', '/api/v1/tasks', token: t, body: {'title': 'Once', 'due_date': '2026-10-19'})).json['id'] as String;
+      final hourly = (await call('POST', '/api/v1/tasks', token: t, body: {'title': 'Pills', 'due_date': '2026-10-19', 'due_time': '08:00', 'recurrence': 'every 6 hours'})).json['id'] as String;
+      final after = (await call('POST', '/api/v1/tasks', token: t, body: {'title': 'Call', 'due_date': '2026-10-19', 'recurrence': 'every! 2 days'})).json['id'] as String;
+      for (final id in [once, hourly, after]) {
+        expect(await days(id, '2026-10-19', '2026-10-30'), isEmpty);
+      }
+    });
+
+    test('is read-only, refuses bad dates and huge ranges, and shows only the caller\'s own tasks', () async {
+      await call('POST', '/api/v1/tasks', token: t, body: {'title': 'Mine', 'due_date': '2026-10-19', 'recurrence': 'every day'});
+      expect((await call('GET', '/api/v1/tasks/occurrences?from=2026-10-19', token: t)).status, 400);
+      expect((await call('GET', '/api/v1/tasks/occurrences?from=soon&to=2026-10-30', token: t)).status, 400);
+      expect((await call('GET', '/api/v1/tasks/occurrences?from=2026-01-01&to=2027-12-31', token: t)).status, 400);
+      final bob2 = await signIn(bob);
+      expect((await call('GET', '/api/v1/tasks/occurrences?from=2026-10-19&to=2026-10-30&today=2026-10-19', token: bob2)).json['occurrences'], isEmpty);
+    });
+  });
 }

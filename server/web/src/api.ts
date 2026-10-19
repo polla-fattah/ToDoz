@@ -66,6 +66,9 @@ export const api = {
   sections: () => request<{ sections: Section[] }>('GET', '/api/v1/sections').then((r) => r.sections),
   labels: () => request<{ labels: Label[] }>('GET', '/api/v1/labels').then((r) => r.labels),
   tasks: () => request<{ tasks: Task[] }>('GET', '/api/v1/tasks').then((r) => r.tasks),
+  /** The later days of repeating tasks between two dates (days up to `today` are left out), for the calendar. */
+  occurrences: (from: string, to: string, today: string) =>
+    request<{ occurrences: { task_id: string; date: string }[] }>('GET', `/api/v1/tasks/occurrences?from=${from}&to=${to}&today=${today}`).then((r) => r.occurrences),
   completed: (limit = 100) => request<{ items: CompletedItem[] }>('GET', `/api/v1/completed?limit=${limit}`).then((r) => r.items),
   comments: (taskId: string) => request<{ comments: Comment[] }>('GET', `/api/v1/comments?task_id=${enc(taskId)}`).then((r) => r.comments),
 

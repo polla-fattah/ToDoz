@@ -171,6 +171,22 @@ DateTime? nextMoment(Recurrence r, {required DateTime currentDue, required DateT
   return next;
 }
 
+/// The dates after [due], up to and including [to], on which a repeating task comes round again, for showing in a
+/// calendar. Hourly repeats and `every!` / `after` repeats (which depend on when each one is finished) give none.
+List<DateTime> occurrencesBetween(Recurrence r, {required DateTime due, required DateTime to, int limit = 3000}) {
+  if (r.isHourly || r.fromCompletion) return const [];
+  final end = dateOnly(to);
+  final out = <DateTime>[];
+  var current = dateOnly(due);
+  while (out.length < limit && current.isBefore(end)) {
+    final next = nextOccurrence(r, currentDue: current, completedOn: current);
+    if (next == null || next.isAfter(end)) break;
+    out.add(next);
+    current = next;
+  }
+  return out;
+}
+
 /// The first due date when a task is created with a repeat and no date.
 DateTime firstOccurrence(Recurrence r, DateTime now) {
   final today = dateOnly(now);
