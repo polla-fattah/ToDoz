@@ -105,9 +105,9 @@ def main():
     wxs_content = f"""<?xml version="1.0" encoding="windows-1252"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Product Name="ToDoz" Id="*" UpgradeCode="B8B3D937-2E89-4D88-B391-4D9EF6F3F4D2"
-    Language="1033" Codepage="1252" Version="1.0.0" Manufacturer="Dr. Polla Fattah">
+    Language="1033" Codepage="1252" Version="1.0.0" Manufacturer="Polla Fattah">
     <Package Id="*" Keywords="Installer" Description="ToDoz Desktop Installer"
-      Comments="ToDoz Local-First Task Management" Manufacturer="Dr. Polla Fattah"
+      Comments="ToDoz Local-First Task Management" Manufacturer="Polla Fattah"
       InstallerVersion="200" Languages="1033" Compressed="yes" SummaryCodepage="1252" />
 
     <MajorUpgrade DowngradeErrorMessage="A newer version of ToDoz is already installed." />
