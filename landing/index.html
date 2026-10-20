@@ -4,48 +4,41 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ToDoz — Sovereign, Offline-First Task Management</title>
-  <meta name="description" content="Personal, offline-first task manager built for sub-100ms speed, mathematical recurrence, calendar time-grids, and zero AI bloat. Available on Windows, Android, Ubuntu, and Web.">
+  <meta name="description" content="Personal, offline-first task manager built for sub-100ms speed, mathematical recurrence, calendar time-grids, and zero AI bloat. Available on Windows, Android, Linux, and Web.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/css/style.css">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2306b6d4'/%3E%3Cstop offset='1' stop-color='%238b5cf6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Cpath d='M18 33l9 9 19-21' fill='none' stroke='white' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/css/style.css?v=4">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23141820'/%3E%3Cpath d='M18 33l9 9 19-21' fill='none' stroke='white' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 </head>
 <body>
 
   <!-- Navigation -->
   <header class="navbar">
-    <a href="#" class="nav-brand">
+    <a href="/" class="nav-brand">
       <div class="brand-icon">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"></polyline>
         </svg>
       </div>
       <span>ToDoz</span>
-      <span class="brand-badge">Sovereign v1.0</span>
+      <span class="brand-badge">v1.0 Sovereign</span>
     </a>
 
     <ul class="nav-links">
       <li><a href="#features" class="nav-link">Features</a></li>
-      <li><a href="#views" class="nav-link">Calendar & Views</a></li>
-      <li><a href="#philosophy" class="nav-link">Philosophy</a></li>
+      <li><a href="/philosophy" class="nav-link">Philosophy</a></li>
+      <li><a href="#views" class="nav-link">Views</a></li>
       <li><a href="#downloads" class="nav-link">Downloads</a></li>
-      <li><a href="/help" class="nav-link" style="color: var(--accent-cyan); font-weight: 700;">Docs &amp; Help</a></li>
+      <li><a href="/help" class="nav-link">Docs &amp; Help</a></li>
     </ul>
 
     <div class="nav-actions">
-      <a href="https://github.com/polla-fattah/ToDoz" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="padding: 0.65rem 1rem;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-        </svg>
+      <a href="https://github.com/polla-fattah/ToDoz" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
         GitHub
       </a>
       <a href="/app" class="btn btn-primary">
-        Launch Web App
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-          <polyline points="12 5 19 12 12 19"></polyline>
-        </svg>
+        Open Web App
       </a>
     </div>
   </header>
@@ -53,391 +46,363 @@
   <!-- Hero Section -->
   <section class="hero">
     <div class="hero-pill">
-      ⚡ Offline-First • Zero Cloud Lock-In • No AI Bloat
+      Offline-First • Zero Cloud Lock-In • Sub-100ms
     </div>
 
     <h1 class="hero-title">
-      Sovereign Task Execution.<br>
-      <span class="text-gradient">Engineered for Pure Speed.</span>
+      Sovereign Task Execution.
+      <span class="hero-subhead">Fast, deterministic, and respectful of your attention.</span>
     </h1>
 
     <p class="hero-subtitle">
-      A personal, local-first task manager modeled on Todoist’s peak workflow. Instant sub-100ms response, deterministic recurrence parsing, Google Calendar time-grids, and self-hosted private synchronization.
+      A local-first task manager built for sub-100ms response, deterministic recurrence parsing, Google Calendar time-grids, and self-hosted private synchronization. No subscriptions, no tracking telemetry, and zero AI bloat.
     </p>
 
     <div class="hero-cta-group">
-      <a href="/app" class="btn btn-primary btn-lg">
-        Open Web App
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-          <polyline points="12 5 19 12 12 19"></polyline>
-        </svg>
-      </a>
-      <a href="#downloads" class="btn btn-secondary btn-lg">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="7 10 12 15 17 10"></polyline>
-          <line x1="12" y1="15" x2="12" y2="3"></line>
-        </svg>
+      <a href="#downloads" class="btn btn-primary btn-lg">
         Download Installers
+      </a>
+      <a href="/app" class="btn btn-secondary btn-lg">
+        Launch Web App
+      </a>
+      <a href="/philosophy" class="btn btn-subtle btn-lg">
+        Read Philosophy →
       </a>
     </div>
 
-    <!-- UI Mockup -->
-    <div class="mockup-wrapper">
-      <div class="mockup-inner">
-        <div class="mockup-header">
-          <div class="window-dots">
-            <span class="dot dot-red"></span>
-            <span class="dot dot-yellow"></span>
-            <span class="dot dot-green"></span>
+    <!-- Sleek Desktop Preview -->
+    <div class="preview-card">
+      <div class="preview-header">
+        <div class="window-dots">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+        <div class="preview-title">ToDoz — Today &amp; Schedule</div>
+      </div>
+
+      <div class="preview-body">
+        <div class="preview-sidebar">
+          <div class="sidebar-row active">
+            <span>📅 Today</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">3</span>
           </div>
-          <div class="mockup-titlebar">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="16" y1="2" x2="16" y2="6"></line>
-              <line x1="8" y1="2" x2="8" y2="6"></line>
-              <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
-            ToDoz Desktop — Today & Schedule
+          <div class="sidebar-row">
+            <span>📥 Inbox</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">4</span>
           </div>
-          <div style="width: 50px;"></div>
+          <div class="sidebar-row">
+            <span>🗓️ Upcoming</span>
+          </div>
+          <div class="sidebar-row">
+            <span>📊 Calendar View</span>
+          </div>
+          <div class="sidebar-label">Projects</div>
+          <div class="sidebar-row"><span># Research</span></div>
+          <div class="sidebar-row"><span># Teaching</span></div>
+          <div class="sidebar-row"><span># SmartGate</span></div>
         </div>
 
-        <div class="mockup-content">
-          <!-- Sidebar -->
-          <div class="mockup-sidebar">
-            <div class="sidebar-item">
-              <span>📥 Inbox</span>
-              <span style="font-size: 0.75rem; color: var(--text-muted);">4</span>
-            </div>
-            <div class="sidebar-item active">
-              <span>📅 Today</span>
-              <span style="font-size: 0.75rem; background: #0284c7; color: white; padding: 0.1rem 0.4rem; border-radius: 6px;">3</span>
-            </div>
-            <div class="sidebar-item">
-              <span>🗓️ Upcoming</span>
-            </div>
-            <div class="sidebar-item">
-              <span>📊 Calendar View</span>
-            </div>
-            <div style="height: 1px; background: var(--border-glass); margin: 0.8rem 0;"></div>
-            <div style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding: 0.2rem 0.6rem;">Projects</div>
-            <div class="sidebar-item"><span>🔵 # Research</span></div>
-            <div class="sidebar-item"><span>🟣 # Teaching</span></div>
-            <div class="sidebar-item"><span>🟢 # SmartGate</span></div>
+        <div class="preview-main">
+          <div class="preview-quickadd">
+            <span style="color: var(--text-muted);">+</span>
+            <span id="quickadd-text">Review PhD thesis draft tomorrow at 4pm p1 #research</span>
           </div>
 
-          <!-- Main Panel -->
-          <div class="mockup-main">
-            <!-- Simulated Quick Add -->
-            <div class="mockup-quickadd">
-              <div>
-                <span style="color: #64748b;">+ Quick Add: </span>
-                <span id="quickadd-text">Review PhD thesis draft tomorrow at 4pm p1 #research {nov 30}</span>
-                <span style="animation: blink 1s infinite;">|</span>
+          <div class="task-list">
+            <div class="task-item">
+              <div class="task-left">
+                <div class="task-box p1"></div>
+                <div style="font-weight: 500;">Review Association Rule Mining benchmark experiment</div>
               </div>
-              <div class="tag-preview">
-                <span class="token-due">tomorrow 4pm</span>
-                <span class="token-p1">p1</span>
-                <span class="token-proj">#research</span>
+              <div class="task-tags">
+                <span>Today 2:00 PM</span>
+                <span>#Research</span>
               </div>
             </div>
 
-            <!-- Task List -->
-            <div class="task-row">
-              <div class="task-check"></div>
-              <div class="task-title">Review Association Rule Mining benchmark experiment</div>
-              <div class="task-badges">
-                <span class="badge-date">Today 2:00 PM</span>
-                <span class="badge-tag">#Research</span>
+            <div class="task-item">
+              <div class="task-left">
+                <div class="task-box"></div>
+                <div>Bologna Process syllabus updates for Software Engineering</div>
+              </div>
+              <div class="task-tags">
+                <span>Today 5:30 PM</span>
+                <span>#Teaching</span>
               </div>
             </div>
 
-            <div class="task-row">
-              <div class="task-check blue"></div>
-              <div class="task-title">Bologna Process syllabus updates for Software Engineering</div>
-              <div class="task-badges">
-                <span class="badge-date">Today 5:30 PM</span>
-                <span class="badge-tag">#Teaching</span>
+            <div class="task-item">
+              <div class="task-left">
+                <div class="task-box"></div>
+                <div>Sync meeting on SmartGate infrastructure deployment</div>
               </div>
-            </div>
-
-            <div class="task-row">
-              <div class="task-check amber"></div>
-              <div class="task-title">Sync meeting on SmartGate infrastructure deployment</div>
-              <div class="task-badges">
-                <span class="badge-date">Tomorrow 10:00 AM</span>
-                <span class="badge-tag">#SmartGate</span>
+              <div class="task-tags">
+                <span>Tomorrow 10:00 AM</span>
+                <span>#SmartGate</span>
               </div>
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- The Philosophy Section (Clickable from Nav & Hero) -->
+  <section id="philosophy" class="section" style="border-top: 1px solid var(--border-subtle);">
+    <div class="section-tag">THE MANIFESTO</div>
+    <h2 class="section-title">The ToDoz Philosophy</h2>
+    <p class="section-desc">
+      Modern productivity software has lost its way into subscription paywalls, tracking telemetry, and sluggish cloud bloat. ToDoz returns to sovereign first principles.
+    </p>
+
+    <div class="manifesto-banner" style="margin-bottom: 2rem;">
+      <div class="manifesto-quote">
+        "Your data belongs on your devices first. Tools should be fast, deterministic, and respectful of your attention."
+      </div>
+      <a href="/philosophy" class="btn btn-primary">
+        Read Full Manifesto (PHILOSOPHY.md) →
+      </a>
+    </div>
+
+    <div class="pillar-grid">
+      <div class="pillar-card">
+        <div class="pillar-num">PILLAR 01</div>
+        <div class="pillar-title">Local-First Sovereignty</div>
+        <div class="pillar-text">
+          Every read, write, query, and state transition occurs against a local SQLite database (via Drift). Instant sub-100ms response with zero network requirement.
+        </div>
+      </div>
+
+      <div class="pillar-card">
+        <div class="pillar-num">PILLAR 02</div>
+        <div class="pillar-title">Self-Hosted Sync</div>
+        <div class="pillar-text">
+          Run your own lightweight single-container server. Pair devices with short-lived 1-time invite codes. Zero passwords stored on servers, compatible with Tailscale VPNs.
+        </div>
+      </div>
+
+      <div class="pillar-card">
+        <div class="pillar-num">PILLAR 03</div>
+        <div class="pillar-title">Deterministic Engine</div>
+        <div class="pillar-text">
+          Natural language recurrence (<code>every! 2 months</code>, <code>every 1st wed</code>) is parsed by a mathematical grammar. No probabilistic AI guessing and zero battery drain.
+        </div>
+      </div>
+
+      <div class="pillar-card">
+        <div class="pillar-num">PILLAR 04</div>
+        <div class="pillar-title">Separation of Concerns</div>
+        <div class="pillar-text">
+          Tasks are operational, stateful, and ephemeral. Notes and reflections belong in local Markdown vaults. Keep tools loosely coupled through standard URIs, not a bloated monolith.
+        </div>
+      </div>
+
+      <div class="pillar-card">
+        <div class="pillar-num">PILLAR 05</div>
+        <div class="pillar-title">Decades-Long Survivability</div>
+        <div class="pillar-text">
+          Open standard SQLite and standard Markdown survive 50 years. Structured task data is exportable to CSV, ICS, and JSON anytime with zero vendor lock-in.
+        </div>
+      </div>
+
+      <div class="pillar-card" style="display: flex; flex-direction: column; justify-content: center; background: rgba(255, 255, 255, 0.02);">
+        <div class="pillar-num">ENGINEERING CRITERIA</div>
+        <div class="pillar-title">The 5 Core Tests</div>
+        <div class="pillar-text" style="margin-bottom: 1rem;">
+          Airplane Test • 100ms Test • Longevity Test • Scope Test • Dependency Test.
+        </div>
+        <a href="/philosophy" style="color: var(--text-primary); font-size: 0.85rem; font-weight: 600; text-decoration: underline;">
+          Explore the evaluation checklist →
+        </a>
       </div>
     </div>
   </section>
 
   <!-- Features Grid -->
-  <section id="features" class="section">
-    <div class="section-header">
-      <div class="section-tag">ENGINEERED TO OUTPERFORM</div>
-      <h2 class="section-title">Built with Craftsmanship, Not Bloat</h2>
-      <p class="section-subtitle">
-        Every line of ToDoz was written with purpose. No tracking cookies, no sluggish web-wrapped Electron shells, and zero AI hallucinations.
-      </p>
-    </div>
+  <section id="features" class="section" style="border-top: 1px solid var(--border-subtle);">
+    <div class="section-tag">ENGINEERING FOUNDATIONS</div>
+    <h2 class="section-title">Built with Craftsmanship</h2>
+    <p class="section-desc">
+      Modeled on Todoist’s peak workflow speed and enhanced with native offline database storage and self-hosted control.
+    </p>
 
     <div class="feature-grid">
-      <!-- Card 1 -->
       <div class="feature-card">
-        <div class="feature-icon-box">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
-            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
-            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
-          </svg>
+        <div class="feature-title">100% Offline SQLite Store</div>
+        <div class="feature-desc">
+          Runs on Drift SQLite. Complete tasks, reorder boards, and filter views instantaneously on planes, trains, or offline server rooms.
         </div>
-        <h3 class="feature-card-title">100% Offline-First (Drift SQLite)</h3>
-        <p class="feature-card-desc">
-          Your tasks reside on your device first. Complete tasks, reorder boards, and filter views with instant sub-100ms response times without internet access.
-        </p>
       </div>
 
-      <!-- Card 2 -->
       <div class="feature-card">
-        <div class="feature-icon-box">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <polyline points="23 4 23 10 17 10"></polyline>
-            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-          </svg>
+        <div class="feature-title">Mathematical Recurrence</div>
+        <div class="feature-desc">
+          Supports <code>every! 2 months</code> (completion-based), <code>every 1st wed</code>, <code>every last workday</code>, and explicit refusal of ambiguous grammar.
         </div>
-        <h3 class="feature-card-title">Mathematical Recurrence Engine</h3>
-        <p class="feature-card-desc">
-          Deterministic natural-language parser. Supports <code>every! 2 months</code> (completion-based), <code>every 1st wed</code>, <code>every last workday</code>, and explicit refusal of invalid syntax.
-        </p>
       </div>
 
-      <!-- Card 3 -->
       <div class="feature-card">
-        <div class="feature-icon-box">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="16" y1="2" x2="16" y2="6"></line>
-            <line x1="8" y1="2" x2="8" y2="6"></line>
-            <line x1="3" y1="10" x2="21" y2="10"></line>
-          </svg>
+        <div class="feature-title">Google Calendar Time-Grid</div>
+        <div class="feature-desc">
+          Native 15-minute slot time-grid in Day, 3-Day, Week, and Month layouts. Drag to reschedule or adjust durations with live Google Calendar sync.
         </div>
-        <h3 class="feature-card-title">Google Calendar Time-Grid</h3>
-        <p class="feature-card-desc">
-          Full 15-minute slot time-grid in Day, 3-Day, Week, and Month layouts. Drag cards to reschedule, drag borders to adjust duration, or switch to Kanban Boards and Lists.
-        </p>
       </div>
 
-      <!-- Card 4 -->
       <div class="feature-card">
-        <div class="feature-icon-box">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-          </svg>
+        <div class="feature-title">Boolean Filter Engine</div>
+        <div class="feature-desc">
+          Full query grammar: <code>(today | overdue) &amp; #Research</code>, <code>p1 &amp; overdue, p4 &amp; today</code>, and <code>due before: next monday</code>.
         </div>
-        <h3 class="feature-card-title">Todoist-Style Power Filters</h3>
-        <p class="feature-card-desc">
-          Full Boolean query language: <code>(today | overdue) & #Research</code>, <code>p1 & overdue, p4 & today</code>, and <code>due before: next monday</code>. Save custom views with live error checking.
-        </p>
       </div>
 
-      <!-- Card 5 -->
       <div class="feature-card">
-        <div class="feature-icon-box">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-          </svg>
+        <div class="feature-title">Zero-Password Pairing</div>
+        <div class="feature-desc">
+          Join devices via short-lived cryptographic pairing codes. No plaintext passwords or email verification traps required.
         </div>
-        <h3 class="feature-card-title">Zero-Password Device Pairing</h3>
-        <p class="feature-card-desc">
-          No passwords stored on servers. Join devices via short-lived cryptographic pairing codes. Revoke stolen devices instantly.
-        </p>
       </div>
 
-      <!-- Card 6 -->
       <div class="feature-card">
-        <div class="feature-icon-box">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
-            <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
-            <line x1="6" y1="6" x2="6.01" y2="6"></line>
-            <line x1="6" y1="18" x2="6.01" y2="18"></line>
-          </svg>
+        <div class="feature-title">Self-Hosted Sync Server</div>
+        <div class="feature-desc">
+          Lightweight Docker service using field-level Last-Write-Wins (LWW) conflict resolution and Tailscale mesh support.
         </div>
-        <h3 class="feature-card-title">Self-Hosted Sync Server</h3>
-        <p class="feature-card-desc">
-          Runs in a single Docker container. Uses field-level Last-Write-Wins (LWW) resolution, Tailscale private mode, and zero third-party cloud lock-in.
-        </p>
       </div>
     </div>
   </section>
 
-  <!-- Interactive Deep Dive -->
-  <section id="views" class="section">
-    <div class="section-header">
-      <div class="section-tag">FLEXIBLE TOPOLOGY</div>
-      <h2 class="section-title">One Task Model. Three View Dimensions.</h2>
-      <p class="section-subtitle">
-        Switch between chronological planning, visual kanban pipelines, and deep hierarchy without losing a single tag.
-      </p>
-    </div>
+  <!-- Interactive Views -->
+  <section id="views" class="section" style="border-top: 1px solid var(--border-subtle);">
+    <div class="section-tag">VIEW DIMENSIONS</div>
+    <h2 class="section-title">One Task Model. Three Perspectives.</h2>
+    <p class="section-desc">
+      Switch between chronological time blocks, visual kanban pipelines, and hierarchical project trees.
+    </p>
 
-    <div class="interactive-box">
-      <nav class="tab-nav">
-        <button class="tab-btn active" data-tab="tab-calendar">📅 Calendar Time-Grid</button>
-        <button class="tab-btn" data-tab="tab-recurrence">🔄 Recurrence Grammar</button>
-        <button class="tab-btn" data-tab="tab-filters">🔍 Query Language</button>
-        <button class="tab-btn" data-tab="tab-sync">⚡ LWW Synchronization</button>
-      </nav>
-
-      <!-- Tab 1 -->
-      <div id="tab-calendar" class="tab-pane active">
-        <h3 style="margin-bottom: 0.75rem; font-size: 1.3rem;">Google Calendar-Style Precision</h3>
-        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; max-width: 700px;">
-          Drawn natively in Flutter and React. Features a "now" line, overlapping side-by-side tasks, duration adjustment handles in 15-minute increments, and auto-scroll when dragging near viewport edges.
-        </p>
-        <div class="code-box">
-// Calendar Views Supported natively:
-• Day View      - Micro-schedule today's hours with exact 15m time blocks
-• 3-Day View    - Multi-day sprint planning for high-intensity work
-• Week View     - Broad 7-day tactical horizon across all projects
-• Month View    - High-level bird's eye view with drag-and-drop reschedule
-        </div>
+    <div class="tab-box">
+      <div class="tab-nav">
+        <button class="tab-btn active" data-tab="tab-calendar">Calendar Time-Grid</button>
+        <button class="tab-btn" data-tab="tab-recurrence">Recurrence Rules</button>
+        <button class="tab-btn" data-tab="tab-filters">Boolean Queries</button>
+        <button class="tab-btn" data-tab="tab-sync">LWW Synchronization</button>
       </div>
 
-      <!-- Tab 2 -->
-      <div id="tab-recurrence" class="tab-pane">
-        <h3 style="margin-bottom: 0.75rem; font-size: 1.3rem;">Deterministic Natural Language Rules</h3>
-        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; max-width: 700px;">
-          Built with an explicit parser in pure Dart. No LLMs guessing what you meant. Every rule executes with mathematical precision.
-        </p>
-        <div class="code-box">
+      <div class="tab-content">
+        <div id="tab-calendar" class="tab-pane active">
+          <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.95rem;">
+            Drawn natively with a "now" marker line, side-by-side overlapping event handling, and 15-minute snap handles:
+          </p>
+          <div class="code-snippet">
+• Day View      - Micro-schedule today's hours with exact 15m time blocks
+• 3-Day View    - Multi-day tactical sprint planning
+• Week View     - Broad 7-day operational horizon
+• Month View    - High-level bird's-eye view with drag-and-drop reschedule
+          </div>
+        </div>
+
+        <div id="tab-recurrence" class="tab-pane">
+          <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.95rem;">
+            Mathematical natural language recurrence parsed offline with deterministic precision:
+          </p>
+          <div class="code-snippet">
 every day                        -> Repeats every calendar day
 every mon, fri at 8pm            -> Strict day-of-week &amp; time constraints
 every 1st wed                    -> Dynamic positional week calculations
-every! 2 months                  -> Completion-based (moves forward from when you finish)
+every! 2 months                  -> Completion-based (schedules from when you finish)
 after 10 days                    -> Exact delay interval after checkoff
-every 12 hours starting at 9pm   -> Sub-daily bounded recurrences
+          </div>
         </div>
-      </div>
 
-      <!-- Tab 3 -->
-      <div id="tab-filters" class="tab-pane">
-        <h3 style="margin-bottom: 0.75rem; font-size: 1.3rem;">Boolean Filter Query Engine</h3>
-        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; max-width: 700px;">
-          Slice and dice your tasks with a custom compiler that evaluates dates, projects, labels, and priorities in sub-millisecond execution.
-        </p>
-        <div class="code-box">
-(today | overdue) &amp; #Research       -> High-priority focus for ongoing papers
-p1 &amp; overdue, p4 &amp; today            -> Critical items + low-stress today tasks
-##Engineering &amp; %bologna             -> Nested project trees with label filters
+        <div id="tab-filters" class="tab-pane">
+          <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.95rem;">
+            Boolean query language evaluated across priorities, dates, labels, and project hierarchies:
+          </p>
+          <div class="code-snippet">
+(today | overdue) &amp; #Research       -> High-priority focus for active research papers
+p1 &amp; overdue, p4 &amp; today            -> Critical items + low-stress items
+##Engineering &amp; %bologna             -> Sub-projects matching specific tags
 due before: next monday &amp; !assigned -> Tasks requiring personal triage this week
+          </div>
         </div>
-      </div>
 
-      <!-- Tab 4 -->
-      <div id="tab-sync" class="tab-pane">
-        <h3 style="margin-bottom: 0.75rem; font-size: 1.3rem;">Field-Level Last-Write-Wins (LWW)</h3>
-        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; max-width: 700px;">
-          If your phone changes a due date while your laptop renames the title offline, both edits merge flawlessly without losing changes or requiring complex conflict resolution dialogues.
-        </p>
-        <div class="code-box">
-• SQLite Triggers log changed fields to a local dirty queue
-• Incremental sync pushes only deltas upon reconnection
+        <div id="tab-sync" class="tab-pane">
+          <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.95rem;">
+            Field-level Last-Write-Wins (LWW) ensures offline multi-device edits merge cleanly:
+          </p>
+          <div class="code-snippet">
+• SQLite Triggers record modified fields to a local dirty log
+• Incremental sync transfers only delta changes upon network reconnection
 • Android WorkManager keeps background reminders refreshed every ~15 mins
-• Windows Toast notifications fire even when the app is completely closed
+• Windows Toast notifications fire even when the application is completely closed
+          </div>
         </div>
       </div>
     </div>
   </section>
 
   <!-- Downloads Section -->
-  <section id="downloads" class="section">
-    <div class="section-header">
-      <div class="section-tag">CROSS-PLATFORM FREEDOM</div>
-      <h2 class="section-title">Install ToDoz Everywhere</h2>
-      <p class="section-subtitle">
-        Native client performance on your desktop and phone, plus instant web access on any machine.
-      </p>
-    </div>
+  <section id="downloads" class="section" style="border-top: 1px solid var(--border-subtle);">
+    <div class="section-tag">CROSS-PLATFORM</div>
+    <h2 class="section-title">Install ToDoz Everywhere</h2>
+    <p class="section-desc">
+      Native client performance on desktop and mobile, plus instant web access from any browser.
+    </p>
 
     <div class="download-grid">
       <!-- Windows MSI -->
       <div class="download-card">
-        <div class="download-icon">
-          <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4h-13.051M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-13.051-1.802"/>
-          </svg>
+        <div>
+          <div class="download-platform">Windows Desktop</div>
+          <div class="download-meta">Windows 10 / 11 (64-bit)</div>
+          <p class="download-note">
+            Authentic Windows MSI installer with background toast notifications, global quick-add, and Start Menu integration.
+          </p>
         </div>
-        <h3 class="download-title">Windows Desktop</h3>
-        <div class="download-version">Windows 10 / 11 (64-bit)</div>
-        <p class="download-specs">
-          Native Windows MSI installer. Supports background toast reminders, global Quick-Add hotkeys, and Start Menu integration.
-        </p>
-        <a href="/downloads/ToDoz-Setup.msi" class="btn btn-secondary download-btn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        <a href="/downloads/ToDoz-Setup.msi" class="btn btn-secondary">
           Download .MSI
         </a>
       </div>
 
       <!-- Android APK -->
       <div class="download-card">
-        <div class="download-icon">
-          <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5902 8.411 13.8533 8.1 12 8.1s-3.5902.311-5.1368.8497L4.8409 5.4467a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/>
-          </svg>
+        <div>
+          <div class="download-platform">Android Mobile</div>
+          <div class="download-meta">Android 8.0+ (ARM64 &amp; x86)</div>
+          <p class="download-note">
+            Full offline mobile application with background WorkManager sync, quick-add share sheet, and exact alarms.
+          </p>
         </div>
-        <h3 class="download-title">Android Mobile</h3>
-        <div class="download-version">Android 8.0+ (ARM64 &amp; x86)</div>
-        <p class="download-specs">
-          Full offline-first mobile app. Supports background WorkManager sync, Quick-Add share sheet, and exact alarms.
-        </p>
-        <a href="/downloads/ToDoz.apk" class="btn btn-secondary download-btn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        <a href="/downloads/ToDoz.apk" class="btn btn-secondary">
           Download .APK
         </a>
       </div>
 
-      <!-- Ubuntu Linux -->
+      <!-- Ubuntu / Linux -->
       <div class="download-card">
-        <div class="download-icon">
-          <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 2.182c5.422 0 9.818 4.396 9.818 9.818 0 5.422-4.396 9.818-9.818 9.818-5.422 0-9.818-4.396-9.818-9.818 0-5.422 4.396-9.818 9.818-9.818z"/>
-          </svg>
+        <div>
+          <div class="download-platform">Ubuntu / Linux</div>
+          <div class="download-meta">Ubuntu 22.04+ / Debian (64-bit)</div>
+          <p class="download-note">
+            Native GTK3 desktop package with local SQLite storage, system tray integration, and native desktop notifications.
+          </p>
         </div>
-        <h3 class="download-title">Ubuntu / Linux</h3>
-        <div class="download-version">Ubuntu 22.04+ / Debian (64-bit)</div>
-        <p class="download-specs">
-          Native GTK3 desktop package with local SQLite storage, system tray integration, and native desktop notifications.
-        </p>
-        <a href="/downloads/todoz-linux.deb" class="btn btn-secondary download-btn">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        <a href="/downloads/todoz-linux.deb" class="btn btn-secondary">
           Download .DEB
         </a>
       </div>
 
-      <!-- Web App -->
-      <div class="download-card" style="border-color: rgba(6, 182, 212, 0.35);">
-        <div class="download-icon" style="background: rgba(6, 182, 212, 0.1);">
-          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="2" y1="12" x2="22" y2="12"></line>
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-          </svg>
+      <!-- Web Browser -->
+      <div class="download-card">
+        <div>
+          <div class="download-platform">Web Browser</div>
+          <div class="download-meta">Modern Browsers (React + TS)</div>
+          <p class="download-note">
+            Zero installation required. Instant web client connected to your self-hosted server or test sandbox.
+          </p>
         </div>
-        <h3 class="download-title">Web Browser</h3>
-        <div class="download-version">All Modern Browsers</div>
-        <p class="download-specs">
-          Direct browser client running React + TypeScript. Instant access from any machine with zero installation required.
-        </p>
-        <a href="/app" class="btn btn-primary download-btn">
+        <a href="/app" class="btn btn-primary">
           Launch Web App
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
         </a>
       </div>
     </div>
@@ -445,26 +410,16 @@ due before: next monday &amp; !assigned -> Tasks requiring personal triage this 
 
   <!-- Footer -->
   <footer class="footer">
-    <div class="footer-container">
-      <div class="footer-brand">
-        <div style="font-weight: 800; font-size: 1.2rem; display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem;">
-          <div class="brand-icon" style="width: 28px; height: 28px;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-          </div>
-          ToDoz
-        </div>
-        <div class="footer-legal">
-          Crafted by Dr. Polla Abdulhamid Fattah. Open standards &amp; sovereign productivity.
-        </div>
+    <div class="footer-inner">
+      <div class="footer-legal">
+        Designed by Dr. Polla Abdulhamid Fattah. Open source under MIT license.
       </div>
 
       <ul class="footer-nav">
+        <li><a href="/philosophy">Philosophy (PHILOSOPHY.md)</a></li>
         <li><a href="/help">Docs &amp; Help</a></li>
         <li><a href="/app">Web Client</a></li>
         <li><a href="https://github.com/polla-fattah/ToDoz" target="_blank" rel="noopener noreferrer">GitHub</a></li>
-        <li><a href="https://github.com/polla-fattah/ToDoz/blob/main/PHILOSOPHY.md" target="_blank" rel="noopener noreferrer">Philosophy</a></li>
       </ul>
     </div>
   </footer>
