@@ -1,7 +1,5 @@
 # ToDoz
 
-(Formerly TaskFlow / NoteDo. The display name is ToDoz; the code, the Android package id and the server keep the name `taskflow` so existing installs, data and updates keep working.)
-
 A personal, offline-first task manager modelled on Todoist (without AI), built with Flutter for Android and Windows.
 
 The requirements are in the [TaskFlow 2.0 SRS](https://claude.ai/code/artifact/796e7f1d-5c0c-447b-bab0-a5e53108adae). The design and architecture principles are documented in [PHILOSOPHY.md](PHILOSOPHY.md), and the server deployment runbook is in [DEPLOYMENT.md](DEPLOYMENT.md). This repository holds **R1 (Foundation)**, **R2 (Time)**, **R3 (Views and filters)**, **R4 (Sync)**, **R5 (Productivity and integrations)** and **R6 (Sharing)**.
@@ -98,7 +96,7 @@ Windows builds and plugins need **Developer Mode** (Settings, System, For develo
 
 ## Icon
 
-The icon is the NoteDo mark (a note with a check and a pen). `tool/make_icons.py` builds every size (Android adaptive, legacy and themed icons, and the Windows `.ico`) from a transparent PNG: `python tool/make_icons.py path/to/logo.png`. Without a file it draws a stand-in mark.
+The icon is the ToDoz mark (a note with a check and a pen). `tool/make_icons.py` builds every size (Android adaptive, legacy and themed icons, and the Windows `.ico`) from a transparent PNG: `python tool/make_icons.py path/to/logo.png`. Without a file it draws a stand-in mark.
 
 ## Signing
 
@@ -110,4 +108,4 @@ Scheduling, the exact-alarm permission, reboot persistence, and the Complete and
 
 ### Reminders on Windows
 
-Reminders, the daily digest and the notifications for shared projects appear as Windows notifications (scheduled toasts, so Windows shows them at the right time **even when NoteDo is closed**). A reminder has **Complete** and **Snooze 10 min** buttons; clicking the toast opens the task. Windows only shows notifications for a desktop app that has a Start Menu shortcut with its app id, so NoteDo makes one called "NoteDo" the first time it runs from a place (and again if you move it). The reminders are rebuilt whenever the app runs or tasks change, so a task that arrives by sync while the app is closed gets its reminder the next time NoteDo is opened. Windows cannot repeat a notification, so the daily digest is scheduled for the next week each time. Focus assist or Do not disturb can hide the toasts. The Complete and Snooze buttons on a Windows toast have unit tests but were not clicked on a real PC.
+Reminders, the daily digest and the notifications for shared projects appear as Windows notifications (scheduled toasts, so Windows shows them at the right time **even when ToDoz is closed**). A reminder has **Complete** and **Snooze 10 min** buttons; clicking the toast opens the task. Windows only shows notifications for a desktop app that has a Start Menu shortcut with its app id, so ToDoz makes one called "ToDoz" the first time it runs from a place (and again if you move it). The reminders are rebuilt whenever the app runs or tasks change, so a task that arrives by sync while the app is closed gets its reminder the next time ToDoz is opened. Windows cannot repeat a notification, so the daily digest is scheduled for the next week each time. Focus assist or Do not disturb can hide the toasts. The Complete and Snooze buttons on a Windows toast have unit tests but were not clicked on a real PC.
