@@ -12,7 +12,7 @@ class TaskFlowApp extends StatelessWidget {
   /// Lets a tapped notification open a task from outside the widget tree.
   final GlobalKey<NavigatorState>? navigatorKey;
 
-  static const _seed = Color(0xFFCF5147); // 1.0's red
+  static const _seed = Color(0xFF007AFF); // ToDoz electric blue
 
   ThemeData _theme(Brightness b) => ThemeData(
         useMaterial3: true,
