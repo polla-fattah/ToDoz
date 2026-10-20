@@ -158,7 +158,7 @@
 
     <div class="manifesto-banner" style="margin-bottom: 2rem;">
       <div class="manifesto-quote">
-        "Your data belongs on your devices first. Tools should be fast, deterministic, and respectful of your attention."
+        "Your data belongs to you. Your tools should respect your time, preserve your freedom, and remain useful without depending on someone else's infrastructure."
       </div>
       <a href="/philosophy" class="btn btn-primary">
         Read Full Manifesto (PHILOSOPHY.md) →
@@ -167,53 +167,61 @@
 
     <div class="pillar-grid">
       <div class="pillar-card">
-        <div class="pillar-num">PILLAR 01</div>
-        <div class="pillar-title">Local-First Sovereignty</div>
+        <div class="pillar-num">PRINCIPLE 01</div>
+        <div class="pillar-title">Sovereignty</div>
         <div class="pillar-text">
-          Every read, write, query, and state transition occurs against a local SQLite database (via Drift). Instant sub-100ms response with zero network requirement.
+          Users control their data, infrastructure, and ability to migrate. Local ownership and self-hosted sync with freedom from mandatory cloud accounts.
         </div>
       </div>
 
       <div class="pillar-card">
-        <div class="pillar-num">PILLAR 02</div>
-        <div class="pillar-title">Self-Hosted Sync</div>
+        <div class="pillar-num">PRINCIPLE 02</div>
+        <div class="pillar-title">Locality</div>
         <div class="pillar-text">
-          Run your own lightweight single-container server. Pair devices with short-lived 1-time invite codes. Zero passwords stored on servers, compatible with Tailscale VPNs.
+          Core functionality runs on the user's device. Offline operation is not an emergency fallback; it is the normal operating model.
         </div>
       </div>
 
       <div class="pillar-card">
-        <div class="pillar-num">PILLAR 03</div>
-        <div class="pillar-title">Deterministic Engine</div>
+        <div class="pillar-num">PRINCIPLE 03</div>
+        <div class="pillar-title">Predictability</div>
         <div class="pillar-text">
-          Natural language recurrence (<code>every! 2 months</code>, <code>every 1st wed</code>) is parsed by a mathematical grammar. No probabilistic AI guessing and zero battery drain.
+          Critical operations are deterministic, transparent, and testable. Intelligence may assist, but mathematical rules must govern.
         </div>
       </div>
 
       <div class="pillar-card">
-        <div class="pillar-num">PILLAR 04</div>
-        <div class="pillar-title">Separation of Concerns</div>
+        <div class="pillar-num">PRINCIPLE 04</div>
+        <div class="pillar-title">Responsiveness</div>
         <div class="pillar-text">
-          Tasks are operational, stateful, and ephemeral. Notes and reflections belong in local Markdown vaults. Keep tools loosely coupled through standard URIs, not a bloated monolith.
+          Respect human attention. Immediate sub-100ms feedback on local interactions without sluggish loading spinners or distracting clutter.
         </div>
       </div>
 
       <div class="pillar-card">
-        <div class="pillar-num">PILLAR 05</div>
-        <div class="pillar-title">Decades-Long Survivability</div>
+        <div class="pillar-num">PRINCIPLE 05</div>
+        <div class="pillar-title">Focused Interoperability</div>
         <div class="pillar-text">
-          Open standard SQLite and standard Markdown survive 50 years. Structured task data is exportable to CSV, ICS, and JSON anytime with zero vendor lock-in.
+          Separate operational tasks from reflective notes. Connect tools through open URIs, Markdown links, and standard calendar feeds.
         </div>
       </div>
 
-      <div class="pillar-card" style="display: flex; flex-direction: column; justify-content: center; background: rgba(255, 255, 255, 0.02);">
+      <div class="pillar-card">
+        <div class="pillar-num">PRINCIPLE 06</div>
+        <div class="pillar-title">Longevity</div>
+        <div class="pillar-text">
+          Information should outlive individual software applications. Open formats (SQLite, Markdown, JSON, ICS) survive for decades.
+        </div>
+      </div>
+
+      <div class="pillar-card" style="display: flex; flex-direction: column; justify-content: center; background: rgba(255, 255, 255, 0.02); grid-column: 1 / -1;">
         <div class="pillar-num">ENGINEERING CRITERIA</div>
-        <div class="pillar-title">The 5 Core Tests</div>
+        <div class="pillar-title">The 7 Core Tests</div>
         <div class="pillar-text" style="margin-bottom: 1rem;">
-          Airplane Test • 100ms Test • Longevity Test • Scope Test • Dependency Test.
+          Airplane Test • 100ms Test • Longevity Test • Responsibility Test • Dependency Test • Predictability Test • Security &amp; Recovery Test.
         </div>
         <a href="/philosophy" style="color: var(--text-primary); font-size: 0.85rem; font-weight: 600; text-decoration: underline;">
-          Explore the evaluation checklist →
+          Explore the complete architectural evaluation checklist →
         </a>
       </div>
     </div>

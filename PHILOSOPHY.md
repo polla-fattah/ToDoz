@@ -1,101 +1,227 @@
-# The ToDoz Philosophy: Principles of Sovereign Productivity
+# The ToDoz Philosophy
+## A Manifesto for Sovereign Personal Software
 
-> *"Your data belongs on your devices first. Tools should be fast, deterministic, and respectful of your attention."*
-
----
-
-## 1. The Core Manifesto
-
-Modern productivity software has lost its way. Mainstream tools (Notion, Todoist, Evernote, ClickUp) have converged into slow, subscription-based, cloud-locked silos burdened with unwanted generative AI summaries, tracking telemetry, and feature bloat.
-
-**ToDoz** was built on a counter-philosophy:
-1. **Sovereignty:** You own your data. It resides locally on your hardware.
-2. **Speed:** Local interactions must be sub-100ms and operate with zero network dependency.
-3. **Determinism:** Core logic (recurring schedules, filters, natural-language quick-add) must be mathematically predictable, not guessed by non-deterministic probabilistic models.
-4. **Focus:** A task manager must be an elite execution engine—not an inferior text editor, social network, or bloated project suite.
+> *Your data belongs to you. Your tools should respect your time, preserve your freedom, and remain useful without depending on someone else's infrastructure.*
 
 ---
 
-## 2. Foundational Pillars
+## 01. The Core Manifesto
 
-### Pillar 1: Local-First & Offline Sovereignty
-* **The Device is Primary:** Every read, write, query, and state transition occurs against a local data store (e.g., SQLite via Drift). The network is strictly an optional transport layer, never a prerequisite for UI interaction.
-* **Resilient to Outages:** Whether on an airplane, in a remote server room, or experiencing a home internet blackout, the application functions identically.
-* **Zero UI Latency:** Tapping a checkbox or typing a task should never display a loading spinner.
+Software should adapt to people, not force people to adapt to software.
 
-### Pillar 2: Self-Hosted, Lightweight Synchronization
-* **Private Cloud, Not Public Silos:** Synchronization is handled by a single-binary, self-hosted service with minimal operational overhead (e.g., Dart + SQLite, Rust, or Go).
-* **Zero Credential Hassle:** Device pairing via short-lived, one-time invitation codes eliminates password management, email verification loops, and third-party auth dependencies.
-* **VPN / Zero-Trust Ready:** First-class compatibility with private mesh overlays like **Tailscale** ensures that sync servers never need to expose public open ports to the internet.
-* **Pragmatic Merge Strategy:** For personal and small-group operational data, field-level **Last-Write-Wins (LWW)** with change-capture triggers offers 99.9% of the practical utility of complex CRDTs/OT with a fraction of the architectural complexity.
+Modern productivity applications offer remarkable capabilities, but many increasingly depend on cloud services, subscriptions, complex interfaces, and features designed for broad commercial markets rather than individual needs.
 
-### Pillar 3: Deterministic Parsing Over Probabilistic AI
-* **Rule-Based Certainty:** Natural-language inputs (e.g., `Review draft tomorrow at 4pm p1 #research {nov 30}`) are parsed by a deterministic lexer/parser.
-* **Explicit Failure Modes:** If an input or recurrence expression (`every 1st wed`) cannot be parsed, the system informs the user why rather than silently guessing incorrectly.
-* **Zero Telemetry & Cost:** Deterministic engines run entirely offline with zero battery drain, zero token costs, and zero leakage of personal schedules to external API providers.
+ToDoz represents a different choice.
 
-### Pillar 4: The Separation of Concerns (Tasks vs. Knowledge)
-* **Execution vs. Reflection:**
-  * **Tasks are operational, stateful, and ephemeral:** They have checkboxes, due dates, notification alarms, snooze states, and priorities. Once completed, their daily utility diminishes.
-  * **Notes and Diaries are archival, relational, and reflective:** They consist of prose, code snippets, retrospective analysis, and cross-linked references. Their value compounds over time.
-* **The Anti-Monolith Stance:** Do not build a mediocre text editor inside a task manager, and do not shoehorn a fragile task engine into a markdown note tool. 
-* **Loose Coupling:** Connect tools through standard operating-system protocols (URI schemes like `todoz://` and `obsidian://`, terminal CLIs, or calendar `.ics` standards) rather than fusing them into a sluggish monolith.
+It is built on the belief that personal software should be **owned, controlled, understood, and shaped by the people who use it**.
 
-### Pillar 5: Data Longevity & Plain Text Respect
-* **Long-term Survivability:** Any archive that matters for 10 to 50 years (such as daily journals, research thoughts, and project briefs) should exist as **plain Markdown files** stored directly in the local file system.
-* **Export Freedom:** Structured task data must always be exportable in open, standard formats (CSV, ICS, JSON) with non-destructive undo and backup safety nets.
+AI-assisted development makes such software increasingly practical. However, reducing the cost of writing code does not eliminate the importance of architecture, verification, security, and maintenance.
+
+Six principles define ToDoz:
+
+1. **Sovereignty:** Users control their data, infrastructure, and ability to migrate.
+2. **Locality:** Core functionality runs on the user's device, independently of network connectivity.
+3. **Predictability:** Critical operations are deterministic, transparent, and testable.
+4. **Responsiveness:** Software respects the user's time and attention.
+5. **Focused Interoperability:** Applications maintain clear responsibilities while exchanging information freely.
+6. **Longevity:** Information should outlive individual applications, vendors, and technologies.
+
+These principles take precedence over any framework, database, feature, or implementation technique.
 
 ---
 
-## 3. Replicating the Philosophy Across Other Ecosystems (e.g., Markdown & Notes)
+## 02. The Six Foundational Principles
 
-To build or replicate a complementary system (such as a local-first daily journal or Second Brain) under the exact same philosophy:
+### I. Sovereignty: The User Is the Owner
 
-```mermaid
-flowchart TD
-    subgraph ExecutionLayer["1. Execution Layer (ToDoz)"]
-        A["Tasks & Calendar"] -->|"Fast triage, alarms, LWW sync"| B["Drift / SQLite Store"]
-    end
+Personal information should not become inaccessible because a subscription expires, an account is suspended, or a service disappears.
 
-    subgraph ArchivalLayer["2. Knowledge & Diary Layer (Markdown Vault)"]
-        C["Daily Journals & Notes"] -->|"Plain .md files"| D["Local Filesystem (Obsidian / Vim)"]
-        D -->|"Git / Syncthing / Tailscale"| E["Self-Hosted Remote / Backup"]
-    end
+Sovereignty requires meaningful control over data, including the ability to inspect, export, back up, migrate, and restore it.
 
-    ExecutionLayer <-->|"Loose Coupling: URIs & References"| ArchivalLayer
-```
+ToDoz prioritizes local ownership, documented formats, self-hosted infrastructure, and freedom from mandatory commercial accounts.
 
-### The Blueprint for Markdown-Based Systems:
+**Ownership is meaningful only when the user retains the ability to leave.**
 
-1. **Local Filesystem as the Single Source of Truth:**
-   * Organize documents in standard folders:
-     ```text
-     SecondBrain/
-     ├── Daily/
-     │   └── YYYY-MM-DD.md     # Journal, daily log, retrospectives
-     ├── Projects/             # Long-term research & business documents
-     ├── Literature/           # Reading notes, paper summaries
-     └── Attachments/          # Local images, PDFs, media
-     ```
-2. **Sync Without Vendor Lock-In:**
-   * **Option A (Versioned):** Use a private Git repository hosted on a self-hosted server (Gitea/Forgejo) or private repository, synced via automated commit-and-push hooks.
-   * **Option B (Real-time P2P):** Use **Syncthing** over local network and Tailscale for seamless, continuous background folder synchronization between PC, server, and phone.
-3. **Mobile Read/Write Access:**
-   * On mobile, point an offline-first markdown reader/editor (e.g., Obsidian Mobile, Markor, or Logseq) directly to the local synchronized directory.
-   * Edits happen locally; sync happens asynchronously in the background.
-4. **End-of-Day Synthesis:**
-   * Review completed tasks from the execution engine (ToDoz).
-   * Write daily reflections, discoveries, and meeting notes in the day's Markdown file (`YYYY-MM-DD.md`).
-   * Hyperlink to projects and external assets using standard markdown `[[wiki-links]]` or URI schemes.
+### II. Locality: The Device Comes First
+
+The network should enhance an application, not determine whether it can function.
+
+Creating tasks, updating priorities, managing schedules, and searching locally stored information must remain available offline.
+
+ToDoz treats the local database as the primary working environment. Synchronization operates separately, with explicit status, predictable conflict handling, and recovery from interrupted connections.
+
+**Offline operation is not an emergency fallback. It is the normal operating model.**
+
+### III. Predictability: Intelligence May Assist, Rules Must Govern
+
+Tasks, reminders, filters, and recurring schedules represent commitments. Their behavior must be consistent, explainable, and reproducible.
+
+ToDoz uses deterministic rules for critical operations and explicitly handles invalid or ambiguous inputs rather than silently guessing.
+
+AI may optionally help interpret a user's intention, but proposed actions must be validated and authorized before execution.
+
+**Intelligence may assist. Predictability must govern.**
+
+### IV. Responsiveness: Respect Human Attention
+
+Software should reduce effort, not become another source of work.
+
+Common local interactions should provide immediate feedback. ToDoz targets a visible response within 100 milliseconds for routine actions on supported hardware.
+
+Responsiveness also means avoiding unnecessary notifications, interface complexity, background processing, and features that distract from the task at hand.
+
+**Good software helps users complete their work without becoming work itself.**
+
+### V. Focused Interoperability: Separate Responsibilities, Connect Information
+
+Tasks manage actions, deadlines, priorities, and operational states. Notes and diaries preserve knowledge, reflection, references, and long-term understanding.
+
+These responsibilities are related but do not require a single monolithic application.
+
+ToDoz focuses on task execution while supporting connections to Markdown repositories, journals, calendars, and complementary applications through documented interfaces and open formats.
+
+Users should be able to change one tool without losing access to information maintained by another.
+
+**Separate responsibilities. Connect information. Preserve freedom of choice.**
+
+### VI. Longevity: Information Should Outlive Software
+
+Applications and technologies change, but personal records may remain valuable for decades.
+
+ToDoz favors documented, widely supported formats, portable exports, verified backups, and maintainable migration paths.
+
+No technology guarantees fifty-year compatibility. Longevity depends on continued attention to recoverability, documentation, and preservation.
+
+**Applications are temporary. Personal information deserves a longer life.**
 
 ---
 
-## 4. The Engineering Evaluation Checklist
+## 03. The Architecture of Personal Productivity
 
-Before adding any feature to ToDoz or adopting a new productivity component, evaluate it against these five tests:
+ToDoz follows a modular model that separates execution from reflection while allowing both to cooperate.
 
-1. **The Airplane Test:** Does this feature work seamlessly with no internet connection?
-2. **The 100ms Test:** Can this action be executed and visually reflected in the UI in under 100 milliseconds?
-3. **The Longevity Test:** If the server or application is discontinued tomorrow, is the user's historical data still completely readable and recoverable?
-4. **The Scope Test:** Does this belong to *action/execution* (task), or *reflection/synthesis* (note)? If it is reflection, delegate it to the markdown vault.
-5. **The Dependency Test:** Does this introduce an external API dependency or monthly SaaS liability that compromises privacy or system stability? If yes, reject it.
+### Execution Layer: ToDoz
+
+Responsible for capturing commitments, managing tasks, schedules, priorities, recurring activities, reminders, and completion history.
+
+**Its central question: What needs to be done, when, and in what state is it?**
+
+### Knowledge Layer: Markdown Ecosystem
+
+Responsible for journals, research notes, documentation, ideas, references, retrospectives, and long-term knowledge.
+
+**Its central question: What have I learned, experienced, and understood?**
+
+### Integration Layer: Open Connections
+
+The two layers communicate through documented mechanisms such as application URIs, Markdown links, local APIs, command-line interfaces, and standard calendar formats.
+
+Each system should remain independently usable and replaceable.
+
+**Integration should create convenience, not dependency.**
+
+---
+
+## 04. Artificial Intelligence Without Artificial Dependency
+
+AI coding agents can accelerate software development, but generated code still requires human judgment, testing, security review, and maintenance.
+
+Likewise, AI features should not become mandatory simply because they are available.
+
+ToDoz accepts optional AI assistance only when:
+
+- Core functionality remains available without AI.
+- The user retains control over proposed actions.
+- Critical operations remain deterministic and verifiable.
+- Privacy, cost, and external dependencies are transparent.
+- Removing AI does not compromise access to existing information.
+
+AI should expand human capability without undermining independence or predictability.
+
+**AI may help create the software. It does not have to become the software.**
+
+---
+
+## 05. Synchronization Without Surrender
+
+Synchronization is a convenience, not a transfer of ownership.
+
+ToDoz favors user-controlled infrastructure, secure device pairing, minimal operational complexity, predictable conflict resolution, and recoverability after disconnection.
+
+Its design must make encryption guarantees, trust boundaries, and the risk of conflicting changes explicit.
+
+Synchronization strategies involve trade-offs. The preferred solution is not necessarily the most sophisticated, but the simplest architecture that satisfies the required correctness and security guarantees.
+
+**Complexity must justify its existence.**
+
+---
+
+## 06. The Engineering Evaluation Tests
+
+Every significant feature or architectural decision must pass seven tests:
+
+1. **Airplane Test:** Does core functionality remain available without internet access?
+2. **100ms Test:** Do common local interactions respond immediately on supported hardware?
+3. **Longevity Test:** Can users recover and understand their information if the application disappears?
+4. **Responsibility Test:** Does the feature belong in ToDoz, or should a specialized tool provide it?
+5. **Dependency Test:** Does it introduce an avoidable external dependency, subscription, or recurring cost?
+6. **Predictability Test:** Can its behavior be specified, reproduced, tested, and explained?
+7. **Security and Recovery Test:** Does it preserve confidentiality, integrity, access control, and recoverability?
+
+These tests guide engineering judgment. Exceptions must be deliberate, justified, and documented.
+
+---
+
+## 07. What ToDoz Refuses to Become
+
+ToDoz deliberately resists:
+
+- Mandatory cloud accounts and subscriptions for essential functionality.
+- Unnecessary AI inference in predictable operations.
+- Invasive telemetry or undisclosed collection of personal activity.
+- Feature bloat and duplication of specialized applications.
+- Hidden synchronization behavior that risks data integrity.
+- Proprietary data lock-in and avoidable technological dependencies.
+- Architectural complexity adopted without a demonstrated need.
+
+These boundaries are not restrictions against innovation. They protect the application's purpose.
+
+**The ability to add a feature is not sufficient reason to add it.**
+
+---
+
+## 08. Personal Software in the Age of AI
+
+Traditionally, software development required substantial engineering effort, encouraging products designed for large markets.
+
+AI-assisted development is beginning to change that economic relationship.
+
+Individuals and small communities can increasingly create applications around their particular needs without requiring a commercial-scale audience.
+
+This does not eliminate engineering costs. Verification, security, maintenance, and architectural judgment remain essential.
+
+But it creates a new possibility:
+
+**Software no longer always needs a large market to justify its existence.**
+
+ToDoz is one experiment in this emerging model. Its ambition is not to become an all-encompassing productivity platform, but to demonstrate that personal software can be sovereign, responsive, predictable, interoperable, and durable.
+
+---
+
+## 09. The Final Commitment
+
+ToDoz is not defined by Flutter, SQLite, Docker, or any particular synchronization algorithm. Those are implementation choices that may evolve.
+
+Its identity rests on enduring principles:
+
+Software should remain useful when disconnected, understandable when examined, recoverable when systems fail, and adaptable when needs change.
+
+It should respect human attention, preserve personal information, and avoid dependencies that do not serve a clear purpose.
+
+Above all, it should remain a tool under human control.
+
+**The software belongs to the user. The architecture must never forget that.**
+
+---
+
+*ToDoz: Sovereign productivity, by design.*
