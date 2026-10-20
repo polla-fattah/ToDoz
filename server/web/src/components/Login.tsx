@@ -22,8 +22,10 @@ export function Login() {
   return (
     <div className="login-wrap">
       <form className="login" onSubmit={submit}>
-        <BrandMark />
-        <h1>ToDoz</h1>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+          <BrandMark size={56} />
+        </div>
+        <h1><span>To</span><span style={{ color: '#007aff' }}>Doz</span></h1>
         <p>Sign in to see your tasks in the browser.</p>
         <input
           autoFocus

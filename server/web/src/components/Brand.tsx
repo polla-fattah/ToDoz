@@ -1,10 +1,15 @@
-import { Check } from 'lucide-react';
+import markUrl from '../assets/todoz_mark.png';
 
-/** The ToDoz mark: a check on the brand gradient. */
-export function BrandMark() {
+/** The ToDoz mark: official squircle icon mark. */
+export function BrandMark({ size = 26 }: { size?: number }) {
   return (
-    <span className="brand-mark" aria-hidden="true">
-      <Check size={17} strokeWidth={3.2} />
-    </span>
+    <img
+      src={markUrl}
+      alt="ToDoz"
+      className="brand-mark-img"
+      width={size}
+      height={size}
+      style={{ display: 'inline-block', verticalAlign: 'middle', objectFit: 'contain' }}
+    />
   );
 }
