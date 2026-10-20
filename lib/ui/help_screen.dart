@@ -98,12 +98,12 @@ class HelpScreen extends StatelessWidget {
         const Text('Synchronise your dated tasks with Google Calendar in two ways:'),
         heading('Method 1: Live iCal Feed (Instant)'),
         const Text('1. Go to Settings > Calendar and integrations > Calendar feed (iCal).\n'
-            '2. Turn it on and copy your private link (https://todoz.polla.dev/ical/...ics).\n'
+            '2. Turn it on and copy your private link (https://todoz.example.com/ical/...ics).\n'
             '3. Open Google Calendar on the web > Other calendars (+) > From URL.\n'
             '4. Paste the URL and click Add calendar. All your dated tasks show up on phone and web.'),
         heading('Method 2: Two-Way Google OAuth Sync'),
         const Text('1. In your self-hosted server, configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in server/deploy/.env.\n'
-            '2. Set redirect URI in Google Cloud Console to https://yourdomain.com/google/callback.\n'
+            '2. Set redirect URI in Google Cloud Console to https://todoz.example.com/google/callback.\n'
             '3. In ToDoz: Settings > Calendar and integrations > Google Calendar > Connect.\n'
             '4. A dedicated "ToDoz" calendar is created in your Google account and syncs changes two-way.'),
 
@@ -113,7 +113,7 @@ class HelpScreen extends StatelessWidget {
         SelectableText(
           'git clone https://github.com/polla-fattah/ToDoz.git /opt/todoz\n'
           'cd /opt/todoz/server/deploy\n'
-          '# Set TASKFLOW_DOMAIN=yourdomain.com in .env\n'
+          '# Set TASKFLOW_DOMAIN=todoz.example.com in .env\n'
           'docker compose --profile public up -d --build\n\n'
           '# Add a user and generate a 1-time pairing code:\n'
           'docker compose exec taskflow taskflow_server user add "YourName"\n'
@@ -135,7 +135,7 @@ class HelpScreen extends StatelessWidget {
               const SizedBox(height: 12),
               OutlinedButton.icon(
                 icon: const Icon(Icons.open_in_new, size: 16),
-                label: const Text('Open Online Manual (todoz.polla.dev/help)'),
+                label: const Text('Open Online Manual & Tutorials'),
                 onPressed: () => launchUrl(Uri.parse('https://todoz.polla.dev/help'), mode: LaunchMode.externalApplication),
               ),
             ]),
