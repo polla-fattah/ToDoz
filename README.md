@@ -1,8 +1,8 @@
 # ToDoz
 
-A personal, offline-first task manager modelled on Todoist (without AI), built with Flutter for Android and Windows.
+A personal, offline-first task manager modelled on Todoist (without AI), built with Flutter for Android and Windows. ToDoz was created to embody the philosophy of [Sovereign Personal Software](https://sovereign.polla.dev/).
 
-The requirements are in the [TaskFlow 2.0 SRS](https://claude.ai/code/artifact/796e7f1d-5c0c-447b-bab0-a5e53108adae). The design and architecture principles are documented in [PHILOSOPHY.md](PHILOSOPHY.md), and the server deployment runbook is in [DEPLOYMENT.md](DEPLOYMENT.md). This repository holds **R1 (Foundation)**, **R2 (Time)**, **R3 (Views and filters)**, **R4 (Sync)**, **R5 (Productivity and integrations)** and **R6 (Sharing)**.
+The requirements are in the [TaskFlow 2.0 SRS](https://claude.ai/code/artifact/796e7f1d-5c0c-447b-bab0-a5e53108adae). How ToDoz applies that philosophy is documented in [PHILOSOPHY.md](PHILOSOPHY.md), and the server deployment runbook is in [DEPLOYMENT.md](DEPLOYMENT.md). This repository holds **R1 (Foundation)**, **R2 (Time)**, **R3 (Views and filters)**, **R4 (Sync)**, **R5 (Productivity and integrations)** and **R6 (Sharing)**.
 
 ## What it has so far
 

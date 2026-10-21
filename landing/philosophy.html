@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>The ToDoz Philosophy: A Manifesto for Sovereign Personal Software</title>
+  <title>The ToDoz Philosophy: How ToDoz Embodies Sovereign Personal Software</title>
   <meta name="description" content="The architectural manifesto and design principles behind ToDoz: local-first sovereignty, sub-100ms responsiveness, deterministic predictability, and decades-long survivability.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -382,409 +382,113 @@
 
     <!-- Header Section -->
     <header class="manifesto-header">
-      <span class="manifesto-tag">Architectural Manifesto</span>
+      <span class="manifesto-tag">Philosophy</span>
       <h1 class="manifesto-title">The ToDoz Philosophy</h1>
-      <div class="manifesto-subtitle">A Manifesto for Sovereign Personal Software</div>
+      <div class="manifesto-subtitle">How ToDoz embodies Sovereign Personal Software</div>
       <div class="manifesto-quote">
-        “Your data belongs to you. Your tools should respect your time, preserve your freedom, and remain useful without depending on someone else's infrastructure.”
+        &ldquo;Your data belongs to you. Your tools should respect your time, preserve your freedom, and remain useful without depending on someone else's infrastructure.&rdquo;
       </div>
     </header>
 
-    <!-- Part 1: The Core Manifesto -->
     <section class="manifesto-section">
-      <div class="section-label">Section 01</div>
-      <h2 class="section-heading">The Core Manifesto</h2>
       <p class="lead-paragraph">
-        Software should adapt to people, not force people to adapt to software.
+        ToDoz was created to embody the philosophy of Sovereign Personal Software. The full manifesto, with its six principles, seven engineering tests, an interactive evaluator, and a reading edition, lives on its own site. This page covers only how ToDoz applies it.
       </p>
-      <p>
-        Modern productivity applications offer remarkable capabilities, but many increasingly depend on cloud services, subscriptions, complex interfaces, and features designed for broad commercial markets rather than individual needs.
-      </p>
-      <p>
-        ToDoz represents a different choice. It is built on the belief that personal software should be <strong>owned, controlled, understood, and shaped by the people who use it</strong>.
-      </p>
-      <p>
-        AI-assisted development makes such software increasingly practical. However, reducing the cost of writing code does not eliminate the importance of architecture, verification, security, and maintenance.
-      </p>
-
       <div class="highlight-card">
-        <div style="font-weight: 700; color: #f8fafc; margin-bottom: 1rem; font-size: 1.1rem;">Six Principles Define ToDoz:</div>
-        <ol style="margin-left: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; color: #cbd5e1;">
-          <li><strong>Sovereignty:</strong> Users control their data, infrastructure, and ability to migrate.</li>
-          <li><strong>Locality:</strong> Core functionality runs on the user's device, independently of network connectivity.</li>
-          <li><strong>Predictability:</strong> Critical operations are deterministic, transparent, and testable.</li>
-          <li><strong>Responsiveness:</strong> Software respects the user's time and attention.</li>
-          <li><strong>Focused Interoperability:</strong> Applications maintain clear responsibilities while exchanging information freely.</li>
-          <li><strong>Longevity:</strong> Information should outlive individual applications, vendors, and technologies.</li>
-        </ol>
-        <div class="highlight-callout">
-          These principles take precedence over any framework, database, feature, or implementation technique.
+        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+          <a href="https://sovereign.polla.dev/" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Read the manifesto</a>
+          <a href="https://sovereign.polla.dev/evaluator/" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Score a tool with the evaluator</a>
         </div>
       </div>
     </section>
 
-    <!-- Part 2: The Six Foundational Principles -->
     <section class="manifesto-section">
-      <div class="section-label">Section 02</div>
-      <h2 class="section-heading">The Six Foundational Principles</h2>
-
+      <h2 class="section-heading">How ToDoz Applies the Six Principles</h2>
       <div class="principle-grid">
-        <!-- Principle I -->
         <article class="principle-card">
           <div class="principle-header">
             <span class="principle-badge">Principle I</span>
-            <span style="font-size: 0.8rem; color: #64748b; font-family: monospace;">Data Freedom</span>
           </div>
-          <h3 class="principle-title">Sovereignty: The User Is the Owner</h3>
-          <p>
-            Personal information should not become inaccessible because a subscription expires, an account is suspended, or a service disappears.
-          </p>
-          <p>
-            Sovereignty requires meaningful control over data, including the ability to inspect, export, back up, migrate, and restore it. ToDoz prioritizes local ownership, documented formats, self-hosted infrastructure, and freedom from mandatory commercial accounts.
-          </p>
-          <div class="principle-takeaway">
-            Ownership is meaningful only when the user retains the ability to leave.
-          </div>
+          <h3 class="principle-title">Sovereignty</h3>
+          <p>Your tasks live in a local database you own. ToDoz uses documented formats and self-hosted sync, and never requires an account with a third party.</p>
         </article>
-
-        <!-- Principle II -->
         <article class="principle-card">
           <div class="principle-header">
             <span class="principle-badge">Principle II</span>
-            <span style="font-size: 0.8rem; color: #64748b; font-family: monospace;">SQLite • Offline-First</span>
           </div>
-          <h3 class="principle-title">Locality: The Device Comes First</h3>
-          <p>
-            The network should enhance an application, not determine whether it can function. Creating tasks, updating priorities, managing schedules, and searching locally stored information must remain available offline.
-          </p>
-          <p>
-            ToDoz treats the local database as the primary working environment. Synchronization operates separately, with explicit status, predictable conflict handling, and recovery from interrupted connections.
-          </p>
-          <div class="principle-takeaway">
-            Offline operation is not an emergency fallback. It is the normal operating model.
-          </div>
+          <h3 class="principle-title">Locality</h3>
+          <p>The local database is the primary working environment, so everything works offline. Sync runs separately, with explicit status and predictable conflict handling.</p>
         </article>
-
-        <!-- Principle III -->
         <article class="principle-card">
           <div class="principle-header">
             <span class="principle-badge">Principle III</span>
-            <span style="font-size: 0.8rem; color: #64748b; font-family: monospace;">Deterministic Grammar</span>
           </div>
-          <h3 class="principle-title">Predictability: Intelligence May Assist, Rules Must Govern</h3>
-          <p>
-            Tasks, reminders, filters, and recurring schedules represent commitments. Their behavior must be consistent, explainable, and reproducible.
-          </p>
-          <p>
-            ToDoz uses deterministic rules for critical operations and explicitly handles invalid or ambiguous inputs rather than silently guessing. AI may optionally help interpret a user's intention, but proposed actions must be validated and authorized before execution.
-          </p>
-          <div class="principle-takeaway">
-            Intelligence may assist. Predictability must govern.
-          </div>
+          <h3 class="principle-title">Predictability</h3>
+          <p>Recurring schedules, reminders, and filters follow deterministic, testable rules. Invalid or ambiguous input is reported, never silently guessed.</p>
         </article>
-
-        <!-- Principle IV -->
         <article class="principle-card">
           <div class="principle-header">
             <span class="principle-badge">Principle IV</span>
-            <span style="font-size: 0.8rem; color: #64748b; font-family: monospace;">Sub-100ms Latency</span>
           </div>
-          <h3 class="principle-title">Responsiveness: Respect Human Attention</h3>
-          <p>
-            Software should reduce effort, not become another source of work. Common local interactions should provide immediate feedback. ToDoz targets a visible response within 100 milliseconds for routine actions on supported hardware.
-          </p>
-          <p>
-            Responsiveness also means avoiding unnecessary notifications, interface complexity, background processing, and features that distract from the task at hand.
-          </p>
-          <div class="principle-takeaway">
-            Good software helps users complete their work without becoming work itself.
-          </div>
+          <h3 class="principle-title">Responsiveness</h3>
+          <p>ToDoz targets a visible response within 100 milliseconds for routine actions, and avoids unnecessary notifications and interface complexity.</p>
         </article>
-
-        <!-- Principle V -->
         <article class="principle-card">
           <div class="principle-header">
             <span class="principle-badge">Principle V</span>
-            <span style="font-size: 0.8rem; color: #64748b; font-family: monospace;">Anti-Monolith</span>
           </div>
-          <h3 class="principle-title">Focused Interoperability: Separate Responsibilities, Connect Information</h3>
-          <p>
-            Tasks manage actions, deadlines, priorities, and operational states. Notes and diaries preserve knowledge, reflection, references, and long-term understanding. These responsibilities are related but do not require a single monolithic application.
-          </p>
-          <p>
-            ToDoz focuses on task execution while supporting connections to Markdown repositories, journals, calendars, and complementary applications through documented interfaces and open formats. Users should be able to change one tool without losing access to information maintained by another.
-          </p>
-          <div class="principle-takeaway">
-            Separate responsibilities. Connect information. Preserve freedom of choice.
-          </div>
+          <h3 class="principle-title">Focused Interoperability</h3>
+          <p>ToDoz handles task execution only. It connects to Markdown repositories, journals, and calendars through documented interfaces and open formats.</p>
         </article>
-
-        <!-- Principle VI -->
         <article class="principle-card">
           <div class="principle-header">
             <span class="principle-badge">Principle VI</span>
-            <span style="font-size: 0.8rem; color: #64748b; font-family: monospace;">Decades-Long Survivability</span>
           </div>
-          <h3 class="principle-title">Longevity: Information Should Outlive Software</h3>
-          <p>
-            Applications and technologies change, but personal records may remain valuable for decades. ToDoz favors documented, widely supported formats, portable exports, verified backups, and maintainable migration paths.
-          </p>
-          <p>
-            No technology guarantees fifty-year compatibility. Longevity depends on continued attention to recoverability, documentation, and preservation.
-          </p>
-          <div class="principle-takeaway">
-            Applications are temporary. Personal information deserves a longer life.
-          </div>
+          <h3 class="principle-title">Longevity</h3>
+          <p>Your data is kept in documented, widely supported formats, with portable exports (CSV, ICS, and JSON) and verified backups.</p>
         </article>
       </div>
     </section>
 
-    <!-- Part 3: The Architecture of Personal Productivity -->
     <section class="manifesto-section">
-      <div class="section-label">Section 03</div>
-      <h2 class="section-heading">The Architecture of Personal Productivity</h2>
+      <h2 class="section-heading">AI in the Build, Not in the Product</h2>
       <p class="lead-paragraph">
-        ToDoz follows a modular model that separates execution from reflection while allowing both to cooperate smoothly.
-      </p>
-
-      <div class="arch-container">
-        <!-- Layer 1 -->
-        <div class="arch-layer">
-          <div class="arch-layer-title" style="color: #007aff;">Execution Layer: ToDoz</div>
-          <div class="arch-layer-desc">
-            Responsible for capturing commitments, managing tasks, schedules, priorities, recurring activities, reminders, and completion history.
-            <div style="font-weight: 600; color: #f8fafc; margin-top: 0.5rem;">Its central question: What needs to be done, when, and in what state is it?</div>
-          </div>
-        </div>
-
-        <div class="arch-bridge">
-          Integration Layer: Open Connections (todoz://, obsidian://, local APIs, CLI, .ics)
-        </div>
-
-        <!-- Layer 2 -->
-        <div class="arch-layer">
-          <div class="arch-layer-title" style="color: #10b981;">Knowledge Layer: Markdown Ecosystem</div>
-          <div class="arch-layer-desc">
-            Responsible for journals, research notes, documentation, ideas, references, retrospectives, and long-term knowledge.
-            <div style="font-weight: 600; color: #f8fafc; margin-top: 0.5rem;">Its central question: What have I learned, experienced, and understood?</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="highlight-card">
-        <p style="margin: 0; color: #cbd5e1;">
-          The two layers communicate through documented mechanisms such as application URIs, Markdown links, local APIs, command-line interfaces, and standard calendar formats. Each system should remain independently usable and replaceable.
-        </p>
-        <div class="highlight-callout">
-          Integration should create convenience, not dependency.
-        </div>
-      </div>
-    </section>
-
-    <!-- Part 4: Artificial Intelligence Without Artificial Dependency -->
-    <section class="manifesto-section">
-      <div class="section-label">Section 04</div>
-      <h2 class="section-heading">Artificial Intelligence Without Artificial Dependency</h2>
-      <p class="lead-paragraph">
-        AI coding agents can accelerate software development, but generated code still requires human judgment, testing, security review, and maintenance. Likewise, AI features should not become mandatory simply because they are available.
-      </p>
-
-      <div class="highlight-card">
-        <div style="font-weight: 700; color: #f8fafc; margin-bottom: 1rem; font-size: 1.05rem;">ToDoz accepts optional AI assistance only when:</div>
-        <ul style="margin-left: 1.25rem; display: flex; flex-direction: column; gap: 0.6rem; color: #cbd5e1;">
-          <li>Core functionality remains available without AI.</li>
-          <li>The user retains control over proposed actions.</li>
-          <li>Critical operations remain deterministic and verifiable.</li>
-          <li>Privacy, cost, and external dependencies are transparent.</li>
-          <li>Removing AI does not compromise access to existing information.</li>
-        </ul>
-        <div class="highlight-callout">
-          AI may help create the software. It does not have to become the software.
-        </div>
-      </div>
-    </section>
-
-    <!-- Part 5: Synchronization Without Surrender -->
-    <section class="manifesto-section">
-      <div class="section-label">Section 05</div>
-      <h2 class="section-heading">Synchronization Without Surrender</h2>
-      <p class="lead-paragraph">
-        Synchronization is a convenience, not a transfer of ownership.
-      </p>
-      <p>
-        ToDoz favors user-controlled infrastructure, secure device pairing, minimal operational complexity, predictable conflict resolution, and recoverability after disconnection. Its design must make encryption guarantees, trust boundaries, and the risk of conflicting changes explicit.
-      </p>
-      <p>
-        Synchronization strategies involve trade-offs. The preferred solution is not necessarily the most sophisticated, but the simplest architecture that satisfies the required correctness and security guarantees.
+        ToDoz was built with AI coding agents, which lowered the cost of development. The application contains no AI features today, and every essential operation runs on deterministic rules.
       </p>
       <div class="highlight-card">
         <div class="highlight-callout" style="margin-top: 0; padding-top: 0; border-top: none;">
-          Complexity must justify its existence.
+          AI helped build ToDoz. It does not have to become ToDoz.
         </div>
       </div>
     </section>
 
-    <!-- Part 6: The Seven Engineering Evaluation Tests -->
     <section class="manifesto-section">
-      <div class="section-label">Section 06</div>
-      <h2 class="section-heading">The Engineering Evaluation Tests</h2>
-      <p class="lead-paragraph">
-        Every significant feature or architectural decision must pass seven tests:
-      </p>
-
-      <div class="test-grid">
-        <div class="test-card">
-          <div class="test-num">1</div>
-          <div>
-            <div class="test-content-title">Airplane Test</div>
-            <div class="test-content-desc">Does core functionality remain available without internet access?</div>
-          </div>
-        </div>
-
-        <div class="test-card">
-          <div class="test-num">2</div>
-          <div>
-            <div class="test-content-title">100ms Test</div>
-            <div class="test-content-desc">Do common local interactions respond immediately on supported hardware?</div>
-          </div>
-        </div>
-
-        <div class="test-card">
-          <div class="test-num">3</div>
-          <div>
-            <div class="test-content-title">Longevity Test</div>
-            <div class="test-content-desc">Can users recover and understand their information if the application disappears?</div>
-          </div>
-        </div>
-
-        <div class="test-card">
-          <div class="test-num">4</div>
-          <div>
-            <div class="test-content-title">Responsibility Test</div>
-            <div class="test-content-desc">Does the feature belong in ToDoz, or should a specialized tool provide it?</div>
-          </div>
-        </div>
-
-        <div class="test-card">
-          <div class="test-num">5</div>
-          <div>
-            <div class="test-content-title">Dependency Test</div>
-            <div class="test-content-desc">Does it introduce an avoidable external dependency, subscription, or recurring cost?</div>
-          </div>
-        </div>
-
-        <div class="test-card">
-          <div class="test-num">6</div>
-          <div>
-            <div class="test-content-title">Predictability Test</div>
-            <div class="test-content-desc">Can its behavior be specified, reproduced, tested, and explained?</div>
-          </div>
-        </div>
-
-        <div class="test-card">
-          <div class="test-num">7</div>
-          <div>
-            <div class="test-content-title">Security and Recovery Test</div>
-            <div class="test-content-desc">Does it preserve confidentiality, integrity, access control, and recoverability?</div>
-          </div>
-        </div>
-      </div>
-      <p style="color: #64748b; font-size: 0.9rem; font-style: italic;">
-        These tests guide engineering judgment. Exceptions must be deliberate, justified, and documented.
-      </p>
-    </section>
-
-    <!-- Part 7: What ToDoz Refuses to Become -->
-    <section class="manifesto-section">
-      <div class="section-label">Section 07</div>
       <h2 class="section-heading">What ToDoz Refuses to Become</h2>
-      <p class="lead-paragraph">
-        ToDoz deliberately resists:
-      </p>
-
       <div class="refusal-list">
         <div class="refusal-item">
-          <span class="refusal-bullet">✕</span>
-          <div><strong>Mandatory Cloud Lock-In:</strong> Accounts and subscriptions required for essential functionality.</div>
+          <span class="refusal-bullet">&#10005;</span>
+          <div><strong>Mandatory accounts:</strong> No cloud account or subscription is needed for essential functions.</div>
         </div>
         <div class="refusal-item">
-          <span class="refusal-bullet">✕</span>
-          <div><strong>Unnecessary AI Guesswork:</strong> Non-deterministic inference injected into predictable operations.</div>
+          <span class="refusal-bullet">&#10005;</span>
+          <div><strong>AI in predictable operations:</strong> No AI inference where deterministic rules belong.</div>
         </div>
         <div class="refusal-item">
-          <span class="refusal-bullet">✕</span>
-          <div><strong>Invasive Telemetry:</strong> Undisclosed tracking or harvesting of personal daily activity.</div>
+          <span class="refusal-bullet">&#10005;</span>
+          <div><strong>Telemetry:</strong> No tracking or undisclosed collection of personal activity.</div>
         </div>
         <div class="refusal-item">
-          <span class="refusal-bullet">✕</span>
-          <div><strong>Feature Bloat:</strong> Cluttered duplication of specialized text editors and project suites.</div>
+          <span class="refusal-bullet">&#10005;</span>
+          <div><strong>Feature bloat:</strong> No duplication of tools that do their job better.</div>
         </div>
         <div class="refusal-item">
-          <span class="refusal-bullet">✕</span>
-          <div><strong>Hidden Sync Risk:</strong> Opaque synchronization behavior that compromises data integrity.</div>
-        </div>
-        <div class="refusal-item">
-          <span class="refusal-bullet">✕</span>
-          <div><strong>Proprietary Formats:</strong> Siloed data lock-in and avoidable technological dependencies.</div>
-        </div>
-        <div class="refusal-item">
-          <span class="refusal-bullet">✕</span>
-          <div><strong>Unjustified Complexity:</strong> Architectural overhead adopted without a demonstrated need.</div>
-        </div>
-      </div>
-
-      <div class="highlight-card">
-        <div class="highlight-callout" style="margin-top: 0; padding-top: 0; border-top: none;">
-          The ability to add a feature is not sufficient reason to add it.
-        </div>
-      </div>
-    </section>
-
-    <!-- Part 8: Personal Software in the Age of AI -->
-    <section class="manifesto-section">
-      <div class="section-label">Section 08</div>
-      <h2 class="section-heading">Personal Software in the Age of AI</h2>
-      <p class="lead-paragraph">
-        Traditionally, software development required substantial engineering effort, encouraging products designed for large markets.
-      </p>
-      <p>
-        AI-assisted development is beginning to change that economic relationship. Individuals and small communities can increasingly create applications around their particular needs without requiring a commercial-scale audience.
-      </p>
-      <p>
-        This does not eliminate engineering costs. Verification, security, maintenance, and architectural judgment remain essential. But it creates a new possibility:
-      </p>
-      <div class="highlight-card">
-        <div style="font-size: 1.25rem; font-weight: 700; color: #f8fafc; line-height: 1.4;">
-          Software no longer always needs a large market to justify its existence.
+          <span class="refusal-bullet">&#10005;</span>
+          <div><strong>Hidden sync behavior and lock-in:</strong> Synchronization stays visible, and your data stays portable.</div>
         </div>
       </div>
       <p>
-        ToDoz is one experiment in this emerging model. Its ambition is not to become an all-encompassing productivity platform, but to demonstrate that personal software can be sovereign, responsive, predictable, interoperable, and durable.
+        Because AI makes features cheap to build, the discipline of refusing them matters more, not less.
       </p>
-    </section>
-
-    <!-- Part 9: The Final Commitment -->
-    <section class="manifesto-section">
-      <div class="section-label">Section 09</div>
-      <h2 class="section-heading">The Final Commitment</h2>
-      <p class="lead-paragraph">
-        ToDoz is not defined by Flutter, SQLite, Docker, or any particular synchronization algorithm. Those are implementation choices that may evolve.
-      </p>
-      <p>
-        Its identity rests on enduring principles: Software should remain useful when disconnected, understandable when examined, recoverable when systems fail, and adaptable when needs change.
-      </p>
-      <p>
-        It should respect human attention, preserve personal information, and avoid dependencies that do not serve a clear purpose. Above all, it should remain a tool under human control.
-      </p>
-
-      <div class="highlight-card" style="border-left: 3px solid #007aff;">
-        <div style="font-size: 1.25rem; font-weight: 700; color: #f8fafc; line-height: 1.4;">
-          The software belongs to the user. The architecture must never forget that.
-        </div>
-        <div style="margin-top: 1.25rem; font-style: italic; color: #94a3b8; font-size: 0.95rem;">
-          ToDoz: Sovereign productivity, by design.
-        </div>
-      </div>
     </section>
 
     <!-- Footer Actions -->
