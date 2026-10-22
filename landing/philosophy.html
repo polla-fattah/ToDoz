@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>The ToDoz Philosophy: How ToDoz Embodies Sovereign Personal Software</title>
-  <meta name="description" content="The architectural manifesto and design principles behind ToDoz: local-first sovereignty, sub-100ms responsiveness, deterministic predictability, and decades-long survivability.">
+  <meta name="description" content="How ToDoz embodies the Sovereign Personal Software framework: four foundational principles (Sovereignty, Longevity, Locality, Transparency and Control), supporting engineering craftsmanship, and zero cloud lock-in.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
@@ -95,7 +95,7 @@
 
     /* Section Divisions */
     .manifesto-section {
-      margin-bottom: 6rem;
+      margin-bottom: 5.5rem;
     }
 
     .section-label {
@@ -113,7 +113,7 @@
       font-weight: 700;
       letter-spacing: -0.025em;
       color: #f8fafc;
-      margin-bottom: 1.75rem;
+      margin-bottom: 1.5rem;
       line-height: 1.25;
     }
 
@@ -146,7 +146,7 @@
       border-top: 1px solid rgba(255, 255, 255, 0.06);
     }
 
-    /* Grid for Six Principles */
+    /* Grid for Principles */
     .principle-grid {
       display: grid;
       grid-template-columns: 1fr;
@@ -168,6 +168,8 @@
       margin-bottom: 1rem;
       padding-bottom: 0.75rem;
       border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      gap: 1rem;
+      flex-wrap: wrap;
     }
 
     .principle-badge {
@@ -177,6 +179,12 @@
       letter-spacing: 0.08em;
       color: #007aff;
       text-transform: uppercase;
+    }
+
+    .principle-role {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      color: #64748b;
     }
 
     .principle-title {
@@ -194,104 +202,6 @@
       padding-top: 0.85rem;
       border-top: 1px solid rgba(255, 255, 255, 0.05);
       font-size: 0.95rem;
-    }
-
-    /* Architecture Visual */
-    .arch-container {
-      background: #0e1118;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 14px;
-      padding: 2.5rem;
-      margin: 2.5rem 0;
-    }
-
-    .arch-layer {
-      background: #141822;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 10px;
-      padding: 1.5rem;
-      margin-bottom: 1.25rem;
-    }
-
-    .arch-layer-title {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.85rem;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-      margin-bottom: 0.5rem;
-    }
-
-    .arch-layer-desc {
-      font-size: 0.92rem;
-      color: #cbd5e1;
-      line-height: 1.6;
-    }
-
-    .arch-bridge {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.75rem;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.75rem;
-      color: #64748b;
-      margin: 1rem 0;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-
-    .arch-bridge::before, .arch-bridge::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: rgba(255, 255, 255, 0.08);
-    }
-
-    /* Test Cards */
-    .test-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 1.25rem;
-      margin: 2.5rem 0;
-    }
-
-    .test-card {
-      background: #0e1118;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 10px;
-      padding: 1.5rem;
-      display: flex;
-      gap: 1.5rem;
-      align-items: flex-start;
-    }
-
-    .test-num {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: rgba(0, 122, 255, 0.15);
-      border: 1px solid rgba(0, 122, 255, 0.4);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.85rem;
-      font-weight: 700;
-      color: #007aff;
-      flex-shrink: 0;
-    }
-
-    .test-content-title {
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: #f8fafc;
-      margin-bottom: 0.35rem;
-    }
-
-    .test-content-desc {
-      font-size: 0.92rem;
-      color: #94a3b8;
-      line-height: 1.65;
     }
 
     /* Refusal List */
@@ -382,113 +292,142 @@
 
     <!-- Header Section -->
     <header class="manifesto-header">
-      <span class="manifesto-tag">Philosophy</span>
+      <span class="manifesto-tag">Reference Implementation</span>
       <h1 class="manifesto-title">The ToDoz Philosophy</h1>
       <div class="manifesto-subtitle">How ToDoz embodies Sovereign Personal Software</div>
       <div class="manifesto-quote">
-        &ldquo;Your data belongs to you. Your tools should respect your time, preserve your freedom, and remain useful without depending on someone else's infrastructure.&rdquo;
+        &ldquo;Software should serve people without claiming permanent custody over their information, choices, or work.&rdquo;
       </div>
     </header>
 
     <section class="manifesto-section">
       <p class="lead-paragraph">
-        ToDoz was created to embody the philosophy of Sovereign Personal Software. The full manifesto, with its six principles, seven engineering tests, an interactive evaluator, and a reading edition, lives on its own site. This page covers only how ToDoz applies it.
+        ToDoz was built to test and embody the philosophy of <strong>Sovereign Personal Software</strong> in a daily productivity tool. The full manifesto—together with its ten intellectual lineage dossiers, its evidence-led evaluation methodology, the Sovereign Index, and cloud-exit runbooks—lives on its own site. This page explains how ToDoz applies the framework in practice.
       </p>
       <div class="highlight-card">
         <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
-          <a href="https://sovereign.polla.dev/" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Read the manifesto</a>
-          <a href="https://sovereign.polla.dev/evaluator/" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Score a tool with the evaluator</a>
+          <a href="https://sovereign.polla.dev/" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Read the Manifesto</a>
+          <a href="https://sovereign.polla.dev/methodology/" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Evaluation Methodology</a>
+          <a href="https://sovereign.polla.dev/lineage/" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Intellectual Lineage</a>
+          <a href="https://sovereign.polla.dev/directory/" class="btn btn-secondary" target="_blank" rel="noopener noreferrer">Sovereign Index</a>
         </div>
       </div>
     </section>
 
     <section class="manifesto-section">
-      <h2 class="section-heading">How ToDoz Applies the Six Principles</h2>
+      <div class="section-label">Foundational Architecture</div>
+      <h2 class="section-heading">How ToDoz Applies the Four Principles</h2>
+      <p>
+        In the Sovereign Software framework, four foundational principles stand in a deliberate conceptual relationship: <strong>Sovereignty</strong> defines the goal; <strong>Longevity</strong> protects it across time; <strong>Locality</strong> provides a primary means of independence; and <strong>Transparency and Control</strong> make authority meaningful in operation.
+      </p>
       <div class="principle-grid">
         <article class="principle-card">
           <div class="principle-header">
-            <span class="principle-badge">Principle I</span>
+            <span class="principle-badge">Principle I · Sovereignty</span>
+            <span class="principle-role">Authority belongs to the user</span>
           </div>
-          <h3 class="principle-title">Sovereignty</h3>
-          <p>Your tasks live in a local database you own. ToDoz uses documented formats and self-hosted sync, and never requires an account with a third party.</p>
+          <h3 class="principle-title">Practical Custody and Exit</h3>
+          <p>Your tasks, projects, hierarchy, comments, and completion history live in a local SQLite database you control. ToDoz requires no commercial cloud account or subscription. Its optional synchronization server (<code>server/</code>, Dart + SQLite) runs on your own infrastructure, authenticating devices with single-use pairing codes and revocable per-device tokens.</p>
+          <div class="principle-takeaway">&rarr; You can export, migrate, or unpair from a sync server at any moment without losing existing work.</div>
         </article>
+
         <article class="principle-card">
           <div class="principle-header">
-            <span class="principle-badge">Principle II</span>
+            <span class="principle-badge">Principle II · Longevity</span>
+            <span class="principle-role">Information outlives software</span>
           </div>
-          <h3 class="principle-title">Locality</h3>
-          <p>The local database is the primary working environment, so everything works offline. Sync runs separately, with explicit status and predictable conflict handling.</p>
+          <h3 class="principle-title">Data, Functional, and Knowledge Longevity</h3>
+          <p>Your records are stored in documented Drift/SQLite schemas and exported in open, human-inspectable formats: full-fidelity <strong>JSON</strong> backups, <strong>CSV</strong> project tables, <strong>ICS</strong> calendar feeds, and plain-text lists. Automatic local folder backups and backwards-compatible restoration (including TaskFlow 1.0 backup imports) ensure your records remain recoverable independently of any binary.</p>
+          <div class="principle-takeaway">&rarr; Even if you stop running ToDoz decades from now, your task archive remains readable with standard tools.</div>
         </article>
+
         <article class="principle-card">
           <div class="principle-header">
-            <span class="principle-badge">Principle III</span>
+            <span class="principle-badge">Principle III · Locality</span>
+            <span class="principle-role">Independence is designed in</span>
           </div>
-          <h3 class="principle-title">Predictability</h3>
-          <p>Recurring schedules, reminders, and filters follow deterministic, testable rules. Invalid or ambiguous input is reported, never silently guessed.</p>
+          <h3 class="principle-title">Offline by Design, Sync by Choice</h3>
+          <p>On Windows and Android, the local SQLite database is the primary working environment. Creating, completing, rescheduling, searching, and running complex Boolean filter queries require zero network connectivity. Network calls occur only when you pair a self-hosted sync server or optional Google Calendar integration, and offline edits queue locally until your server is reachable.</p>
+          <div class="principle-takeaway">&rarr; A failed network or unreachable server never erases your ability to work.</div>
         </article>
+
         <article class="principle-card">
           <div class="principle-header">
-            <span class="principle-badge">Principle IV</span>
+            <span class="principle-badge">Principle IV · Transparency and Control</span>
+            <span class="principle-role">Consequential behavior remains governable</span>
           </div>
-          <h3 class="principle-title">Responsiveness</h3>
-          <p>ToDoz targets a visible response within 100 milliseconds for routine actions, and avoids unnecessary notifications and interface complexity.</p>
-        </article>
-        <article class="principle-card">
-          <div class="principle-header">
-            <span class="principle-badge">Principle V</span>
-          </div>
-          <h3 class="principle-title">Focused Interoperability</h3>
-          <p>ToDoz handles task execution only. It connects to Markdown repositories, journals, and calendars through documented interfaces and open formats.</p>
-        </article>
-        <article class="principle-card">
-          <div class="principle-header">
-            <span class="principle-badge">Principle VI</span>
-          </div>
-          <h3 class="principle-title">Longevity</h3>
-          <p>Your data is kept in documented, widely supported formats, with portable exports (CSV, ICS, and JSON) and verified backups.</p>
+          <h3 class="principle-title">Deterministic Rules and Inspectable State</h3>
+          <p>Recurring schedules (<code>every! 2 months</code>, <code>every last workday</code>), reminders, and Boolean filters run on deterministic, unit-tested rules in <code>packages/taskflow_core</code>. Ambiguous grammar is explicitly refused rather than silently guessed; every change is recorded in an inspectable activity log with Undo; and ToDoz states transparently that self-hosted sync merges field-by-field (LWW) without end-to-end encryption.</p>
+          <div class="principle-takeaway">&rarr; The software never quietly guesses your schedule or hides how synchronization resolves conflicts.</div>
         </article>
       </div>
     </section>
 
     <section class="manifesto-section">
+      <div class="section-label">Verification &amp; Craftsmanship</div>
+      <h2 class="section-heading">Supporting Engineering Qualities (T6 &amp; T7)</h2>
+      <p>
+        The Sovereign Software evaluation methodology distinguishes core eligibility requirements (<code>E1–E5</code>) and verification procedures (<code>T1–T5</code>) from supporting software qualities (<code>T6</code> Interoperability &amp; Maintainability and <code>T7</code> Human Experience &amp; Performance). ToDoz treats both supporting qualities as essential engineering craftsmanship:
+      </p>
+      <div class="principle-grid">
+        <article class="principle-card">
+          <div class="principle-header">
+            <span class="principle-badge">Procedure T6 · Interoperability &amp; Maintainability</span>
+            <span class="principle-role">Supporting Means</span>
+          </div>
+          <h3 class="principle-title">Bounded Scope, Open Interfaces</h3>
+          <p>ToDoz handles task execution and scheduling without trying to swallow your long-form notes or reference library. It connects cleanly to Markdown vaults, journals, and external systems through a documented REST API with personal tokens, signed incoming and outgoing webhooks, ICS calendar feeds, and CSV/JSON import and export.</p>
+        </article>
+
+        <article class="principle-card">
+          <div class="principle-header">
+            <span class="principle-badge">Procedure T7 · Human Experience &amp; Performance</span>
+            <span class="principle-role">Supporting Quality</span>
+          </div>
+          <h3 class="principle-title">Immediate Local Feedback</h3>
+          <p>Because routine actions read and write directly to local SQLite storage without waiting for cloud round-trips, ToDoz delivers immediate sub-100ms feedback on local interactions, keyboard-driven Quick Add, and OS-native scheduled notifications without dark patterns or clutter.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="manifesto-section">
+      <div class="section-label">Artificial Intelligence</div>
       <h2 class="section-heading">AI in the Build, Not in the Product</h2>
       <p class="lead-paragraph">
-        ToDoz was built with AI coding agents, which lowered the cost of development. The application contains no AI features today, and every essential operation runs on deterministic rules.
+        AI coding agents lowered the development cost of building ToDoz across Flutter, React, and Dart. Inside the product, however, every essential operation—recurrence calculation, filter evaluation, reminder scheduling, and field-level sync—runs on deterministic, testable code with zero dependence on external AI models or API keys.
       </p>
       <div class="highlight-card">
         <div class="highlight-callout" style="margin-top: 0; padding-top: 0; border-top: none;">
-          AI helped build ToDoz. It does not have to become ToDoz.
+          AI helped make ToDoz practical to build. Your authority over your tasks never depends on an AI provider.
         </div>
       </div>
     </section>
 
     <section class="manifesto-section">
+      <div class="section-label">Boundaries</div>
       <h2 class="section-heading">What ToDoz Refuses to Become</h2>
       <div class="refusal-list">
         <div class="refusal-item">
           <span class="refusal-bullet">&#10005;</span>
-          <div><strong>Mandatory accounts:</strong> No cloud account or subscription is needed for essential functions.</div>
+          <div><strong>Captive data or mandatory accounts:</strong> No commercial cloud account or subscription is needed to use, back up, or export your work.</div>
         </div>
         <div class="refusal-item">
           <span class="refusal-bullet">&#10005;</span>
-          <div><strong>AI in predictable operations:</strong> No AI inference where deterministic rules belong.</div>
+          <div><strong>Opaque automation in predictable operations:</strong> No probabilistic AI guessing where deterministic scheduling and filter grammar belong.</div>
         </div>
         <div class="refusal-item">
           <span class="refusal-bullet">&#10005;</span>
-          <div><strong>Telemetry:</strong> No tracking or undisclosed collection of personal activity.</div>
+          <div><strong>Silent loss through synchronization:</strong> Field-by-field merge rules are documented, device access is revocable, and sync is never treated as a substitute for independent JSON backups.</div>
         </div>
         <div class="refusal-item">
           <span class="refusal-bullet">&#10005;</span>
-          <div><strong>Feature bloat:</strong> No duplication of tools that do their job better.</div>
+          <div><strong>Concealed dependencies and surveillance:</strong> Zero tracking telemetry, zero analytics SDKs, and zero unannounced background calls.</div>
         </div>
         <div class="refusal-item">
           <span class="refusal-bullet">&#10005;</span>
-          <div><strong>Hidden sync behavior and lock-in:</strong> Synchronization stays visible, and your data stays portable.</div>
+          <div><strong>Unbounded feature bloat:</strong> Because AI makes features cheap to generate, the discipline of keeping the architecture focused and maintainable matters more, not less.</div>
         </div>
       </div>
-      <p>
-        Because AI makes features cheap to build, the discipline of refusing them matters more, not less.
-      </p>
     </section>
 
     <!-- Footer Actions -->

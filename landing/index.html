@@ -153,12 +153,12 @@
     <div class="section-tag">THE MANIFESTO</div>
     <h2 class="section-title">The ToDoz Philosophy</h2>
     <p class="section-desc">
-      Modern productivity software has lost its way into subscription paywalls, tracking telemetry, and sluggish cloud bloat. ToDoz returns to sovereign first principles. It was created to embody the philosophy of <a href="https://sovereign.polla.dev/" target="_blank" rel="noopener noreferrer" style="text-decoration: underline;">Sovereign Personal Software</a>, with AI used to lower the cost of building it, not to add weight to the product.
+      Modern productivity software has lost its way into subscription paywalls, tracking telemetry, and sluggish cloud bloat. ToDoz is a reference implementation of <a href="https://sovereign.polla.dev/" target="_blank" rel="noopener noreferrer" style="text-decoration: underline;">Sovereign Personal Software</a>, built around four foundational principles with AI used to lower the cost of building it, not to add weight to the product.
     </p>
 
     <div class="manifesto-banner" style="margin-bottom: 2rem;">
       <div class="manifesto-quote">
-        "Your data belongs to you. Your tools should respect your time, preserve your freedom, and remain useful without depending on someone else's infrastructure."
+        "Software should serve people without claiming permanent custody over their information, choices, or work."
       </div>
       <a href="https://sovereign.polla.dev/" class="btn btn-primary" target="_blank" rel="noopener noreferrer">
         Read the full manifesto →
@@ -167,62 +167,70 @@
 
     <div class="pillar-grid">
       <div class="pillar-card">
-        <div class="pillar-num">PRINCIPLE 01</div>
+        <div class="pillar-num">PRINCIPLE I</div>
         <div class="pillar-title">Sovereignty</div>
         <div class="pillar-text">
-          Users control their data, infrastructure, and ability to migrate. Local ownership and self-hosted sync with freedom from mandatory cloud accounts.
+          Authority belongs to the user. Tasks live in a local SQLite database you control, with self-hosted sync, revocable device tokens, and freedom from mandatory cloud accounts.
         </div>
       </div>
 
       <div class="pillar-card">
-        <div class="pillar-num">PRINCIPLE 02</div>
-        <div class="pillar-title">Locality</div>
-        <div class="pillar-text">
-          Core functionality runs on the user's device. Offline operation is not an emergency fallback; it is the normal operating model.
-        </div>
-      </div>
-
-      <div class="pillar-card">
-        <div class="pillar-num">PRINCIPLE 03</div>
-        <div class="pillar-title">Predictability</div>
-        <div class="pillar-text">
-          Critical operations are deterministic, transparent, and testable. Intelligence may assist, but mathematical rules must govern.
-        </div>
-      </div>
-
-      <div class="pillar-card">
-        <div class="pillar-num">PRINCIPLE 04</div>
-        <div class="pillar-title">Responsiveness</div>
-        <div class="pillar-text">
-          Respect human attention. Immediate sub-100ms feedback on local interactions without sluggish loading spinners or distracting clutter.
-        </div>
-      </div>
-
-      <div class="pillar-card">
-        <div class="pillar-num">PRINCIPLE 05</div>
-        <div class="pillar-title">Focused Interoperability</div>
-        <div class="pillar-text">
-          Separate operational tasks from reflective notes. Connect tools through open URIs, Markdown links, and standard calendar feeds.
-        </div>
-      </div>
-
-      <div class="pillar-card">
-        <div class="pillar-num">PRINCIPLE 06</div>
+        <div class="pillar-num">PRINCIPLE II</div>
         <div class="pillar-title">Longevity</div>
         <div class="pillar-text">
-          Information should outlive individual software applications. Open formats (SQLite, Markdown, JSON, ICS) survive for decades.
+          Information outlives software. Documented SQLite schemas, portable exports (JSON, CSV, ICS), and verified backups keep your commitments readable for decades.
+        </div>
+      </div>
+
+      <div class="pillar-card">
+        <div class="pillar-num">PRINCIPLE III</div>
+        <div class="pillar-title">Locality</div>
+        <div class="pillar-text">
+          Independence is designed in. Creating, completing, searching, and filtering tasks work completely offline; synchronization is an optional transport, never a prerequisite.
+        </div>
+      </div>
+
+      <div class="pillar-card">
+        <div class="pillar-num">PRINCIPLE IV</div>
+        <div class="pillar-title">Transparency &amp; Control</div>
+        <div class="pillar-text">
+          Consequential behavior remains governable. Recurrence rules and Boolean filters are deterministic and testable, every change is logged with Undo, and sync rules are disclosed honestly.
+        </div>
+      </div>
+
+      <div class="pillar-card">
+        <div class="pillar-num">SUPPORTING QUALITY · T6</div>
+        <div class="pillar-title">Interoperability &amp; Maintainability</div>
+        <div class="pillar-text">
+          Focused task execution that connects to Markdown vaults, journals, and calendars via documented REST APIs, signed webhooks, ICS feeds, and CSV/JSON interchange.
+        </div>
+      </div>
+
+      <div class="pillar-card">
+        <div class="pillar-num">SUPPORTING QUALITY · T7</div>
+        <div class="pillar-title">Human Experience &amp; Speed</div>
+        <div class="pillar-text">
+          Immediate sub-100ms feedback on local SQLite operations, keyboard-first Quick Add, and respectful notifications without dark patterns or cloud spinners.
         </div>
       </div>
 
       <div class="pillar-card" style="display: flex; flex-direction: column; justify-content: center; background: rgba(255, 255, 255, 0.02); grid-column: 1 / -1;">
-        <div class="pillar-num">ENGINEERING CRITERIA</div>
-        <div class="pillar-title">The 7 Core Tests</div>
+        <div class="pillar-num">EVIDENCE-LED EVALUATION</div>
+        <div class="pillar-title">Five Eligibility Requirements (E1–E5) &amp; Seven Verification Procedures (T1–T7)</div>
         <div class="pillar-text" style="margin-bottom: 1rem;">
-          Airplane Test • 100ms Test • Longevity Test • Responsibility Test • Dependency Test • Predictability Test • Security &amp; Recovery Test.
+          Ownership &amp; Exit (T1) • Preservation &amp; Recovery (T2) • Offline Independence (T3) • Operational Transparency (T4) • Security, Custody &amp; Continuity (T5) • Interoperability (T6) • Human Experience (T7).
         </div>
-        <a href="https://sovereign.polla.dev/evaluator/" target="_blank" rel="noopener noreferrer" style="color: var(--text-primary); font-size: 0.85rem; font-weight: 600; text-decoration: underline;">
-          Score a tool with the evaluator →
-        </a>
+        <div style="display: flex; flex-wrap: wrap; gap: 1.25rem;">
+          <a href="https://sovereign.polla.dev/methodology/" target="_blank" rel="noopener noreferrer" style="color: var(--text-primary); font-size: 0.85rem; font-weight: 600; text-decoration: underline;">
+            Read the evaluation methodology →
+          </a>
+          <a href="https://sovereign.polla.dev/lineage/" target="_blank" rel="noopener noreferrer" style="color: var(--text-primary); font-size: 0.85rem; font-weight: 600; text-decoration: underline;">
+            Explore the intellectual lineage →
+          </a>
+          <a href="https://sovereign.polla.dev/directory/" target="_blank" rel="noopener noreferrer" style="color: var(--text-primary); font-size: 0.85rem; font-weight: 600; text-decoration: underline;">
+            Browse the Sovereign Index →
+          </a>
+        </div>
       </div>
     </div>
   </section>
