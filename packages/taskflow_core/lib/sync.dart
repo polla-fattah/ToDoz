@@ -30,6 +30,8 @@ const syncSchema = <String, List<String>>{
   'comments': ['task_id', 'body', 'author_id', 'created_at', 'updated_at', 'deleted_at'],
   'reactions': ['comment_id', 'user_id', 'emoji', 'created_at'],
   'reminders': ['task_id', 'spec', 'created_at', 'updated_at', 'deleted_at'],
+  'places': ['name', 'latitude', 'longitude', 'radius_meters', 'created_at', 'updated_at', 'deleted_at'],
+  'location_reminders': ['task_id', 'place_id', 'kind', 'created_at', 'updated_at', 'deleted_at'],
   'attachments': ['comment_id', 'file_name', 'mime_type', 'size_bytes', 'hash', 'created_at', 'updated_at', 'deleted_at'],
   'completions': ['task_id', 'completed_at', 'due_date', 'due_time'],
   'project_comments': ['project_id', 'body', 'created_at', 'updated_at', 'deleted_at'],

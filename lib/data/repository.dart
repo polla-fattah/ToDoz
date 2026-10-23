@@ -11,6 +11,7 @@ import 'package:taskflow_core/progress.dart';
 import 'package:taskflow_core/sharing.dart';
 import 'package:taskflow_core/quick_add.dart';
 import 'package:taskflow_core/view_options.dart';
+import 'package:taskflow_core/location.dart';
 import 'package:taskflow_core/recurrence.dart';
 import 'package:taskflow_core/reminder.dart';
 import 'database.dart';
@@ -838,6 +839,7 @@ class Repo {
         await (db.delete(db.attachments)..where((a) => a.commentId.isIn(commentIds))).go();
         await (db.delete(db.comments)..where((c) => c.taskId.equals(x))).go();
         await (db.delete(db.reminders)..where((r) => r.taskId.equals(x))).go();
+        await (db.delete(db.locationReminders)..where((r) => r.taskId.equals(x))).go();
         await (db.delete(db.completions)..where((c) => c.taskId.equals(x))).go();
         await (db.delete(db.tasks)..where((t) => t.id.equals(x))).go();
       }
@@ -1101,6 +1103,107 @@ class Repo {
   Future<void> clearSnooze(String id) => (db.update(db.tasks)..where((t) => t.id.equals(id)))
       .write(TasksCompanion(snoozedUntil: const Value(null), updatedAt: Value(now)));
 
+  // --- Places and location reminders ---------------------------------------------
+
+  /// Saves a place. [radiusMeters] is kept between the smallest and largest a geofence can do.
+  Future<String> createPlace({required String name, required double latitude, required double longitude, int radiusMeters = defaultRadiusMeters}) async {
+    final clean = name.trim();
+    if (clean.isEmpty) throw RuleException('Give the place a name');
+    if (!validCoordinates(latitude, longitude)) throw RuleException('That is not a point on the map');
+    final id = newId();
+    final stamp = now;
+    await db.into(db.places).insert(PlacesCompanion.insert(
+        id: id, name: clean, latitude: latitude, longitude: longitude, radiusMeters: Value(clampRadius(radiusMeters)), createdAt: stamp, updatedAt: stamp));
+    return id;
+  }
+
+  Future<void> updatePlace(String id, {String? name, double? latitude, double? longitude, int? radiusMeters}) async {
+    final current = await getPlace(id);
+    if (current == null) throw RuleException('Place not found');
+    final newName = (name ?? current.name).trim();
+    final lat = latitude ?? current.latitude;
+    final lon = longitude ?? current.longitude;
+    if (newName.isEmpty) throw RuleException('Give the place a name');
+    if (!validCoordinates(lat, lon)) throw RuleException('That is not a point on the map');
+    await (db.update(db.places)..where((p) => p.id.equals(id))).write(PlacesCompanion(
+        name: Value(newName), latitude: Value(lat), longitude: Value(lon),
+        radiusMeters: Value(clampRadius(radiusMeters ?? current.radiusMeters)), updatedAt: Value(now)));
+  }
+
+  /// Removes a place and the location reminders that pointed at it (the tasks stay).
+  Future<void> deletePlace(String id) => db.transaction(() async {
+        await (db.delete(db.locationReminders)..where((r) => r.placeId.equals(id))).go();
+        await (db.delete(db.places)..where((p) => p.id.equals(id))).go();
+      });
+
+  Future<Place?> getPlace(String id) => (db.select(db.places)..where((p) => p.id.equals(id) & p.deletedAt.isNull())).getSingleOrNull();
+
+  Stream<List<Place>> watchPlaces() => (db.select(db.places)
+        ..where((p) => p.deletedAt.isNull())
+        ..orderBy([(p) => OrderingTerm.asc(p.name.lower())]))
+      .watch();
+
+  /// Brings [taskId] up when [kind] happens at [placeId]. The same pair twice is one reminder.
+  Future<void> addLocationReminder(String taskId, String placeId, LocationTrigger kind) async {
+    if (await getPlace(placeId) == null) throw RuleException('Place not found');
+    final existing = await (db.select(db.locationReminders)
+          ..where((r) => r.taskId.equals(taskId) & r.placeId.equals(placeId) & r.kind.equals(kind.name) & r.deletedAt.isNull()))
+        .get();
+    if (existing.isNotEmpty) return;
+    final stamp = now;
+    await db.into(db.locationReminders).insert(LocationRemindersCompanion.insert(
+        id: newId(), taskId: taskId, placeId: placeId, kind: kind.name, createdAt: stamp, updatedAt: stamp));
+  }
+
+  Future<void> removeLocationReminder(String id) => (db.delete(db.locationReminders)..where((r) => r.id.equals(id))).go();
+
+  Stream<List<LocationReminder>> watchLocationReminders(String taskId) => (db.select(db.locationReminders)
+        ..where((r) => r.taskId.equals(taskId) & r.deletedAt.isNull())
+        ..orderBy([(r) => OrderingTerm.asc(r.createdAt)]))
+      .watch();
+
+  /// How many open tasks use each place (the Places screen shows it, and a place in use asks before it is deleted).
+  Stream<Map<String, int>> watchPlaceUsage() => db
+      .customSelect(
+        'SELECT lr.place_id AS p, COUNT(*) AS n FROM location_reminders lr JOIN tasks t ON t.id = lr.task_id '
+        'WHERE lr.deleted_at IS NULL AND t.deleted_at IS NULL AND t.completed_at IS NULL GROUP BY lr.place_id',
+        readsFrom: {db.locationReminders, db.tasks},
+      )
+      .watch()
+      .map((rows) => {for (final r in rows) r.read<String>('p'): r.read<int>('n')});
+
+  /// What the phone should watch right now: the places that have a location reminder on a task that is still open.
+  Future<List<WatchedPlace>> watchedPlaces() async {
+    final places = await (db.select(db.places)
+          ..where((p) => p.deletedAt.isNull())
+          ..orderBy([(p) => OrderingTerm.asc(p.createdAt)]))
+        .get();
+    final reminders = await (db.select(db.locationReminders)..where((r) => r.deletedAt.isNull())).get();
+    final open = await _openTasks().get();
+    return planWatchedPlaces(
+      places: [for (final p in places) PlaceRec(id: p.id, name: p.name, latitude: p.latitude, longitude: p.longitude, radiusMeters: p.radiusMeters)],
+      reminders: [
+        for (final r in reminders)
+          if (LocationTrigger.decode(r.kind) != null) LocationReminderRec(id: r.id, taskId: r.taskId, placeId: r.placeId, trigger: LocationTrigger.decode(r.kind)!),
+      ],
+      openTasks: {for (final t in open) t.id: t.title},
+    );
+  }
+
+  /// A cheap signal that anything affecting the watched places changed.
+  Stream<int> watchLocationChanges() => db
+      .customSelect(
+        'SELECT (SELECT COUNT(*) FROM tasks WHERE completed_at IS NULL AND deleted_at IS NULL) AS a, (SELECT IFNULL(MAX(updated_at), 0) FROM tasks) AS b, '
+        '(SELECT COUNT(*) FROM location_reminders) AS c, (SELECT IFNULL(MAX(updated_at), 0) FROM location_reminders) AS d, '
+        '(SELECT COUNT(*) FROM places) AS e, (SELECT IFNULL(MAX(updated_at), 0) FROM places) AS f',
+        readsFrom: {db.tasks, db.locationReminders, db.places},
+      )
+      .watch()
+      .map((rows) {
+        final r = rows.first;
+        return Object.hash(r.read<int>('a'), r.read<int>('b'), r.read<int>('c'), r.read<int>('d'), r.read<int>('e'), r.read<int>('f'));
+      });
+
   // --- Duplicate (FR-T6) -----------------------------------------------------------
 
   /// Copies a task next to the original, with its labels and reminders, and
@@ -1129,6 +1232,10 @@ class Repo {
         labelIds: labels,
         reminders: reminders,
       );
+      for (final r in await (db.select(db.locationReminders)..where((r) => r.taskId.equals(src.id) & r.deletedAt.isNull())).get()) {
+        final kind = LocationTrigger.decode(r.kind);
+        if (kind != null) await addLocationReminder(newTask, r.placeId, kind);
+      }
       if (withComments) {
         for (final c in await (db.select(db.comments)..where((c) => c.taskId.equals(src.id) & c.deletedAt.isNull())).get()) {
           await addComment(newTask, c.body);
@@ -2134,6 +2241,8 @@ class Repo {
     final links = await db.select(db.taskLabels).get();
     final comments = await (db.select(db.comments)..where((c) => c.deletedAt.isNull())).get();
     final reminderRows = await (db.select(db.reminders)..where((r) => r.deletedAt.isNull())).get();
+    final placeRows = await (db.select(db.places)..where((p) => p.deletedAt.isNull())).get();
+    final locationRows = await (db.select(db.locationReminders)..where((r) => r.deletedAt.isNull())).get();
     final completionRows = await db.select(db.completions).get();
     final noteRows = await (db.select(db.projectComments)..where((c) => c.deletedAt.isNull())).get();
     final filterRows = await (db.select(db.filters)..where((f) => f.deletedAt.isNull())).get();
@@ -2189,6 +2298,13 @@ class Repo {
         for (final r in reminderRows.where((r) => liveTaskIds.contains(r.taskId)))
           ReminderRec(id: r.id, taskId: r.taskId, spec: r.spec),
       ],
+      places: [
+        for (final p in placeRows) PlaceRec(id: p.id, name: p.name, latitude: p.latitude, longitude: p.longitude, radiusMeters: p.radiusMeters),
+      ],
+      locationReminders: [
+        for (final r in locationRows.where((r) => liveTaskIds.contains(r.taskId) && placeRows.any((p) => p.id == r.placeId) && LocationTrigger.decode(r.kind) != null))
+          LocationReminderRec(id: r.id, taskId: r.taskId, placeId: r.placeId, trigger: LocationTrigger.decode(r.kind)!),
+      ],
       completions: [
         for (final c in completionRows.where((c) => liveTaskIds.contains(c.taskId)))
           CompletionRec(id: c.id, taskId: c.taskId, completedAt: c.completedAt, dueDate: c.dueDate, dueTime: c.dueTime),
@@ -2218,6 +2334,8 @@ class Repo {
       await db.delete(db.taskLabels).go();
       await db.delete(db.comments).go();
       await db.delete(db.reminders).go();
+      await db.delete(db.locationReminders).go();
+      await db.delete(db.places).go();
       await db.delete(db.completions).go();
       await db.delete(db.projectComments).go();
       await db.delete(db.filters).go();
@@ -2270,6 +2388,14 @@ class Repo {
         await db.into(db.reminders).insert(RemindersCompanion.insert(
             id: r.id, taskId: r.taskId, spec: r.spec, createdAt: stamp, updatedAt: stamp));
       }
+      for (final p in b.places) {
+        await db.into(db.places).insert(PlacesCompanion.insert(
+            id: p.id, name: p.name, latitude: p.latitude, longitude: p.longitude, radiusMeters: Value(p.radiusMeters), createdAt: stamp, updatedAt: stamp));
+      }
+      for (final r in b.locationReminders) {
+        await db.into(db.locationReminders).insert(LocationRemindersCompanion.insert(
+            id: r.id, taskId: r.taskId, placeId: r.placeId, kind: r.trigger.name, createdAt: stamp, updatedAt: stamp));
+      }
       for (final c in b.completions) {
         await db.into(db.completions).insert(CompletionsCompanion.insert(
             id: c.id, taskId: c.taskId, completedAt: c.completedAt,
@@ -2295,7 +2421,7 @@ class Repo {
   /// stay, or delete the server data first if it should go too.
   Future<void> deleteEverything() => db.withoutLog(() => db.withoutCapture(() => db.transaction(() async {
         for (final table in <TableInfo<Table, dynamic>>[
-          db.taskLabels, db.comments, db.reminders, db.completions, db.projectComments, db.filters,
+          db.taskLabels, db.comments, db.reminders, db.locationReminders, db.places, db.completions, db.projectComments, db.filters,
           db.attachments, db.tasks, db.sections, db.labels, db.projects, db.activity, db.settings,
         ]) {
           await db.delete(table).go();

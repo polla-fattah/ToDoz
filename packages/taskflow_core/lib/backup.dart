@@ -7,6 +7,7 @@ library;
 import 'dart:convert';
 
 import 'date_parser.dart';
+import 'location.dart';
 import 'reminder.dart';
 
 const inboxId = 'inbox';
@@ -217,6 +218,8 @@ class Bundle {
     required this.tasks,
     required this.comments,
     this.reminders = const [],
+    this.places = const [],
+    this.locationReminders = const [],
     this.completions = const [],
     this.projectComments = const [],
     this.filters = const [],
@@ -232,6 +235,8 @@ class Bundle {
   final List<TaskRec> tasks;
   final List<CommentRec> comments;
   final List<ReminderRec> reminders;
+  final List<PlaceRec> places;
+  final List<LocationReminderRec> locationReminders;
   final List<CompletionRec> completions;
   final List<ProjectCommentRec> projectComments;
   final List<FilterRec> filters;
@@ -249,6 +254,8 @@ class Bundle {
         'tasks': tasks.map((e) => e.toJson()).toList(),
         'comments': comments.map((e) => e.toJson()).toList(),
         'reminders': reminders.map((e) => e.toJson()).toList(),
+        'places': [for (final p in places) {'id': p.id, 'name': p.name, 'latitude': p.latitude, 'longitude': p.longitude, 'radiusMeters': p.radiusMeters}],
+        'locationReminders': [for (final r in locationReminders) {'id': r.id, 'taskId': r.taskId, 'placeId': r.placeId, 'kind': r.trigger.name}],
         'completions': completions.map((e) => e.toJson()).toList(),
         'projectComments': projectComments.map((e) => e.toJson()).toList(),
         'filters': filters.map((e) => e.toJson()).toList(),
@@ -366,6 +373,25 @@ Bundle _fromV2(Map<String, Object?> j) {
             spec: _as<String>(r['spec'], 'reminder spec'),
           ))
       .toList();
+  final places = list('places').map((p) {
+    final lat = (p['latitude'] as num?)?.toDouble(), lon = (p['longitude'] as num?)?.toDouble();
+    if (lat == null || lon == null || !validCoordinates(lat, lon)) _bad('Invalid place');
+    return PlaceRec(
+      id: _as<String>(p['id'], 'place id'),
+      name: _as<String>(p['name'], 'place name'),
+      latitude: lat,
+      longitude: lon,
+      radiusMeters: clampRadius((p['radiusMeters'] as int?) ?? defaultRadiusMeters),
+    );
+  }).toList();
+  final locationReminders = list('locationReminders')
+      .map((r) => LocationReminderRec(
+            id: _as<String>(r['id'], 'location reminder id'),
+            taskId: _as<String>(r['taskId'], 'location reminder task'),
+            placeId: _as<String>(r['placeId'], 'location reminder place'),
+            trigger: LocationTrigger.decode(r['kind'] as String?) ?? _bad('Invalid location reminder'),
+          ))
+      .toList();
   final completions = list('completions')
       .map((c) => CompletionRec(
             id: _as<String>(c['id'], 'completion id'),
@@ -403,6 +429,11 @@ Bundle _fromV2(Map<String, Object?> j) {
     if (!taskIds.contains(r.taskId)) _bad('Reminder task missing');
     if (ReminderSpec.decode(r.spec) == null) _bad('Invalid reminder');
   }
+  final placeIds = {for (final p in places) p.id};
+  for (final r in locationReminders) {
+    if (!taskIds.contains(r.taskId)) _bad('Location reminder task missing');
+    if (!placeIds.contains(r.placeId)) _bad('Location reminder place missing');
+  }
   for (final c in completions) {
     if (!taskIds.contains(c.taskId)) _bad('Completion task missing');
   }
@@ -412,7 +443,7 @@ Bundle _fromV2(Map<String, Object?> j) {
   final settings = (j['settings'] as Map?)?.map((k, v) => MapEntry('$k', '$v')) ?? <String, String>{};
   return Bundle(
     projects: projects, sections: sections, labels: labels,
-    tasks: tasks, comments: comments, reminders: reminders, completions: completions,
+    tasks: tasks, comments: comments, reminders: reminders, places: places, locationReminders: locationReminders, completions: completions,
     projectComments: projectComments, filters: filters, settings: settings,
   );
 }

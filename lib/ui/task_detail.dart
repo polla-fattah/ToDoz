@@ -10,6 +10,8 @@ import 'package:taskflow_core/reminder.dart';
 import '../data/database.dart';
 import '../data/repository.dart';
 import 'catalog.dart';
+import 'package:taskflow_core/location.dart' show LocationTrigger;
+import 'location_dialogs.dart';
 import 'attachments_ui.dart';
 import 'common.dart';
 import 'task_tree.dart';
@@ -284,6 +286,31 @@ class _TaskDetailPageState extends State<TaskDetailPage> {
                   final spec = await showReminderDialog(context, hasDueTime: task.dueTime != null);
                   if (spec != null) await repo.addReminder(task.id, spec);
                 },
+              ),
+            ]);
+          },
+        ),
+      ),
+      row(
+        Icons.place_outlined,
+        'Location',
+        Live<List<LocationReminder>>(
+          id: task.id,
+          create: () => repo.watchLocationReminders(task.id),
+          builder: (context, data) {
+            final list = data ?? const <LocationReminder>[];
+            String placeName(String id) => catalog.places.where((p) => p.id == id).firstOrNull?.name ?? 'Unknown place';
+            return Wrap(spacing: 6, runSpacing: 4, children: [
+              for (final r in list)
+                InputChip(
+                  avatar: const Icon(Icons.place, size: 16),
+                  label: Text('${placeName(r.placeId)} · ${LocationTrigger.decode(r.kind)?.label ?? r.kind}'),
+                  onDeleted: () => repo.removeLocationReminder(r.id),
+                ),
+              ActionChip(
+                avatar: const Icon(Icons.add, size: 16),
+                label: const Text('Location'),
+                onPressed: () => addLocationReminder(context, task.id),
               ),
             ]);
           },

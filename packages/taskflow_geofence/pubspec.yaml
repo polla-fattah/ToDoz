@@ -1,0 +1,19 @@
+name: taskflow_geofence
+description: Android geofencing for ToDoz location reminders. The phone's operating system watches the places, so it works while the app is closed.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.5.0
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.taskflow.geofence
+        pluginClass: GeofencePlugin

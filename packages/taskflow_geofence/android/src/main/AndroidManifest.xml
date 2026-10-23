@@ -1,0 +1,23 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Location reminders: the phone's own geofencing watches the places, also while the app is closed.
+         "All the time" (ACCESS_BACKGROUND_LOCATION) is what makes it work with the app closed. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+
+    <application>
+        <!-- Android calls this when you cross the edge of a watched place. -->
+        <receiver android:name="com.taskflow.geofence.GeofenceReceiver" android:exported="false"/>
+
+        <!-- Geofences are forgotten when the phone restarts or the app is updated: watch them again. -->
+        <receiver android:name="com.taskflow.geofence.GeofenceBootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

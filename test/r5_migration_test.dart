@@ -9,7 +9,7 @@ import 'package:taskflow/data/database.dart';
 import 'package:taskflow/data/repository.dart';
 import 'package:taskflow/sync/sync_triggers.dart';
 
-/// An app that was installed at schema 3 or 4 must open at 6 with its data intact.
+/// An app that was installed at schema 3 or 4 must open at 8 with its data intact.
 /// (The first R5 build crashed on a real phone because the triggers were made before the tables.)
 void main() {
   driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -39,7 +39,7 @@ void main() {
       await db.customStatement('DROP TRIGGER IF EXISTS $name');
     }
     if (version < 6) await db.customStatement('DROP TABLE attachments');
-    await dropVersion7(db);
+    await (version < 7 ? dropVersion7(db) : dropVersion8(db));
     if (version < 5) await db.customStatement('DROP TABLE activity'); // version 5 already had the log
     if (version < 4) {
       await db.customStatement('DROP TABLE outbox');
@@ -51,8 +51,8 @@ void main() {
     return id;
   }
 
-  for (final from in [3, 4, 5, 6]) {
-    test('schema $from opens at 7, keeps its tasks, and the new tables and triggers work', () async {
+  for (final from in [3, 4, 5, 6, 7]) {
+    test('schema $from opens at 8, keeps its tasks, and the new tables and triggers work', () async {
       final id = await makeOldFile(version: from);
       final db = AppDatabase(NativeDatabase(file));
       addTearDown(db.close);
@@ -62,7 +62,7 @@ void main() {
       expect((await repo.watchComments(id).first).single.body, 'a comment');
 
       final tables = {for (final r in await db.customSelect("SELECT name FROM sqlite_master WHERE type = 'table'").get()) r.read<String>('name')};
-      expect(tables, containsAll(['activity', 'attachments', 'outbox', 'field_clock', 'sync_meta']));
+      expect(tables, containsAll(['activity', 'attachments', 'outbox', 'field_clock', 'sync_meta', 'places', 'location_reminders']));
       final triggers = {for (final r in await db.customSelect("SELECT name FROM sqlite_master WHERE type = 'trigger'").get()) r.read<String>('name')};
       expect(triggers.containsAll({...syncTriggerNames(), ...activityTriggerNames()}), isTrue);
 

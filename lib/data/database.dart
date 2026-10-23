@@ -146,6 +146,33 @@ class Reminders extends Table with Stamped {
   Set<Column> get primaryKey => {id};
 }
 
+/// A saved place for location reminders: where it is and how close counts as being there.
+class Places extends Table with Stamped {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  RealColumn get latitude => real()();
+  RealColumn get longitude => real()();
+  IntColumn get radiusMeters => integer().withDefault(const Constant(150))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// A reminder on a task that fires at a place: `arrive` or `leave` ([kind]). A task can have several.
+@TableIndex(name: 'location_reminders_task', columns: {#taskId})
+@TableIndex(name: 'location_reminders_place', columns: {#placeId})
+class LocationReminders extends Table with Stamped {
+  TextColumn get id => text()();
+  TextColumn get taskId => text()();
+  TextColumn get placeId => text()();
+
+  /// arrive or leave.
+  TextColumn get kind => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 /// One row per completion, so a recurring task keeps its history (FR-R7)
 /// and Karma and charts can be built later from exact times.
 @TableIndex(name: 'completions_at', columns: {#completedAt})
@@ -299,12 +326,12 @@ class Settings extends Table {
   Set<Column> get primaryKey => {key};
 }
 
-@DriftDatabase(tables: [Projects, Sections, Labels, Tasks, TaskLabels, Comments, Reminders, Completions, ProjectComments, Filters, Activity, Attachments, Reactions, SharedProjects, Settings, SyncMeta, Outbox, FieldClock])
+@DriftDatabase(tables: [Projects, Sections, Labels, Tasks, TaskLabels, Comments, Reminders, Places, LocationReminders, Completions, ProjectComments, Filters, Activity, Attachments, Reactions, SharedProjects, Settings, SyncMeta, Outbox, FieldClock])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.executor);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -354,7 +381,10 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(reactions);
             await m.createTable(sharedProjects);
           }
-          if (from < 7) {
+          if (from < 8) {
+            // Places and location reminders.
+            await m.createTable(places);
+            await m.createTable(locationReminders);
             // The triggers refer to every table above, so they are made last, once all exist.
             await createActivityTriggers();
             await createSyncTriggers();

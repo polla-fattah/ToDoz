@@ -4,8 +4,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 /// Windows only shows notifications for a desktop app that has a Start Menu shortcut carrying its app id (and the
-/// id of the class that receives clicks). This makes that shortcut, "NoteDo", the first time the app runs from a
-/// place (and again if the app is moved). It also puts NoteDo in the Start Menu.
+/// id of the class that receives clicks). This makes that shortcut, "ToDoz", the first time the app runs from a
+/// place (and again if the app is moved). It also puts ToDoz in the Start Menu.
 class WindowsShortcut {
   WindowsShortcut({required this.appId, required this.activatorGuid, this.run = _runPowerShell});
 
@@ -28,7 +28,7 @@ class WindowsShortcut {
         return true;
       }
     } catch (e) {
-      debugPrint('Could not make the NoteDo Start Menu shortcut: $e');
+      debugPrint('Could not make the ToDoz Start Menu shortcut: $e');
     }
     return false;
   }

@@ -242,6 +242,7 @@ class SyncEngine {
       if (changes.any((c) => c.table == 'tasks' && c.col == presentColumn && c.value == false)) {
         await db.customStatement('DELETE FROM task_labels WHERE task_id NOT IN (SELECT id FROM tasks)');
         await db.customStatement('DELETE FROM reminders WHERE task_id NOT IN (SELECT id FROM tasks)');
+        await db.customStatement('DELETE FROM location_reminders WHERE task_id NOT IN (SELECT id FROM tasks)');
       }
     } finally {
       await db.metaSet('capture', '1');

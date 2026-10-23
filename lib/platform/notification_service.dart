@@ -26,7 +26,7 @@ const _maxScheduled = 48; // Android keeps a limited number of alarms; schedule 
 
 /// Windows needs a name, an id and a GUID for the app to show and receive toast notifications.
 const _windowsAppName = 'ToDoz';
-const _windowsAppId = 'Taskflow.NoteDo.App';
+const _windowsAppId = 'PollaFattah.ToDoz.App';
 const _windowsGuid = 'b8f5f1a2-6d3c-4f6e-9a0b-4c2e7d1a9e35';
 
 /// A Windows toast button hands back text like `complete:<task id>` (a plain tap hands back just the task id).

@@ -11,6 +11,7 @@ import 'app.dart';
 import 'data/database.dart';
 import 'data/repository.dart';
 import 'platform/attachment_store.dart';
+import 'platform/geofence_service.dart';
 import 'platform/auto_backup.dart';
 import 'platform/notification_service.dart';
 import 'platform/today_widget.dart';
@@ -58,6 +59,10 @@ Future<void> main() async {
     ..autoBackup = backup
     ..attachments = attachments;
   if (notifications.supported) NotificationSync(notifications, db);
+  if (GeofenceService.supported) {
+    catalog.geofence = GeofenceService(repo);
+    GeofenceSync(catalog.geofence!);
+  }
   if (TodayWidget.supported) {
     await HomeWidget.registerInteractivityCallback(widgetBackgroundCallback);
     TodayWidget(repo).start();

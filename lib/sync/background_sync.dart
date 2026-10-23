@@ -15,6 +15,7 @@ import '../data/repository.dart';
 import '../platform/attachment_store.dart';
 import '../platform/notification_service.dart';
 import '../platform/today_widget.dart';
+import '../platform/geofence_service.dart';
 import 'blob_sync.dart';
 import 'secure_token_store.dart';
 import 'share_notifier.dart';
@@ -176,6 +177,7 @@ void backgroundSyncDispatcher() {
         reminders: notifications,
       );
       await TodayWidget(repo).push(); // other devices may have changed today's tasks
+      await syncGeofencesQuietly(repo); // ...and the places to watch
       return true; // a failed pass is tried again at the next turn, not at once
     } catch (_) {
       return true;

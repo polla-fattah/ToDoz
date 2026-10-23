@@ -11,6 +11,7 @@ import 'package:taskflow_core/date_parser.dart';
 import 'package:taskflow_core/reminder.dart' show ReminderSpec;
 import '../data/repository.dart';
 import 'catalog.dart';
+import 'places_screen.dart';
 import '../platform/auto_backup.dart';
 import '../security/app_lock.dart';
 import 'common.dart';
@@ -126,6 +127,13 @@ class SettingsScreen extends StatelessWidget {
               if (m != null) await repo.setSetting('digestTime', formatTime(m));
             },
           ),
+        ListTile(
+          leading: const Icon(Icons.place_outlined),
+          title: const Text('Places'),
+          subtitle: const Text('Where location reminders fire: "when I arrive at Work"'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const PlacesScreen())),
+        ),
         if (catalog.notifications?.supported ?? false) const _PermissionTile(),
         if (!(catalog.notifications?.supported ?? false))
           const ListTile(

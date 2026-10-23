@@ -13,6 +13,7 @@ import '../data/database.dart';
 import '../data/repository.dart';
 import '../platform/attachment_store.dart';
 import '../platform/auto_backup.dart';
+import '../platform/geofence_service.dart';
 import '../security/app_lock.dart';
 import '../sync/sync_service.dart';
 import 'notification_controls.dart';
@@ -26,6 +27,7 @@ class Catalog extends ChangeNotifier {
       repo.watchProjects().listen((v) => _set(() => projects = v)),
       repo.watchAllSections().listen((v) => _set(() => sections = v)),
       repo.watchLabels().listen((v) => _set(() => labels = v)),
+      repo.watchPlaces().listen((v) => _set(() => places = v)),
       repo.watchLabelLinks().listen((v) => _set(() => links = v)),
       repo.watchSubtaskCounts().listen((v) => _set(() => subtaskCounts = v)),
       repo.watchFilters().listen((v) => _set(() => filters = v)),
@@ -62,6 +64,9 @@ class Catalog extends ChangeNotifier {
   /// Set by the app on platforms that support reminders; null otherwise.
   NotificationControls? notifications;
 
+  /// Location reminders (Android); null elsewhere and in tests.
+  GeofenceService? geofence;
+
   /// Pairing and background sync; null in tests that do not need it.
   SyncService? sync;
 
@@ -82,6 +87,9 @@ class Catalog extends ChangeNotifier {
   List<Project> projects = const [];
   List<Section> sections = const [];
   List<Label> labels = const [];
+
+  /// Saved places for location reminders, by name.
+  List<Place> places = const [];
   List<TaskLabel> links = const [];
   Map<String, (int, int)> subtaskCounts = const {};
   List<Filter> filters = const [];
