@@ -34,6 +34,17 @@ set_env() { # set_env KEY VALUE: add or replace a line in .env
 
 cli() { dc exec -T taskflow taskflow_server "$@"; }
 
+# Makes Caddy use the Caddyfile on disk. A git pull replaces the file with a new one, and the container keeps seeing the
+# old one until it is recreated (a reload alone then changes nothing), so recreate it when the two differ.
+apply_caddyfile() {
+  [ -n "$(dc ps -q caddy)" ] || return 0
+  if dc exec -T caddy cmp -s /etc/caddy/Caddyfile - < Caddyfile; then
+    dc exec -T caddy caddy reload --config /etc/caddy/Caddyfile
+  else
+    dc up -d --force-recreate --no-deps caddy
+  fi
+}
+
 wait_ready() {
   for _ in $(seq 1 30); do
     if cli user list >/dev/null 2>&1; then return 0; fi
@@ -88,13 +99,13 @@ MSG
     dc up -d --build
     wait_ready
     # Caddy does not notice a changed Caddyfile by itself (private mode has no Caddy: nothing to do then).
-    dc exec -T caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null 2>&1 || true
+    apply_caddyfile >/dev/null 2>&1 || true
     docker image prune -f >/dev/null
     echo "Updated."
     ;;
   reload)
     # After editing the Caddyfile (or the landing page folder): apply it without downtime.
-    dc exec -T caddy caddy reload --config /etc/caddy/Caddyfile
+    apply_caddyfile
     echo "Caddy reloaded."
     ;;
   backup)
