@@ -110,7 +110,7 @@ def main():
       Comments="ToDoz Local-First Task Management" Manufacturer="Polla Fattah"
       InstallerVersion="200" Languages="1033" Compressed="yes" SummaryCodepage="1252" />
 
-    <MajorUpgrade DowngradeErrorMessage="A newer version of ToDoz is already installed." />
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of ToDoz is already installed." />
     <Media Id="1" Cabinet="todoz.cab" EmbedCab="yes" />
 
     <Icon Id="AppIcon.ico" SourceFile="{wsl_icon}" />

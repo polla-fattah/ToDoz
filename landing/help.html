@@ -365,6 +365,7 @@
           <li><a href="#repeats" class="docs-nav-link">Recurrence Engine</a></li>
           <li><a href="#filters" class="docs-nav-link">Boolean Filters</a></li>
           <li><a href="#calendar-view" class="docs-nav-link">Calendar & Time-Grid</a></li>
+          <li><a href="#location-reminders" class="docs-nav-link">Location Reminders</a></li>
         </ul>
       </div>
 
@@ -630,12 +631,74 @@ p1 & overdue, p4 & today, #Personal & 7 days</code></pre>
             </p>
           </div>
           <div class="card" style="padding: 1.5rem;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--accent-blue);">➕ Tap to Add</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary);">
+              Tap or click an empty slot to add a task at that day and time. The all-day row at the top holds tasks that have a date but no time.
+            </p>
+          </div>
+          <div class="card" style="padding: 1.5rem;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--accent-purple);">🔁 Repeats on Later Days</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary);">
+              A repeating task also shows, faded and with a repeat mark, on each later day in view. Tap it to open the task; move the task itself to change it. Hourly repeats and repeats counted from completion are not spread out.
+            </p>
+          </div>
+          <div class="card" style="padding: 1.5rem;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--accent-cyan);">📜 Scrolls While You Drag</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary);">
+              Hold a task near the top or bottom of the hours and the grid scrolls by itself, so you can take it to a time that is off the screen.
+            </p>
+          </div>
+          <div class="card" style="padding: 1.5rem;">
             <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--accent-emerald);">⌨️ Hotkey Navigation</h3>
             <p style="font-size: 0.9rem; color: var(--text-secondary);">
               Press <kbd>D</kbd> for Day, <kbd>3</kbd> for 3 Days, <kbd>W</kbd> for Week, <kbd>M</kbd> for Month, and <kbd>G</kbd> then <kbd>C</kbd> to open Calendar.
             </p>
           </div>
         </div>
+      </section>
+
+      <!-- Location Reminders Section -->
+      <section id="location-reminders" class="docs-section">
+        <div class="docs-section-header">
+          <h2 class="docs-section-title">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-blue);"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+            Location Reminders
+          </h2>
+          <p class="docs-section-desc">
+            A reminder that fires at a place instead of a time: “when I get to work, talk to Sam”. Set up on the task page, shown by your Android phone.
+          </p>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; margin: 1.5rem 0;">
+          <div class="card" style="padding: 1.5rem;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--accent-cyan);">📍 1. Save a place</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary);">
+              Settings, then Places, then Add place (or choose <strong>Location</strong> on a task and then <strong>New place</strong>). Tap the map, press <em>Use my current location</em>, or type the coordinates, and choose how close counts as being there (100 m to 1 km). Pick the middle of the building, not the street.
+            </p>
+          </div>
+          <div class="card" style="padding: 1.5rem;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--accent-purple);">✅ 2. Add it to a task</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary);">
+              On the task page choose <strong>Location</strong>, then <em>When I arrive</em> or <em>When I leave</em>, then the place. A task can have several places, and a place can serve several tasks.
+            </p>
+          </div>
+          <div class="card" style="padding: 1.5rem;">
+            <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--accent-emerald);">🔔 3. Get the reminder</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary);">
+              Android watches the place itself, so it works while ToDoz is closed. You get “<em>Talk to Sam</em> — You arrived at Work”; a tap opens the task. Use <em>Send a test reminder</em> in Places to see what it looks like.
+            </p>
+          </div>
+        </div>
+
+        <h3 style="font-size: 1.1rem; margin: 1.5rem 0 0.5rem;">Good to know</h3>
+        <ul style="color: var(--text-secondary); font-size: 0.92rem; line-height: 1.7; padding-left: 1.2rem;">
+          <li>Set location access to <strong>Allow all the time</strong> (Places asks; on Android 11 and newer this opens the phone's settings page) and allow notifications.</li>
+          <li>It is not instant: allow a minute or two, longer in battery saver. A radius under about 150 m can be missed.</li>
+          <li>It needs Google Play Services, which Android's geofencing is part of. Android forgets the places at a restart and ToDoz sets them up again by itself.</li>
+          <li>The same reminder is not shown again within 30 minutes.</li>
+          <li>Places and location reminders sync between your own devices and are never passed to people you share a project with. Windows can save places and add reminders, but only the phone can fire them.</li>
+          <li>The map tiles come from openstreetmap.org and load only while the place editor is open.</li>
+        </ul>
       </section>
 
       <!-- Self-Hosting Section -->

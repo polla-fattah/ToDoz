@@ -259,9 +259,23 @@
       </div>
 
       <div class="feature-card">
-        <div class="feature-title">Google Calendar Time-Grid</div>
+        <div class="feature-title">Google Calendar Style Time-Grid</div>
         <div class="feature-desc">
-          Native 15-minute slot time-grid in Day, 3-Day, Week, and Month layouts. Drag to reschedule or adjust durations with live Google Calendar sync.
+          Day, 3-Day, Week, and Month in light and dark, on the web, Windows and Android. Tap a slot to add, drag to move, drag the bottom edge to resize in 15-minute steps, and see repeating tasks on their later days.
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-title">Location Reminders</div>
+        <div class="feature-desc">
+          Save places like Work or Home and get “when I arrive” or “when I leave” reminders on Android, even while the app is closed. Pick the place on an OpenStreetMap map or use your current location.
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-title">Reminders on Every Device</div>
+        <div class="feature-desc">
+          Several time reminders per task on Android and Windows, with Complete and Snooze buttons on the notification and an optional daily digest. Windows reminders fire even when ToDoz is closed.
         </div>
       </div>
 
@@ -299,6 +313,7 @@
     <div class="tab-box">
       <div class="tab-nav">
         <button class="tab-btn active" data-tab="tab-calendar">Calendar Time-Grid</button>
+        <button class="tab-btn" data-tab="tab-location">Location Reminders</button>
         <button class="tab-btn" data-tab="tab-recurrence">Recurrence Rules</button>
         <button class="tab-btn" data-tab="tab-filters">Boolean Queries</button>
         <button class="tab-btn" data-tab="tab-sync">LWW Synchronization</button>
@@ -312,8 +327,24 @@
           <div class="code-snippet">
 • Day View      - Micro-schedule today's hours with exact 15m time blocks
 • 3-Day View    - Multi-day tactical sprint planning
-• Week View     - Broad 7-day operational horizon
+• Week View     - Broad 7-day operational horizon (computers and tablets)
 • Month View    - High-level bird's-eye view with drag-and-drop reschedule
+• Tap a slot to add, drag to move, drag the bottom edge to resize
+• Repeating tasks show faded on their later days
+• Light and dark, the same on web, Windows and Android
+          </div>
+        </div>
+
+        <div id="tab-location" class="tab-pane">
+          <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.95rem;">
+            Reminders that follow you, not the clock (Android). Android's own geofencing watches the places while ToDoz is closed:
+          </p>
+          <div class="code-snippet">
+• Save a place: tap the map, use your current location, or type coordinates
+• On a task, choose Location: "When I arrive" or "When I leave"
+• Arrive at Work  -> "Talk to Sam - You arrived at Work"
+• Needs location set to "Allow all the time"; takes a minute or two to notice
+• Places sync between your devices and stay private to you
           </div>
         </div>
 
@@ -372,7 +403,7 @@ due before: next monday &amp; !assigned -> Tasks requiring personal triage this 
           <div class="download-platform">Windows Desktop</div>
           <div class="download-meta">Windows 10 / 11 (64-bit)</div>
           <p class="download-note">
-            Authentic Windows MSI installer with background toast notifications, global quick-add, and Start Menu integration.
+            Authentic Windows MSI installer with toast reminders that fire even when ToDoz is closed, a Google-style calendar, and Start Menu integration.
           </p>
         </div>
         <a href="/downloads/ToDoz-Setup.msi" class="btn btn-secondary">
@@ -386,7 +417,7 @@ due before: next monday &amp; !assigned -> Tasks requiring personal triage this 
           <div class="download-platform">Android Mobile</div>
           <div class="download-meta">Android 8.0+ (ARM64 &amp; x86)</div>
           <p class="download-note">
-            Full offline mobile application with background WorkManager sync, quick-add share sheet, and exact alarms.
+            Full offline mobile application with background sync, time and location reminders, a quick-add share sheet, and exact alarms.
           </p>
         </div>
         <a href="/downloads/ToDoz.apk" class="btn btn-secondary">
