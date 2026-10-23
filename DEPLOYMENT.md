@@ -156,6 +156,25 @@ cd /opt/todoz/server/deploy
 ./deploy.sh status        # the containers should be "Up"
 ```
 
+**If the folder on the server is not a git checkout** (the todoz.polla.dev server is a plain copy, so `./deploy.sh update` cannot `git pull` there), send the committed files instead. On your computer, after `git push`:
+
+```bash
+git archive --format=tar.gz -o todoz-src.tar.gz HEAD server packages/taskflow_core landing PHILOSOPHY.md README.md DEPLOYMENT.md
+scp todoz-src.tar.gz root@<server>:/root/
+```
+
+On the server (this keeps `.env`, `.mode`, the backups and the downloads, because none of them are in the archive):
+
+```bash
+cd /opt/todoz/server/deploy && ./deploy.sh backup          # a copy of the database first
+tar xzf /root/todoz-src.tar.gz -C /opt/todoz
+docker compose --profile public up -d --build               # rebuilds and restarts the server (a few minutes)
+./deploy.sh reload                                          # Caddy: new Caddyfile and landing pages
+./deploy.sh cli user list                                   # the server answers and your data is there
+```
+
+The installers are not in git (`*.apk`, `*.msi` are ignored), so copy them separately after building: `tool/build_msi.py` writes `landing/downloads/ToDoz-Setup.msi` (it needs `wixl` in WSL), and the release APK is `build/app/outputs/flutter-apk/app-release.apk`. Upload both to `/opt/todoz/landing/downloads/` (as `ToDoz-Setup.msi` and `ToDoz.apk`) and compare `sha256sum` on the server with the local file.
+
 Then reload the page in the browser (Ctrl+F5). The Windows and Android apps are not part of this: they need their own new build (`flutter build windows` / `flutter build apk`) and install.
 
 | What changed | What to do on the server |
