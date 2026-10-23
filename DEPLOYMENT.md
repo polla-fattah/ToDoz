@@ -156,21 +156,16 @@ cd /opt/todoz/server/deploy
 ./deploy.sh status        # the containers should be "Up"
 ```
 
-**If the folder on the server is not a git checkout** (the todoz.polla.dev server is a plain copy, so `./deploy.sh update` cannot `git pull` there), send the committed files instead. On your computer, after `git push`:
+**The todoz.polla.dev server is a git checkout** (since 2026-10-23: `/opt/todoz` tracks `origin/main`, with a *sparse* checkout of only what the server uses: `server`, `packages/taskflow_core`, `landing`, and the README, PHILOSOPHY and DEPLOYMENT files). So `./deploy.sh update` works there. If a future build needs another folder from the repository, add it once with `cd /opt/todoz && git sparse-checkout add /<folder>`. `.env`, `.mode`, the backups and the installers in `landing/downloads/` are not in git and are never touched by an update.
+
+**Turning a plain copy of the folder into a checkout** (what was done; safe on a running server, nothing is moved or restarted):
 
 ```bash
-git archive --format=tar.gz -o todoz-src.tar.gz HEAD server packages/taskflow_core landing PHILOSOPHY.md README.md DEPLOYMENT.md
-scp todoz-src.tar.gz root@<server>:/root/
-```
-
-On the server (this keeps `.env`, `.mode`, the backups and the downloads, because none of them are in the archive):
-
-```bash
-cd /opt/todoz/server/deploy && ./deploy.sh backup          # a copy of the database first
-tar xzf /root/todoz-src.tar.gz -C /opt/todoz
-docker compose --profile public up -d --build               # rebuilds and restarts the server (a few minutes)
-./deploy.sh reload                                          # Caddy: new Caddyfile and landing pages
-./deploy.sh cli user list                                   # the server answers and your data is there
+cd /opt/todoz && git init -b main
+git remote add origin https://github.com/polla-fattah/ToDoz.git
+git sparse-checkout set --no-cone /server /packages/taskflow_core /landing /PHILOSOPHY.md /README.md /DEPLOYMENT.md
+git fetch origin main && git checkout -f -B main origin/main && git branch --set-upstream-to=origin/main main
+cd server/deploy && ./deploy.sh update            # proves the whole route works
 ```
 
 The installers are not in git (`*.apk`, `*.msi` are ignored), so copy them separately after building: `tool/build_msi.py` writes `landing/downloads/ToDoz-Setup.msi` (it needs `wixl` in WSL), and the release APK is `build/app/outputs/flutter-apk/app-release.apk`. Upload both to `/opt/todoz/landing/downloads/` (as `ToDoz-Setup.msi` and `ToDoz.apk`) and compare `sha256sum` on the server with the local file.
@@ -180,7 +175,7 @@ Then reload the page in the browser (Ctrl+F5). The Windows and Android apps are 
 | What changed | What to do on the server |
 | :--- | :--- |
 | Server code, the web app, `taskflow_core` | `./deploy.sh update` |
-| Only `Caddyfile` or the landing page (`landing/`) | `git pull` then `./deploy.sh reload` |
+| Only `Caddyfile` or the landing page (`landing/`) | `git pull --ff-only` then `./deploy.sh reload` (or just `./deploy.sh update`) |
 | Only `.env` (domain, Google keys) | edit it, then `./deploy.sh update` (it restarts the server with the new values) |
 | Something looks wrong afterwards | Read `./deploy.sh logs`. To go back to an older version: `git checkout <older commit>`, then `docker compose --profile public up -d --build` (not `update`, which pulls). Your data is in a Docker volume and stays; `update` made a backup first in `backups/`. |
 
