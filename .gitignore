@@ -67,3 +67,6 @@ landing/downloads/*.deb
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Local secrets (server login). Never commit.
+.secrets/

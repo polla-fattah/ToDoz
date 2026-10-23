@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connect an AI assistant to ToDoz: the easy guide</title>
+  <meta name="description" content="Four steps to let Claude, ChatGPT or Gemini add and list your ToDoz tasks from the web or your phone.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css?v=5">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/icon-192.png">
+  <link rel="apple-touch-icon" href="/images/apple-touch-icon.png">
+  <style>
+    .easy { max-width: 760px; margin: 2rem auto 5rem; padding: 0 1.25rem; }
+    .easy h1 { font-size: 2.2rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.5rem; }
+    .easy .lead { color: var(--text-secondary); font-size: 1.1rem; line-height: 1.6; margin-bottom: 2rem; }
+    .step { background: var(--bg-surface); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 1.4rem 1.5rem; margin-bottom: 1.25rem; }
+    .step h2 { display: flex; align-items: center; gap: 0.75rem; font-size: 1.3rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.75rem; }
+    .num { flex: none; width: 2rem; height: 2rem; border-radius: 50%; background: var(--accent-cyan); color: #000; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1rem; }
+    .step p, .step li { color: var(--text-secondary); line-height: 1.7; }
+    .step ol, .step ul { margin: 0.5rem 0 0.5rem 1.25rem; }
+    .step b, .step strong { color: var(--text-primary); }
+    .step code { font-family: var(--font-mono); font-size: 0.9em; }
+    .maker { display: flex; flex-direction: column; gap: 0.6rem; margin: 0.75rem 0; }
+    .maker input { width: 100%; padding: 0.75rem 0.9rem; border-radius: var(--radius-sm); border: 1px solid var(--border-glass); background: #07090e; color: #e2e8f0; font-family: var(--font-mono); font-size: 0.9rem; }
+    .maker .out { font-family: var(--font-mono); font-size: 0.88rem; background: #07090e; color: #e2e8f0; border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 0.75rem 0.9rem; word-break: break-all; min-height: 2.6rem; }
+    .maker button { align-self: flex-start; padding: 0.55rem 1.1rem; border-radius: var(--radius-sm); border: 0; background: var(--accent-cyan); color: #000; font-weight: 700; cursor: pointer; }
+    .note { font-size: 0.92rem; color: var(--text-secondary); border-left: 3px solid var(--accent-cyan); padding-left: 0.9rem; margin: 0.9rem 0 0; }
+    details { margin-top: 0.6rem; }
+    summary { cursor: pointer; font-weight: 700; color: var(--text-primary); }
+  </style>
+</head>
+<body>
+
+  <header class="navbar">
+    <a href="/" class="nav-brand">
+      <img src="/images/icon-192.png" width="32" height="32" alt="ToDoz Logo" class="brand-logo-img">
+      <span class="brand-text"><span class="brand-to">To</span><span class="brand-doz">Doz</span></span>
+      <span class="brand-badge">Easy guide</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="/" class="nav-link">Home</a></li>
+      <li><a href="/help" class="nav-link">Full docs</a></li>
+    </ul>
+    <div class="nav-actions">
+      <a href="/app" class="btn btn-primary">Open Web App</a>
+    </div>
+  </header>
+
+  <main class="easy">
+    <h1>Let an AI add your tasks</h1>
+    <p class="lead">Tell Claude, ChatGPT or Gemini "add a task: call the dentist tomorrow 10am" and it lands in ToDoz on all your devices. It takes about five minutes, once.</p>
+
+    <section class="step">
+      <h2><span class="num">1</span> Make a key in ToDoz</h2>
+      <ol>
+        <li>Open ToDoz (the app, or <a href="/app">the web app</a>).</li>
+        <li>Go to <b>Settings</b> &rarr; <b>Calendar and integrations</b> &rarr; <b>API access</b>.</li>
+        <li>Make a new key. Name it after the assistant, like <code>Claude</code>.</li>
+        <li>Tick <b>read only</b> if the assistant should only <em>look</em> at your tasks, not change them.</li>
+        <li><b>Copy the key now.</b> It starts with <code>tf_</code> and is shown only once.</li>
+      </ol>
+    </section>
+
+    <section class="step">
+      <h2><span class="num">2</span> Make your private address</h2>
+      <p>Paste the key here. The address is made in your browser; nothing is sent anywhere.</p>
+      <div class="maker">
+        <input id="key" type="text" placeholder="Paste your key (tf_...)" autocomplete="off" spellcheck="false">
+        <div class="out" id="addr" aria-live="polite">https://…/mcp/tf_YOUR_KEY</div>
+        <button type="button" id="copy">Copy address</button>
+      </div>
+      <p class="note">This address is a password. Do not post it or send it to anyone. If it leaks, delete the key in ToDoz (step 1) and make a new one.</p>
+    </section>
+
+    <section class="step">
+      <h2><span class="num">3</span> Give it to your assistant</h2>
+
+      <details open>
+        <summary>Claude (claude.ai, desktop, phone)</summary>
+        <ol>
+          <li>Open <b>claude.ai</b> &rarr; <b>Settings</b> &rarr; <b>Connectors</b> &rarr; <b>Add custom connector</b>.</li>
+          <li>Name: <code>ToDoz</code>. Address: paste yours from step 2. Leave every other box empty.</li>
+          <li>Start a new chat and switch the <b>ToDoz</b> connector on.</li>
+        </ol>
+        <p class="note">Custom connectors may need a paid Claude plan. Connectors you add on the web should show up in the phone app too.</p>
+      </details>
+
+      <details>
+        <summary>ChatGPT</summary>
+        <ol>
+          <li><b>Settings</b> &rarr; <b>Apps</b> &rarr; <b>Advanced</b> &rarr; turn on <b>Developer mode</b>.</li>
+          <li>Create a new app or connector. Address: paste yours. Authentication: <b>No authentication</b>.</li>
+          <li>In a chat, pick the ToDoz app from the tools menu.</li>
+        </ol>
+        <p class="note">Developer mode is a beta and only some plans have it. If you do not see it, your plan does not have it yet.</p>
+      </details>
+
+      <details>
+        <summary>Gemini</summary>
+        <p>The Gemini app may offer <b>Connected apps</b> &rarr; <b>Other</b> &rarr; <b>Add a custom app</b>. Paste your address there. Google only gives this to some plans, so you may not see it.</p>
+        <p>If you use the Gemini command line tool, this always works (replace the key):</p>
+        <pre><code>gemini mcp add --transport http --header "Authorization: Bearer tf_YOUR_KEY" todoz <span class="origin">https://todoz.polla.dev</span>/mcp</code></pre>
+      </details>
+    </section>
+
+    <section class="step">
+      <h2><span class="num">4</span> Try it</h2>
+      <p>In a new chat with ToDoz switched on, say:</p>
+      <ul>
+        <li><em>"Add to ToDoz: buy milk tomorrow 5pm."</em></li>
+        <li><em>"What is on my ToDoz list for today?"</em></li>
+        <li><em>"Mark 'buy milk' as done."</em></li>
+      </ul>
+      <p>The task appears in ToDoz at the next sync. Say your time zone once ("I am in Erbil"), so "tomorrow" is your tomorrow.</p>
+    </section>
+
+    <section class="step">
+      <h2><span class="num">?</span> Something is wrong</h2>
+      <ul>
+        <li><b>"Could not connect" or "token not accepted":</b> the address has a typo, or the key was deleted. Redo step 2 with a new key.</li>
+        <li><b>It will not add, only look:</b> the key is <em>read only</em>. Make a new key without that tick.</li>
+        <li><b>I do not see "custom connector":</b> your plan may not include it yet. Gemini CLI and Claude Code on a computer always work: see the <a href="/help#webhooks-api">full docs</a>.</li>
+        <li><b>Stop an assistant for good:</b> delete its key under <b>API access</b> in ToDoz. It stops working at once.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-bottom">
+      <p>© 2026 ToDoz Project. Designed by <a href="https://polla.dev" target="_blank" rel="noopener noreferrer" style="color: var(--accent-cyan); font-weight: 600;">Polla Fattah</a>. Sovereign, Offline-First, and Open Source under MIT.</p>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      var origin = location.protocol === 'https:' ? location.origin : 'https://todoz.polla.dev';
+      document.querySelectorAll('.origin').forEach(function (e) { e.textContent = origin; });
+      var key = document.getElementById('key'), out = document.getElementById('addr'), btn = document.getElementById('copy');
+      function address() {
+        var k = key.value.trim();
+        if (!/^tf_[A-Za-z0-9_-]{20,100}$/.test(k)) return null;
+        return origin + '/mcp/' + k;
+      }
+      function show() {
+        var a = address();
+        out.textContent = a || (key.value.trim() ? 'That does not look like a ToDoz key (it starts with tf_ and has no spaces).' : origin + '/mcp/tf_YOUR_KEY');
+      }
+      key.addEventListener('input', show);
+      show();
+      btn.addEventListener('click', function () {
+        var a = address();
+        if (!a) { key.focus(); return; }
+        navigator.clipboard.writeText(a).then(function () {
+          btn.textContent = 'Copied!';
+          setTimeout(function () { btn.textContent = 'Copy address'; }, 2000);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
