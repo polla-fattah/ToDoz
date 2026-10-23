@@ -52,6 +52,15 @@ http://{$TASKFLOW_DOMAIN}, https://{$TASKFLOW_DOMAIN} {
 		reverse_proxy taskflow:8080
 	}
 
+	# The remote MCP server: Claude, ChatGPT and Gemini call it as /mcp (token in the Authorization header) or
+	# /mcp/<token> (for apps that cannot send a header). Its address holds a secret, so it is not logged here.
+	handle /mcp* {
+		request_body {
+			max_size 512KB
+		}
+		reverse_proxy taskflow:8080
+	}
+
 	# Incoming webhooks (/hooks/in/<id>)
 	handle /hooks/* {
 		request_body {

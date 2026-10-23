@@ -973,12 +973,61 @@ GOOGLE_CLIENT_SECRET=your-client-secret</code></pre>
 
         <div class="code-box">
           <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-          <pre><code># Create a task via Quick Add syntax over REST API
-curl -X POST https://todoz.example.com/api/quick-add \
+          <pre><code># Create a task from a Quick Add line (the server understands dates, priority, #project, %label)
+curl -X POST https://todoz.example.com/api/v1/quick-add \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"line": "Submit publication revisions tomorrow 4pm p1 #Research"}'</code></pre>
+  -d '{"text": "Submit publication revisions tomorrow 4pm p1 #Research"}'</code></pre>
         </div>
+
+        <div class="code-box">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre><code># Other calls (same Authorization header)
+GET    /api/v1/projects                 list projects and their ids
+GET    /api/v1/tasks?project_id=...     open tasks (also: due_date=2026-10-23, label=, include_completed=true)
+POST   /api/v1/tasks                    {"title": "...", "due_date": "2026-10-23", "due_time": "16:00", "priority": 1}
+POST   /api/v1/tasks/{id}/close         complete a task
+POST   /api/v1/quick-add/parse          what a line would become, without saving it</code></pre>
+        </div>
+
+        <p style="color: var(--text-secondary); margin: 1rem 0;">
+          <strong>AI assistants:</strong> any assistant or agent that can make web requests can use these calls. Give it its own API token (a read-only token lets it look but not change anything) and tell it the address and the calls above. Revoke the token in the same Settings page whenever you like. Treat a token like a password.
+        </p>
+
+        <h3 style="color: var(--text-primary); margin: 1.5rem 0 0.75rem;">Connect Claude, ChatGPT or Gemini from the web or your phone</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+          Your ToDoz server is also a remote MCP server, so assistants that run in the cloud can reach it without installing anything. In ToDoz make an API token for the assistant (<strong>Settings &rarr; Calendar and integrations &rarr; API access</strong>; tick <em>read only</em> if it should only look). Then give the assistant one of these addresses. The second form holds the token in the address, for apps that have no place to type a token, so keep that address private like a password:
+        </p>
+        <div class="code-box">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre><code>https://todoz.example.com/mcp                  (token sent as: Authorization: Bearer tf_...)
+https://todoz.example.com/mcp/tf_YOUR_TOKEN    (token inside the address)</code></pre>
+        </div>
+        <ul style="color: var(--text-secondary); margin: 1rem 0 1rem 1.25rem; line-height: 1.7;">
+          <li><strong>Claude</strong> (claude.ai, the desktop app and the phone apps): <em>Settings &rarr; Connectors &rarr; Add custom connector</em>, paste the second address, leave the OAuth fields empty. Custom connectors may need a paid plan, and connectors you add on the web show up in the phone app.</li>
+          <li><strong>ChatGPT</strong>: turn on <em>Developer mode</em> (<em>Settings &rarr; Apps &rarr; Advanced</em>; available on some plans, in beta), then create an app or connector with the second address and authentication set to <em>No authentication</em>.</li>
+          <li><strong>Gemini</strong>: the Gemini app reportedly lets you add a custom app by URL (<em>Connected apps &rarr; Other &rarr; Add a custom app</em>), but only on some plans and accounts, and Google's own pages did not confirm this when we checked, so it may not be offered to you yet. Where it is, paste the second address. Gemini CLI is the sure route: <code>gemini mcp add --transport http --header "Authorization: Bearer tf_..." todoz https://todoz.example.com/mcp</code>.</li>
+        </ul>
+        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+          The assistants' menus change often, so the names above may differ a little. Ask the assistant to "add a task to ToDoz" to test it. Tell it your time zone once, or let it pass your local time, so "tomorrow 5pm" means yours. The task shows on all your devices at their next sync. To cut an assistant off, revoke its token in the same Settings page.
+        </p>
+
+        <h3 style="color: var(--text-primary); margin: 1.5rem 0 0.75rem;">Connect Claude or Gemini on your own computer (MCP)</h3>
+        <p style="color: var(--text-secondary); margin-bottom: 1rem;">
+          For Claude Desktop, Claude Code and Gemini CLI there is a ready-made connector in <code>tool/mcp/</code> of the ToDoz repository. It needs only Node.js 20 or newer, and the assistant can then add tasks, list projects and tasks, preview how a line will be read, and complete tasks. Its full instructions, with settings for each assistant, are in <code>tool/mcp/README.md</code>. For example, in Claude Code:
+        </p>
+
+        <div class="code-box">
+          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          <pre><code>claude mcp add todoz --scope user \
+  --env TODOZ_URL=https://todoz.example.com \
+  --env TODOZ_TOKEN=YOUR_API_TOKEN \
+  -- node /path/to/tool/mcp/server.mjs</code></pre>
+        </div>
+
+        <p style="color: var(--text-secondary); margin: 1rem 0;">
+          The address and token are the only settings. Use <code>https://</code> for the address, and make a read-only token if you only want the assistant to look.
+        </p>
 
       </section>
 

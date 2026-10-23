@@ -21,6 +21,7 @@ import 'model.dart';
 import 'rest.dart';
 import 'web.dart';
 import 'limits.dart';
+import 'mcp.dart';
 import 'store.dart';
 
 typedef LogSink = void Function(String line);
@@ -563,6 +564,27 @@ Handler buildApi(
 
   // --- the REST API for scripts (FR-I4) ----------------------------------------------------------------
 
+  // The API token comes from the Authorization header, or (for MCP apps that cannot send one) from the address.
+  RestAuth apiAuth(Request r, [String? urlToken]) {
+    final header = r.headers['authorization'] ?? '';
+    final match = RegExp(r'^Bearer (tf_[A-Za-z0-9_-]{20,100})$').firstMatch(header);
+    final given = match?.group(1) ?? (urlToken != null && RegExp(r'^tf_[A-Za-z0-9_-]{20,100}$').hasMatch(urlToken) ? urlToken : null);
+    final t = given == null ? null : store.authenticateApiToken(given);
+    if (t == null) {
+      // Wrong guesses at a secret address count against the caller's address like wrong pairing codes do.
+      if (urlToken != null && !limits.allow('mcpbad:${clientIp(r)}', limit: 20, window: const Duration(minutes: 1))) {
+        throw RestRefusal(429, 'slow_down', 'Too many requests', headers: {'retry-after': '60'});
+      }
+      throw RestRefusal(401, 'unauthorized', 'Send an API token: Authorization: Bearer tf_...');
+    }
+    if (!limits.allow('api:${t.tokenId}', limit: config.apiPerMinute, window: const Duration(minutes: 1))) {
+      throw RestRefusal(429, 'slow_down', 'Too many requests', headers: {'retry-after': '30'});
+    }
+    final who = r.context['who'];
+    if (who is Map) who['device'] = DeviceInfo(id: t.tokenId.padRight(8, '0'), userId: t.userId, name: 'api', createdAt: 0);
+    return RestAuth(t.userId, t.tokenId, t.readOnly);
+  }
+
   registerRest(
     router,
     RestContext(
@@ -570,20 +592,13 @@ Handler buildApi(
       readJson: readJson,
       json: _json,
       error: (status, code, message) => _error(_HttpError(status, code, message)),
-      authenticate: (Request r) {
-        final header = r.headers['authorization'] ?? '';
-        final match = RegExp(r'^Bearer (tf_[A-Za-z0-9_-]{20,100})$').firstMatch(header);
-        final t = match == null ? null : store.authenticateApiToken(match.group(1)!);
-        if (t == null) throw RestRefusal(401, 'unauthorized', 'Send an API token: Authorization: Bearer tf_...');
-        if (!limits.allow('api:${t.tokenId}', limit: config.apiPerMinute, window: const Duration(minutes: 1))) {
-          throw RestRefusal(429, 'slow_down', 'Too many requests', headers: {'retry-after': '30'});
-        }
-        final who = r.context['who'];
-        if (who is Map) who['device'] = DeviceInfo(id: t.tokenId.padRight(8, '0'), userId: t.userId, name: 'api', createdAt: 0);
-        return RestAuth(t.userId, t.tokenId, t.readOnly);
-      },
+      authenticate: (Request r) => apiAuth(r),
     ),
   );
+
+  // --- the remote MCP server, for assistants in the cloud (Claude, ChatGPT, Gemini) ------------------------
+
+  registerMcp(router, McpContext(store: store, authenticate: apiAuth));
 
   router.delete('/v1/devices/<id>', authed((r, device) async {
     final id = r.params['id'] ?? '';
@@ -611,6 +626,9 @@ Handler buildApi(
 
   // --- middleware ---------------------------------------------------------------------
 
+  // The address of /mcp/<token> holds a secret, so logs show /mcp/... instead.
+  String logPath(Request request) => request.url.path.startsWith('mcp/') ? 'mcp/...' : request.url.path;
+
   Middleware errors() => (inner) => (request) async {
         try {
           return await inner(request);
@@ -619,7 +637,7 @@ Handler buildApi(
         } catch (e, st) {
           // The caller learns nothing; the owner's log gets the reason (no request data).
           final where = st.toString().split('\n').take(6).join(' | ');
-          log?.call('${now().toUtc().toIso8601String()} internal error on ${request.method} /${request.url.path}: ${e.runtimeType}: $e [$where]');
+          log?.call('${now().toUtc().toIso8601String()} internal error on ${request.method} /${logPath(request)}: ${e.runtimeType}: $e [$where]');
           return _json(500, {'error': 'server_error', 'message': 'Something went wrong on the server'});
         }
       };
@@ -644,7 +662,7 @@ Handler buildApi(
         final ctx = holder['device'];
         final who = ctx is DeviceInfo ? 'user=${ctx.userId.substring(0, 8)} device=${ctx.id.substring(0, 8)}' : 'user=- device=-';
         final ms = now().difference(started).inMilliseconds;
-        log?.call('${now().toUtc().toIso8601String()} $who ${request.method} /${request.url.path} ${response.statusCode} ${ms}ms ip=${clientIp(request)}');
+        log?.call('${now().toUtc().toIso8601String()} $who ${request.method} /${logPath(request)} ${response.statusCode} ${ms}ms ip=${clientIp(request)}');
         return response;
       };
 

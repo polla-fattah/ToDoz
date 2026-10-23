@@ -9,12 +9,12 @@ void main() {
   test('every top-level path the server answers is passed on by the Docker Caddyfile', () {
     final routes = RegExp(r"router\.(?:get|post|put|delete)\('(/[A-Za-z0-9_-]+)");
     final served = <String>{};
-    for (final file in ['lib/api.dart', 'lib/rest.dart']) {
+    for (final file in ['lib/api.dart', 'lib/rest.dart', 'lib/mcp.dart']) {
       for (final m in routes.allMatches(File(file).readAsStringSync())) {
         served.add(m.group(1)!);
       }
     }
-    expect(served, containsAll(['/api', '/app', '/v1', '/web', '/hooks', '/ical', '/google', '/health']), reason: 'the scan found the routes');
+    expect(served, containsAll(['/api', '/app', '/v1', '/web', '/hooks', '/ical', '/google', '/health', '/mcp']), reason: 'the scan found the routes');
 
     final caddy = File('deploy/Caddyfile').readAsStringSync();
     final passed = {for (final m in RegExp(r'^\s*handle\s+(/[A-Za-z0-9_-]+)', multiLine: true).allMatches(caddy)) m.group(1)!};

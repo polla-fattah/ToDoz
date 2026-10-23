@@ -118,6 +118,24 @@ Enter it in the app (Settings, Sync). It works once and expires in 10 minutes.
   1. Navigate to `https://todoz.example.com/app`.
   2. Enter the one-time code to authenticate the browser session.
 
+### Step 3 (optional): AI Assistants
+
+**From the web or a phone (Claude, ChatGPT, Gemini):** the server itself is a remote MCP server (Streamable HTTP) at `https://todoz.example.com/mcp`. Caddy passes `/mcp*` to it (the `handle /mcp*` block in `server/deploy/Caddyfile`, so an update that brings a new Caddyfile needs `./deploy.sh update`, which also reloads Caddy). It takes the same personal API tokens as the REST API, either as `Authorization: Bearer tf_...` or inside the address, `https://todoz.example.com/mcp/tf_...`, for connector screens that have no place for a token. The address then holds a secret: the server's log shows it as `/mcp/...`, and Caddy has no access log, but Cloudflare and the assistant's own provider can see it, so give each assistant its own token (a *read only* one if it only needs to look) and revoke it under Settings → Calendar and integrations → API access if it leaks. Wrong guesses at a secret address are limited to 20 a minute per caller address. There is no OAuth sign-in screen. Quick check (should print `401`, and `200` with a valid token):
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" -X POST https://todoz.example.com/mcp -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","id":1,"method":"ping"}'
+```
+
+The setup steps for each assistant are in the help page (`landing/help.html`, the REST API section).
+
+**On your own computer:** Claude (Desktop and Code) and Gemini CLI can add and list tasks through the REST API. The server needs no change: the owner makes an API token in the app under **Settings** → **Calendar and integrations** → **API access** (tick *read only* to let the assistant look but not change anything), and installs the small MCP wrapper from `tool/mcp/` on their own computer:
+
+```bash
+claude mcp add todoz --scope user --env TODOZ_URL=https://todoz.example.com --env TODOZ_TOKEN=tf_... -- node /path/to/tool/mcp/server.mjs
+```
+
+The wrapper only needs Node.js 20 or newer (no packages), reads `TODOZ_URL` and `TODOZ_TOKEN` from the environment, and never logs the token. `tool/mcp/README.md` has the Claude Desktop and Gemini CLI settings. Calls are rate limited per token like any other REST call; revoke a token in the same Settings page. Assistants that cannot run a local program can call the REST API directly (see the REST API section of the help page).
+
 ---
 
 ## 5. Operations & Maintenance Reference

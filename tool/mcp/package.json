@@ -1,0 +1,14 @@
+{
+  "name": "todoz-mcp",
+  "version": "1.0.0",
+  "description": "MCP server that lets Claude and Gemini manage ToDoz tasks through the ToDoz REST API",
+  "private": true,
+  "type": "module",
+  "bin": { "todoz-mcp": "server.mjs" },
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test"
+  },
+  "license": "MIT"
+}
